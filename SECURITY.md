@@ -1,4 +1,4 @@
-# <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f6e1_fe0f/512.gif" alt="🛡️" width="32" height="32"> Security Policy for NetShield DNS Resolver by PSBDx
+# <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f6e1/512.gif" alt="🛡️" width="32" height="32"> Security Policy for NetShield DNS Resolver by PSBDx
 
 We take the security and privacy of **NetShield DNS Resolver** very seriously. As a privacy-focused, local DNS resolution tool for Android, keeping your network traffic secure, leak-free, and resistant to exploits is our highest priority.
 
@@ -62,7 +62,7 @@ To help us assess and resolve the security issue quickly, please provide:
 
 ---
 
-## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/23f1_fe0f/512.gif" alt="⏱️" width="28" height="28"> Response & Disclosure Timeline
+## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/23f1/512.gif" alt="⏱️" width="28" height="28"> Response & Disclosure Timeline
 
 We follow responsible vulnerability disclosure practices:
 
