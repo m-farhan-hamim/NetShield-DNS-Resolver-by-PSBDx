@@ -1,6 +1,0 @@
-{
-  "name": "DNS Resolver",
-  "description": "Local DNS Resolver, Sinkhole, and Traffic Dashboard with dual Server/VPN mode, DoH/DoT upstream, blocklists, and real-time network traffic analytics.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
