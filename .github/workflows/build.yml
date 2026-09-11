@@ -18,13 +18,18 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      - name: Grant Execute Permission for Gradle
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Build Unsigned Release APK and AAB
-        run: ./gradlew assembleRelease bundleRelease
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleRelease bundleRelease
+          else
+            gradle assembleRelease bundleRelease
+          fi
 
       - name: Sign Production APK
         uses: filippoLeporati93/android-release-signer@v1
