@@ -1,62 +1,57 @@
-name: Build Android APK
+name: Build Signed Production APK & AAB
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Debug APK
+  build-release:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
+          java-version: '17'
           distribution: 'temurin'
-          java-version: '21'
+          cache: 'gradle'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Grant Execute Permission for Gradle
+        run: chmod +x gradlew
+
+      - name: Build Unsigned Release APK and AAB
+        run: ./gradlew assembleRelease bundleRelease
+
+      - name: Sign Production APK
+        uses: rslocate/android-release-signer@v1.3.1
         with:
-          gradle-version: '9.3.1'
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.RELEASE_KEYALIAS }}
+          keyStorePassword: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-      - name: Prepare environment files and keystore
-        run: |
-          # Ensure .env exists for Secrets Gradle plugin
-          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
-            cp .env.example .env
-          fi
+      - name: Sign Production AAB
+        uses: rslocate/android-release-signer@v1.3.1
+        with:
+          releaseDirectory: app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.RELEASE_KEYALIAS }}
+          keyStorePassword: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-          # Ensure debug.keystore exists for signing debug APK
-          if [ ! -f "debug.keystore" ]; then
-            if [ -f "debug.keystore.base64" ]; then
-              base64 -d debug.keystore.base64 > debug.keystore
-            else
-              keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey \
-                -keypass android -storepass android -keyalg RSA -keysize 2048 \
-                -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-            fi
-          fi
-
-          # Ensure Gradle wrapper exists and has executable permissions
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper --gradle-version 9.3.1
-          fi
-          chmod +x gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
-
-      - name: Upload Debug APK
+      - name: Upload Production APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 14
+          name: signed-production-apk
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: Upload Production AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-production-aab
+          path: app/build/outputs/bundle/release/*.aab
