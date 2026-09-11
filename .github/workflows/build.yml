@@ -27,7 +27,7 @@ jobs:
         run: ./gradlew assembleRelease bundleRelease
 
       - name: Sign Production APK
-        uses: rslocate/android-release-signer@v1.3.1
+        uses: filippoLeporati93/android-release-signer@v1
         with:
           releaseDirectory: app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -36,7 +36,7 @@ jobs:
           keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Sign Production AAB
-        uses: rslocate/android-release-signer@v1.3.1
+        uses: filippoLeporati93/android-release-signer@v1
         with:
           releaseDirectory: app/build/outputs/bundle/release
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -48,10 +48,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: signed-production-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/*-signed.apk
 
       - name: Upload Production AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: signed-production-aab
-          path: app/build/outputs/bundle/release/*.aab
+          path: app/build/outputs/bundle/release/*-signed.aab
