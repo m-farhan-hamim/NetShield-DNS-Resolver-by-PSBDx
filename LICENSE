@@ -1,0 +1,31 @@
+NetShield DNS Resolver
+Copyright (C) 2026 PSBDx (M. Farhan Hamim)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+--------------------------------------------------------------------
+NOTE FOR PSBDx: this file intentionally does NOT include the full
+~700-line GPLv3 legal text (kept out of this response to avoid bulk-
+reproducing a lengthy document). Before you publish this repo or
+submit it to F-Droid, replace this file with the official text, e.g.:
+
+    curl -o LICENSE https://www.gnu.org/licenses/gpl-3.0.txt
+
+...and then re-add the copyright/SPDX header above at the top of it.
+If you'd rather use a different license (MIT, Apache-2.0, etc.), swap
+it here instead - just make sure it's an OSI-approved license, since
+F-Droid requires one for inclusion.
+--------------------------------------------------------------------
