@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
+import android.util.Log;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -79,6 +80,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private static final int REQUEST_VPN = 1002;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 1003;
     private static final long TOGGLE_DEBOUNCE_MS = 900L;
@@ -395,11 +397,9 @@ public class MainActivity extends AppCompatActivity {
         btnToggleService.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Debounce: the button re-enables itself the instant the
-                // service confirms it actually stopped, which can happen
-                // within milliseconds. Without this, an impatient rapid
-                // double-tap on "Stop" reads as stop-then-immediately-
-                // start-again, which looked like the toggle "not working".
+                // Basic double-tap guard - the state below is now updated
+                // synchronously (see stopActiveService/startConfiguredService),
+                // this just stops an accidental double-fire of the same tap.
                 long now = SystemClock.elapsedRealtime();
                 if (now - lastToggleClickAt < TOGGLE_DEBOUNCE_MS) {
                     return;
@@ -407,6 +407,7 @@ public class MainActivity extends AppCompatActivity {
                 lastToggleClickAt = now;
 
                 int state = ServiceManager.getCurrentState();
+                Log.d(TAG, "btnToggleService clicked, currentState=" + state);
                 if (state != ServiceManager.STATE_STOPPED) {
                     stopActiveService();
                 } else {
@@ -432,39 +433,61 @@ public class MainActivity extends AppCompatActivity {
         btnPause5m.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                blocklistManager.pauseProtection(5 * 60 * 1000L);
-                updatePauseUi();
-                mainHandler.removeCallbacks(pauseTickRunnable);
-                mainHandler.post(pauseTickRunnable);
-                Toast.makeText(MainActivity.this, "Sinkhole blocking paused for 5 minutes", Toast.LENGTH_SHORT).show();
+                pauseProtectionManually(5 * 60 * 1000L, "5 minutes");
             }
         });
 
         btnPause15m.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                blocklistManager.pauseProtection(15 * 60 * 1000L);
-                updatePauseUi();
-                mainHandler.removeCallbacks(pauseTickRunnable);
-                mainHandler.post(pauseTickRunnable);
-                Toast.makeText(MainActivity.this, "Sinkhole blocking paused for 15 minutes", Toast.LENGTH_SHORT).show();
+                pauseProtectionManually(15 * 60 * 1000L, "15 minutes");
             }
         });
 
         btnResumeProtection.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                blocklistManager.resumeProtection();
-                mainHandler.removeCallbacks(pauseTickRunnable);
-                updatePauseUi();
-                Toast.makeText(MainActivity.this, "Sinkhole protection resumed", Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "btnResumeProtection clicked");
+                try {
+                    BlocklistManager manager = BlocklistManager.getInstance(MainActivity.this);
+                    manager.resumeProtection();
+                    mainHandler.removeCallbacks(pauseTickRunnable);
+                    updatePauseUi();
+                    Toast.makeText(MainActivity.this, "Sinkhole protection resumed", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Log.e(TAG, "resumeProtection failed", e);
+                    Toast.makeText(MainActivity.this, "Couldn't resume protection: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
             }
         });
     }
 
+    /** Manual, direct pause: fetches the live singleton, applies the pause, and repaints the UI right here - no indirection. */
+    private void pauseProtectionManually(long durationMillis, String label) {
+        Log.d(TAG, "pauseProtectionManually: " + label);
+        try {
+            BlocklistManager manager = BlocklistManager.getInstance(this);
+            manager.pauseProtection(durationMillis);
+            boolean nowPaused = manager.isPaused();
+            Log.d(TAG, "pauseProtectionManually: isPaused()=" + nowPaused);
+            mainHandler.removeCallbacks(pauseTickRunnable);
+            updatePauseUi();
+            mainHandler.post(pauseTickRunnable);
+            Toast.makeText(this, "Sinkhole blocking paused for " + label, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "pauseProtection failed", e);
+            Toast.makeText(this, "Couldn't pause protection: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void updatePauseUi() {
-        if (blocklistManager == null || tvPauseStatus == null) return;
+        if (blocklistManager == null || tvPauseStatus == null || tvPauseDot == null || btnResumeProtection == null) {
+            Log.w(TAG, "updatePauseUi: a required view/manager is null, skipping");
+            return;
+        }
         boolean paused = blocklistManager.isPaused();
+        Log.d(TAG, "updatePauseUi: paused=" + paused);
         if (paused) {
             long remainingMs = blocklistManager.getRemainingPauseMillis();
             long totalSec = remainingMs / 1000;
@@ -483,6 +506,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void startConfiguredService() {
         String mode = prefs.getString("operation_mode", "VPN");
+        Log.d(TAG, "startConfiguredService: mode=" + mode);
         if ("VPN".equalsIgnoreCase(mode)) {
             Intent vpnIntent = VpnService.prepare(this);
             if (vpnIntent != null) {
@@ -497,6 +521,13 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 startService(intent);
             }
+            // Don't wait for the service's own onStartCommand broadcast to
+            // reflect this in the UI - set it directly, right here, so the
+            // button responds the instant the user taps it. The service
+            // will redundantly (harmlessly) confirm the same state shortly
+            // after via ACTION_STATE_CHANGED.
+            ServiceManager.setCurrentState(this, ServiceManager.STATE_SERVER);
+            updateServiceStatusUI();
         }
     }
 
@@ -660,27 +691,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopActiveService() {
-        // Only the service's own onDestroy() is allowed to report STOPPED -
-        // that's what fixed the toggle appearing "off" while the VPN/server
-        // kept running underneath it. Reflect the in-between "stopping"
-        // state immediately so the button can't be double-tapped, then let
-        // the ACTION_STATE_CHANGED broadcast (sent from onDestroy) confirm
-        // the real state a moment later.
-        btnToggleService.setEnabled(false);
-        btnToggleService.setText(R.string.status_stopping);
-        ServiceManager.stopActiveService(this);
+        // Manual, direct, synchronous stop - no waiting on a broadcast
+        // round-trip from the service's onDestroy() before the button
+        // reflects reality. We: (1) explicitly stop BOTH service classes
+        // regardless of what state we think we're in, so there's no
+        // ambiguity about which one is actually running; (2) flip the
+        // tracked state and repaint the button ourselves, right here,
+        // synchronously. The service's onDestroy() will also set STOPPED
+        // and broadcast it a moment later - that's redundant but harmless,
+        // since the UI already shows "stopped" by the time it arrives.
+        Log.d(TAG, "stopActiveService: stopping DnsVpnService and DnsServerService");
+        stopService(new Intent(this, DnsVpnService.class));
+        stopService(new Intent(this, DnsServerService.class));
+        ServiceManager.setCurrentState(this, ServiceManager.STATE_STOPPED);
+        updateServiceStatusUI();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_VPN && resultCode == RESULT_OK) {
+            Log.d(TAG, "onActivityResult: VPN permission granted, starting DnsVpnService");
             Intent intent = new Intent(this, DnsVpnService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent);
             } else {
                 startService(intent);
             }
+            // Same reasoning as the SERVER branch above: reflect it now,
+            // directly, instead of waiting on a broadcast round-trip.
+            ServiceManager.setCurrentState(this, ServiceManager.STATE_VPN);
+            updateServiceStatusUI();
         }
     }
 
