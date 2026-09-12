@@ -21,6 +21,19 @@ import java.util.Locale;
 
 public class ServiceManager {
     public static final String ACTION_STATE_CHANGED = "com.example.dns.ACTION_STATE_CHANGED";
+    /**
+     * Sent to a running service's own onStartCommand() to make it tear
+     * itself down directly (see DnsVpnService/DnsServerService.performTeardown()).
+     * Deliberately NOT relying on Context.stopService() alone: once a
+     * VpnService's tunnel is established, the system also holds its own
+     * internal binding to it, and a Service is only destroyed once it is
+     * BOTH un-started AND fully unbound - so stopService() can silently
+     * fail to ever invoke onDestroy(), leaving the tunnel (and its
+     * notification) running forever regardless of what the app UI says.
+     * Routing the stop through the service's own onStartCommand sidesteps
+     * that entirely.
+     */
+    public static final String ACTION_STOP = "com.example.service.ACTION_STOP";
     public static final String CHANNEL_ID = "dns_service_channel";
     public static final int NOTIFICATION_ID = 1001;
 
@@ -51,23 +64,23 @@ public class ServiceManager {
 
     /**
      * Single, authoritative way to stop whatever is currently running.
-     * Only the service's own onDestroy() is allowed to flip the state to
-     * STATE_STOPPED - callers (the UI, the notification action) must never
-     * set that state themselves, since that previously let the app report
-     * "off" while the VPN/server was still alive underneath it.
+     * Sends ACTION_STOP to BOTH service classes unconditionally (regardless
+     * of tracked state) via startService(), so each one tears itself down
+     * directly from inside its own onStartCommand() - see ACTION_STOP above.
      */
     public static void stopActiveService(Context context) {
-        int state = getCurrentState();
-        if (state == STATE_VPN) {
-            context.stopService(new Intent(context, DnsVpnService.class));
-        } else if (state == STATE_SERVER) {
-            context.stopService(new Intent(context, DnsServerService.class));
-        } else {
-            // State says stopped already, but stop both defensively in case
-            // a service is still alive despite the tracked state (e.g. after
-            // a crash recovery) so nothing can be left running silently.
-            context.stopService(new Intent(context, DnsVpnService.class));
-            context.stopService(new Intent(context, DnsServerService.class));
+        sendStopAction(context, DnsVpnService.class);
+        sendStopAction(context, DnsServerService.class);
+    }
+
+    private static void sendStopAction(Context context, Class<?> serviceClass) {
+        try {
+            Intent stopIntent = new Intent(context, serviceClass);
+            stopIntent.setAction(ACTION_STOP);
+            context.startService(stopIntent);
+        } catch (Exception ignored) {
+            // Service isn't running / can't be started in this state - fine,
+            // there's nothing to stop.
         }
     }
 

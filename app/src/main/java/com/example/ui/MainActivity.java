@@ -691,18 +691,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopActiveService() {
-        // Manual, direct, synchronous stop - no waiting on a broadcast
-        // round-trip from the service's onDestroy() before the button
-        // reflects reality. We: (1) explicitly stop BOTH service classes
-        // regardless of what state we think we're in, so there's no
-        // ambiguity about which one is actually running; (2) flip the
-        // tracked state and repaint the button ourselves, right here,
-        // synchronously. The service's onDestroy() will also set STOPPED
-        // and broadcast it a moment later - that's redundant but harmless,
-        // since the UI already shows "stopped" by the time it arrives.
-        Log.d(TAG, "stopActiveService: stopping DnsVpnService and DnsServerService");
-        stopService(new Intent(this, DnsVpnService.class));
-        stopService(new Intent(this, DnsServerService.class));
+        // Manual, direct, synchronous stop. IMPORTANT: this sends an
+        // explicit ACTION_STOP to each service via startService(), rather
+        // than calling Context.stopService() - a plain stopService() can
+        // silently fail to tear down a VpnService once its tunnel is
+        // established (the system holds its own binding to it), which was
+        // leaving the tunnel + its notification running forever even though
+        // this button already said "stopped". See ServiceManager.ACTION_STOP.
+        Log.d(TAG, "stopActiveService: sending ACTION_STOP to both services");
+        ServiceManager.stopActiveService(this);
         ServiceManager.setCurrentState(this, ServiceManager.STATE_STOPPED);
         updateServiceStatusUI();
     }

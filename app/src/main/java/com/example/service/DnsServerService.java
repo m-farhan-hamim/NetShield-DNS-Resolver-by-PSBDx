@@ -35,6 +35,13 @@ public class DnsServerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ServiceManager.ACTION_STOP.equals(intent.getAction())) {
+            Log.d(TAG, "onStartCommand: ACTION_STOP received, tearing down directly");
+            performTeardown();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         Log.d(TAG, "onStartCommand: isRunning=" + isRunning + " startId=" + startId);
         startForeground(ServiceManager.NOTIFICATION_ID,
                 ServiceManager.buildForegroundNotification(this, getString(R.string.status_server_running)));
@@ -96,9 +103,17 @@ public class DnsServerService extends Service {
         serverThread.start();
     }
 
-    @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy: tearing down DNS server");
+    /**
+     * Tears everything down directly and unconditionally, regardless of
+     * whether the Service object itself is later destroyed - see the
+     * matching method in DnsVpnService for why this matters.
+     */
+    private synchronized void performTeardown() {
+        if (!isRunning && serverSocket == null) {
+            Log.d(TAG, "performTeardown: already torn down, skipping");
+            return;
+        }
+        Log.d(TAG, "performTeardown: tearing down DNS server");
         isRunning = false;
         ServiceManager.stopLiveNotificationUpdates();
 
@@ -107,6 +122,7 @@ public class DnsServerService extends Service {
                 serverSocket.close();
             } catch (Exception ignored) {
             }
+            serverSocket = null;
         }
         if (serverThread != null) {
             serverThread.interrupt();
@@ -123,9 +139,16 @@ public class DnsServerService extends Service {
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
+            serverThread = null;
         }
-        ServiceManager.setCurrentState(this, ServiceManager.STATE_STOPPED);
         stopForeground(true);
+        ServiceManager.setCurrentState(this, ServiceManager.STATE_STOPPED);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        performTeardown();
         super.onDestroy();
     }
 

@@ -36,6 +36,13 @@ public class DnsVpnService extends VpnService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ServiceManager.ACTION_STOP.equals(intent.getAction())) {
+            Log.d(TAG, "onStartCommand: ACTION_STOP received, tearing down directly");
+            performTeardown();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         Log.d(TAG, "onStartCommand: isRunning=" + isRunning + " startId=" + startId);
         startForeground(ServiceManager.NOTIFICATION_ID,
                 ServiceManager.buildForegroundNotification(this, getString(R.string.status_vpn_running)));
@@ -141,13 +148,35 @@ public class DnsVpnService extends VpnService {
      */
     @Override
     public void onRevoke() {
+        performTeardown();
         stopSelf();
         super.onRevoke();
     }
 
-    @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy: tearing down VPN");
+    /**
+     * Tears everything down directly and unconditionally - closes the TUN
+     * interface, cancels the notification, and updates the tracked state -
+     * regardless of whether the Service object itself ever actually gets
+     * destroyed afterward.
+     *
+     * This exists because relying on Context.stopService() -> onDestroy()
+     * alone is NOT reliable for a VpnService: once a tunnel is established,
+     * the system also holds its own internal binding to this Service to
+     * manage the VPN connection, and a Service is only destroyed once it is
+     * BOTH un-started AND fully unbound. If that system-held binding hasn't
+     * cleared yet, stopService() can silently fail to ever invoke
+     * onDestroy() - which left the tunnel (and its notification) running
+     * forever no matter what the app UI said. Closing the interface here,
+     * directly, from an explicit self-stop action (see ServiceManager.ACTION_STOP)
+     * fixes that regardless of what the framework decides to do with the
+     * Service object afterward.
+     */
+    private synchronized void performTeardown() {
+        if (!isRunning && vpnInterface == null) {
+            Log.d(TAG, "performTeardown: already torn down, skipping");
+            return;
+        }
+        Log.d(TAG, "performTeardown: tearing down VPN");
         isRunning = false;
         ServiceManager.stopLiveNotificationUpdates();
 
@@ -162,12 +191,14 @@ public class DnsVpnService extends VpnService {
                 outStream.close();
             } catch (Exception ignored) {
             }
+            outStream = null;
         }
         if (vpnInterface != null) {
             try {
                 vpnInterface.close();
             } catch (Exception ignored) {
             }
+            vpnInterface = null;
         }
         // Closing the interface unblocks the blocking read() above; wait
         // (briefly) for the loop to actually exit so "stopped" is true by
@@ -179,9 +210,22 @@ public class DnsVpnService extends VpnService {
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
+            vpnThread = null;
         }
-        ServiceManager.setCurrentState(this, ServiceManager.STATE_STOPPED);
+        // Cancel the notification and clear tracked state directly here -
+        // don't wait for onDestroy(), which may never come (see above).
         stopForeground(true);
+        ServiceManager.setCurrentState(this, ServiceManager.STATE_STOPPED);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        // Defensive: covers the case where the Service is destroyed via some
+        // path other than our own ACTION_STOP (e.g. the system killing it
+        // directly). performTeardown() is idempotent, so calling it again
+        // here even after an explicit stop already ran it is harmless.
+        performTeardown();
         super.onDestroy();
     }
 }
