@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DNS Resolver</string>
+    <string name="splash_tagline">Your Private DNS Shield</string>
+    <string name="splash_powered_by">Powered by PSBDx</string>
     <string name="tagline">Local Resolver &amp; Privacy Sinkhole</string>
 
     <!-- Navigation Tabs -->
@@ -112,6 +114,14 @@
     <string name="about_disclaimer">This app has been built by PSBDx (M. Farhan Hamim). Significant use of Google AI has been made.</string>
     <string name="about_license">Free and open source software, licensed under the GNU General Public License v3.0 (GPL-3.0-or-later). The full source code is available for anyone to read, modify, and redistribute.</string>
     <string name="about_version_format">Version %1$s</string>
+    <string name="notification_permission_banner">Notifications are needed so the running shield status stays visible and controllable. Tap to enable.</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_update">Update</string>
+    <string name="update_available_format">New version %1$s is available</string>
+    <string name="update_downloading_format">Downloading… %1$d%%</string>
+    <string name="update_preparing">Preparing update…</string>
+    <string name="update_download_failed">Update download failed. Tap to retry.</string>
+    <string name="update_allow_install_source">Allow NetShield to install updates, then tap Update again</string>
 
     <!-- Notification -->
     <string name="notification_channel_name">DNS Resolver Service</string>

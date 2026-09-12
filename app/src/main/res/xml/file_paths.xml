@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Matches getExternalFilesDir(null)/updates/*.apk, where UpdateChecker
+         saves the downloaded release APK before handing it to the system
+         package installer. -->
+    <external-files-path name="updates" path="updates/" />
+</paths>

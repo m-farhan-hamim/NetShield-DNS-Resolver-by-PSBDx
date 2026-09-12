@@ -1,5 +1,6 @@
 package com.example.ui;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
@@ -13,11 +14,14 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -36,7 +40,9 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -56,9 +62,11 @@ import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
 import com.example.util.ConfigBackupUtils;
+import com.example.util.UpdateChecker;
 import com.google.android.material.tabs.TabLayout;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -72,6 +80,9 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_VPN = 1002;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 1003;
+    private static final long TOGGLE_DEBOUNCE_MS = 900L;
+    private long lastToggleClickAt = 0L;
 
     private DatabaseHelper dbHelper;
     private DnsResolverEngine engine;
@@ -188,6 +199,11 @@ public class MainActivity extends AppCompatActivity {
     private EditText etServerPort;
     private Button btnExportBackup;
     private Button btnImportBackup;
+    private View bannerNotificationPermission;
+    private View bannerUpdateAvailable;
+    private TextView tvUpdateBannerText;
+    private Button btnUpdateNow;
+    private UpdateChecker.UpdateInfo pendingUpdate;
 
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
@@ -239,6 +255,10 @@ public class MainActivity extends AppCompatActivity {
         updateServiceStatusUI();
         refreshStats();
         updatePauseUi();
+        setupNotificationPermissionBanner();
+        requestNotificationPermissionIfNeeded();
+        setupUpdateBanner();
+        checkForAppUpdate();
     }
 
     @Override
@@ -255,6 +275,7 @@ public class MainActivity extends AppCompatActivity {
         updateServiceStatusUI();
         refreshStats();
         updatePauseUi();
+        updateNotificationPermissionBannerVisibility();
         if (blocklistManager != null && blocklistManager.isPaused()) {
             mainHandler.post(pauseTickRunnable);
         }
@@ -374,6 +395,17 @@ public class MainActivity extends AppCompatActivity {
         btnToggleService.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Debounce: the button re-enables itself the instant the
+                // service confirms it actually stopped, which can happen
+                // within milliseconds. Without this, an impatient rapid
+                // double-tap on "Stop" reads as stop-then-immediately-
+                // start-again, which looked like the toggle "not working".
+                long now = SystemClock.elapsedRealtime();
+                if (now - lastToggleClickAt < TOGGLE_DEBOUNCE_MS) {
+                    return;
+                }
+                lastToggleClickAt = now;
+
                 int state = ServiceManager.getCurrentState();
                 if (state != ServiceManager.STATE_STOPPED) {
                     stopActiveService();
@@ -466,6 +498,165 @@ public class MainActivity extends AppCompatActivity {
                 startService(intent);
             }
         }
+    }
+
+    private void setupNotificationPermissionBanner() {
+        bannerNotificationPermission = findViewById(R.id.banner_notification_permission);
+        Button btnEnableNotifications = findViewById(R.id.btn_enable_notifications);
+        if (btnEnableNotifications != null) {
+            btnEnableNotifications.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                            && ActivityCompat.shouldShowRequestPermissionRationale(
+                            MainActivity.this, Manifest.permission.POST_NOTIFICATIONS)) {
+                        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                REQUEST_NOTIFICATION_PERMISSION);
+                    } else {
+                        // Permanently denied (or pre-13 where there's nothing to
+                        // request) - the only way back is the system settings page.
+                        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                        intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                        try {
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            fallback.setData(Uri.parse("package:" + getPackageName()));
+                            startActivity(fallback);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_NOTIFICATION_PERMISSION);
+        } else {
+            updateNotificationPermissionBannerVisibility();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @androidx.annotation.NonNull String[] permissions,
+                                            @androidx.annotation.NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            updateNotificationPermissionBannerVisibility();
+        }
+    }
+
+    private void updateNotificationPermissionBannerVisibility() {
+        if (bannerNotificationPermission == null) return;
+        boolean granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED;
+        bannerNotificationPermission.setVisibility(granted ? View.GONE : View.VISIBLE);
+    }
+
+    // ---- GitHub Releases self-update (no-op for F-Droid-sourced installs; see UpdateChecker) ----
+
+    private void setupUpdateBanner() {
+        bannerUpdateAvailable = findViewById(R.id.banner_update_available);
+        tvUpdateBannerText = findViewById(R.id.tv_update_banner_text);
+        btnUpdateNow = findViewById(R.id.btn_update_now);
+        if (btnUpdateNow != null) {
+            btnUpdateNow.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onUpdateNowClicked();
+                }
+            });
+        }
+    }
+
+    private void checkForAppUpdate() {
+        UpdateChecker.checkForUpdate(getApplicationContext(), new UpdateChecker.UpdateCallback() {
+            @Override
+            public void onResult(final UpdateChecker.UpdateInfo info) {
+                if (info == null) return;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        pendingUpdate = info;
+                        if (tvUpdateBannerText != null) {
+                            tvUpdateBannerText.setText(getString(R.string.update_available_format, info.versionTag));
+                        }
+                        if (bannerUpdateAvailable != null) {
+                            bannerUpdateAvailable.setVisibility(View.VISIBLE);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void onUpdateNowClicked() {
+        if (pendingUpdate == null) return;
+
+        // Android 8+ requires the user to explicitly allow this app to
+        // install packages before we can hand it an APK.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, R.string.update_allow_install_source, Toast.LENGTH_LONG).show();
+            Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            try {
+                startActivity(intent);
+            } catch (Exception ignored) {
+            }
+            return;
+        }
+
+        btnUpdateNow.setEnabled(false);
+        tvUpdateBannerText.setText(R.string.update_preparing);
+
+        UpdateChecker.downloadApk(getApplicationContext(), pendingUpdate.downloadUrl,
+                new UpdateChecker.DownloadCallback() {
+                    @Override
+                    public void onProgress(final int percent) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                tvUpdateBannerText.setText(getString(R.string.update_downloading_format, percent));
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onComplete(final File apkFile) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                btnUpdateNow.setEnabled(true);
+                                installDownloadedApk(apkFile);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                btnUpdateNow.setEnabled(true);
+                                tvUpdateBannerText.setText(R.string.update_download_failed);
+                            }
+                        });
+                    }
+                });
+    }
+
+    private void installDownloadedApk(File apkFile) {
+        Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);
+        Intent installIntent = new Intent(Intent.ACTION_VIEW);
+        installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(installIntent);
     }
 
     private void stopActiveService() {

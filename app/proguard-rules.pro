@@ -16,6 +16,9 @@
 # debugging stack traces.
 #-keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Manual JSON parsing (org.json) - no reflection, just keep it quiet.
+-dontwarn org.json.**
+
+# Keep line numbers in stack traces for crash reports, but hide the source file.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

@@ -3,6 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -56,9 +57,11 @@ jobs:
     name: Build Signed Release APK
     runs-on: ubuntu-latest
     # Secrets aren't available to pull_request builds from forks, so the
-    # signed release build only runs for pushes/manual runs in this repo.
+    # signed release build only runs for pushes/manual runs/tags in this repo.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: debug
+    permissions:
+      contents: write
 
     env:
       KEYSTORE_PATH: ${{ github.workspace }}/release.keystore.jks
@@ -118,3 +121,13 @@ jobs:
           name: app-release-bundle
           path: app/build/outputs/bundle/release/*.aab
           retention-days: 90
+
+      # Only for actual version tags (e.g. "v1.2.0") - this is what the
+      # in-app update checker (UpdateChecker) queries via the GitHub
+      # Releases API, so the attached APK's name must end in ".apk".
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/*.apk
+          generate_release_notes: true

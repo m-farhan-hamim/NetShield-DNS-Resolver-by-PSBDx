@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
+import android.util.Log;
 
 import com.example.R;
 import com.example.dns.DnsResolverEngine;
@@ -18,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class DnsServerService extends Service {
+    private static final String TAG = "DnsServerService";
     private DatagramSocket serverSocket;
     private Thread serverThread;
     private volatile boolean isRunning = false;
@@ -33,6 +35,7 @@ public class DnsServerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "onStartCommand: isRunning=" + isRunning + " startId=" + startId);
         startForeground(ServiceManager.NOTIFICATION_ID,
                 ServiceManager.buildForegroundNotification(this, getString(R.string.status_server_running)));
         ServiceManager.setCurrentState(this, ServiceManager.STATE_SERVER);
@@ -41,7 +44,7 @@ public class DnsServerService extends Service {
         if (!isRunning) {
             startDnsServer();
         }
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     private void startDnsServer() {
@@ -95,6 +98,7 @@ public class DnsServerService extends Service {
 
     @Override
     public void onDestroy() {
+        Log.d(TAG, "onDestroy: tearing down DNS server");
         isRunning = false;
         ServiceManager.stopLiveNotificationUpdates();
 

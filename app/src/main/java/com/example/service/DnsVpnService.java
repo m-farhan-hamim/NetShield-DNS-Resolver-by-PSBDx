@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 
 import com.example.R;
 import com.example.dns.DnsResolverEngine;
@@ -18,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class DnsVpnService extends VpnService {
+    private static final String TAG = "DnsVpnService";
     private ParcelFileDescriptor vpnInterface;
     private Thread vpnThread;
     private volatile boolean isRunning = false;
@@ -34,6 +36,7 @@ public class DnsVpnService extends VpnService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "onStartCommand: isRunning=" + isRunning + " startId=" + startId);
         startForeground(ServiceManager.NOTIFICATION_ID,
                 ServiceManager.buildForegroundNotification(this, getString(R.string.status_vpn_running)));
         ServiceManager.setCurrentState(this, ServiceManager.STATE_VPN);
@@ -42,7 +45,9 @@ public class DnsVpnService extends VpnService {
         if (!isRunning) {
             startVpn();
         }
-        return START_STICKY;
+        // NOT_STICKY: if this process is killed, stay stopped rather than
+        // have the system silently restart the VPN behind the user's back.
+        return START_NOT_STICKY;
     }
 
     private void startVpn() {
@@ -142,6 +147,7 @@ public class DnsVpnService extends VpnService {
 
     @Override
     public void onDestroy() {
+        Log.d(TAG, "onDestroy: tearing down VPN");
         isRunning = false;
         ServiceManager.stopLiveNotificationUpdates();
 
