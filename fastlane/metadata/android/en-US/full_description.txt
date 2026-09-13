@@ -1,0 +1,11 @@
+NetShield DNS Resolver is a local DNS resolver, sinkhole, and traffic dashboard for Android. It blocks ads and trackers at the DNS level and gives you full visibility into your device's network requests.
+
+Run it as a device-wide VPN that routes all system DNS queries through a local sinkhole, or as a lightweight local UDP server on <code>127.0.0.1</code> — your choice. It supports DNS-over-HTTPS (DoH), DNS-over-TLS (DoT), and plain UDP upstreams, along with custom blocklists and per-app split tunneling for fine-grained control over which apps use the resolver.
+
+  • Real-time traffic logs</strong> — see every DNS query as it happens</li>
+  • Quick Settings tile — toggle protection from your control panel
+  • Home-screen widget — live status and query stats, with a one-tap power button
+  • DoH / DoT / UDP upstream support — choose your preferred resolver.
+  • Custom blocklists & per-app split tunneling.
+
+Built in pure Java — no Kotlin, no Jetpack Compose, no Firebase or Google Play Services — using just AndroidX and Material components. Free and open source under the GPL-3.0 license.
