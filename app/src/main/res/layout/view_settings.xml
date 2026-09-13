@@ -450,6 +450,41 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- VPN Servers Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/vpn_servers_title"
+                android:textColor="@color/colorPrimary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="10dp"
+                android:text="@string/vpn_servers_disclaimer_body"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/btn_manage_vpn_servers"
+                style="@style/Widget.AppCompat.Button.Colored"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/manage_vpn_servers"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
         <!-- System & Automation Card -->
         <LinearLayout
             android:layout_width="match_parent"

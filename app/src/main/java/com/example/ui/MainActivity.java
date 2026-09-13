@@ -81,6 +81,7 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
+    public static final String EXTRA_AUTO_START = "com.example.dns.EXTRA_AUTO_START";
     private static final int REQUEST_VPN = 1002;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 1003;
     private static final long TOGGLE_DEBOUNCE_MS = 900L;
@@ -261,6 +262,30 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermissionIfNeeded();
         setupUpdateBanner();
         checkForAppUpdate();
+        handleAutoStartExtra(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleAutoStartExtra(intent);
+    }
+
+    /**
+     * Started from the Quick Settings tile / widget when VPN permission
+     * still needs to be granted (that flow requires an Activity). Once the
+     * app is open for that reason, immediately continue the start the user
+     * already asked for, rather than making them tap Start again.
+     */
+    private void handleAutoStartExtra(Intent intent) {
+        if (intent != null && intent.getBooleanExtra(EXTRA_AUTO_START, false)) {
+            intent.removeExtra(EXTRA_AUTO_START);
+            if (ServiceManager.getCurrentState() == ServiceManager.STATE_STOPPED) {
+                Log.d(TAG, "handleAutoStartExtra: auto-starting service");
+                startConfiguredService();
+            }
+        }
     }
 
     @Override
@@ -1622,6 +1647,16 @@ public class MainActivity extends AppCompatActivity {
         etServerPort = findViewById(R.id.et_server_port);
         btnExportBackup = findViewById(R.id.btn_export_backup);
         btnImportBackup = findViewById(R.id.btn_import_backup);
+
+        Button btnManageVpnServers = findViewById(R.id.btn_manage_vpn_servers);
+        if (btnManageVpnServers != null) {
+            btnManageVpnServers.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(MainActivity.this, VpnServersActivity.class));
+                }
+            });
+        }
 
         TextView tvAboutVersion = findViewById(R.id.tv_about_version);
         if (tvAboutVersion != null) {

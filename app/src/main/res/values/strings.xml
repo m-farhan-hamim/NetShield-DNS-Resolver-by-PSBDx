@@ -3,6 +3,20 @@
     <string name="app_name">DNS Resolver</string>
     <string name="splash_tagline">Your Private DNS Shield</string>
     <string name="splash_powered_by">Powered by PSBDx</string>
+    <string name="qs_tile_label">NetShield</string>
+    <string name="widget_description">Toggle the DNS shield and see live status from your home screen</string>
+    <string name="vpn_servers_title">VPN Servers</string>
+    <string name="vpn_servers_disclaimer_title">Import &amp; manage only, for now</string>
+    <string name="vpn_servers_disclaimer_body">This screen imports and stores your OpenVPN (.ovpn) and WireGuard (.conf) config files and lets you pick one as active. It does not yet establish a tunnel through them - that needs the official OpenVPN/WireGuard client engines integrated, which is a separate, larger piece of work. No server list is bundled: only servers you provide, from a source you trust, ever get added here.</string>
+    <string name="action_import_openvpn">Import OpenVPN</string>
+    <string name="action_import_wireguard">Import WireGuard</string>
+    <string name="vpn_servers_empty">No VPN servers imported yet</string>
+    <string name="vpn_profile_imported">Profile imported: %1$s</string>
+    <string name="vpn_profile_invalid">That file doesn\'t look like a valid config - couldn\'t find the expected server/endpoint fields</string>
+    <string name="vpn_profile_read_failed">Couldn\'t read that file</string>
+    <string name="vpn_profile_set_active">%1$s set as active profile</string>
+    <string name="vpn_profile_deleted">Profile deleted</string>
+    <string name="manage_vpn_servers">Manage VPN Servers</string>
     <string name="tagline">Local Resolver &amp; Privacy Sinkhole</string>
 
     <!-- Navigation Tabs -->

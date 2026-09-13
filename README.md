@@ -54,6 +54,23 @@ users get updates from F-Droid instead. Keep this check in place if you
 submit to F-Droid; removing it (or removing the `REQUEST_INSTALL_PACKAGES`
 permission usage generally) is likely to get the app rejected or flagged.
 
+## Quick Settings tile & home-screen widget
+
+Beyond the in-app Start/Stop button, the resolver can be toggled with a
+single tap from:
+
+- **Quick Settings** ("control panel") - add the "NetShield" tile from the
+  panel's edit screen. Reflects Active/Inactive state live.
+- **Home-screen widget** - a resizable card showing live status and query
+  stats, with a dedicated power button to toggle instantly (tapping the rest
+  of the card opens the app).
+
+Both use the same underlying `ServiceManager.ACTION_STOP` self-stop
+mechanism as the in-app button, so behavior stays consistent everywhere. If
+VPN mode hasn't been granted permission yet, tapping either will briefly
+open the app to complete that one-time system consent dialog, then behave
+identically afterward.
+
 ## License
 
 Licensed under the GNU General Public License v3.0 or later - see
