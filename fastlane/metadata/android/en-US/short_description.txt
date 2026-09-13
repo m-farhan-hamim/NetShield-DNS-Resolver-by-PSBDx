@@ -1,0 +1,1 @@
+Local DNS resolver & ad/tracker sinkhole with live traffic dashboard
