@@ -204,6 +204,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return getRecentLogs(500, search, statusFilter);
     }
 
+    /** Recent logs for one client IP (Hotspot tab's per-device history view). */
+    public synchronized List<DnsLog> getLogsForClient(String clientIp, int limit) {
+        List<DnsLog> logs = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT * FROM " + TABLE_LOGS + " WHERE " + COL_LOG_CLIENT_IP + " = ? "
+                        + "ORDER BY " + COL_LOG_TIME + " DESC LIMIT ?",
+                new String[]{clientIp, String.valueOf(limit)});
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                DnsLog log = new DnsLog();
+                log.setId(cursor.getLong(cursor.getColumnIndexOrThrow(COL_LOG_ID)));
+                log.setTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(COL_LOG_TIME)));
+                log.setDomain(cursor.getString(cursor.getColumnIndexOrThrow(COL_LOG_DOMAIN)));
+                log.setQueryType(cursor.getString(cursor.getColumnIndexOrThrow(COL_LOG_TYPE)));
+                log.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(COL_LOG_STATUS)));
+                log.setResponseTimeMs(cursor.getLong(cursor.getColumnIndexOrThrow(COL_LOG_RESPONSE_TIME)));
+                log.setUpstream(cursor.getString(cursor.getColumnIndexOrThrow(COL_LOG_UPSTREAM)));
+                log.setClientIp(cursor.getString(cursor.getColumnIndexOrThrow(COL_LOG_CLIENT_IP)));
+                logs.add(log);
+            }
+            cursor.close();
+        }
+        return logs;
+    }
+
     public synchronized void clearLogs() {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_LOGS, null, null);
@@ -291,6 +317,37 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             cursor.close();
         }
         return count;
+    }
+
+    /**
+     * Per-client-IP activity summary, most recently active first - the real
+     * (DNS-log-backed) foundation for the Hotspot tab's device list. Only
+     * includes devices that have actually sent a query through this
+     * resolver (this device itself in VPN mode; any device pointed at this
+     * phone's IP in Local Server Mode).
+     */
+    public synchronized List<ClientDeviceStat> getClientDeviceStats() {
+        List<ClientDeviceStat> list = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        String query = "SELECT " + COL_LOG_CLIENT_IP + ", COUNT(*) as total, "
+                + "SUM(CASE WHEN " + COL_LOG_STATUS + " = 'BLOCKED' THEN 1 ELSE 0 END) as blocked, "
+                + "MAX(" + COL_LOG_TIME + ") as last_seen "
+                + "FROM " + TABLE_LOGS
+                + " WHERE " + COL_LOG_CLIENT_IP + " IS NOT NULL AND " + COL_LOG_CLIENT_IP + " != '' "
+                + "GROUP BY " + COL_LOG_CLIENT_IP + " ORDER BY last_seen DESC";
+        Cursor cursor = db.rawQuery(query, null);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                list.add(new ClientDeviceStat(
+                        cursor.getString(0),
+                        cursor.getInt(1),
+                        cursor.getInt(2),
+                        cursor.getLong(3)
+                ));
+            }
+            cursor.close();
+        }
+        return list;
     }
 
     public synchronized Map<String, Integer> getQueryTypeCounts() {

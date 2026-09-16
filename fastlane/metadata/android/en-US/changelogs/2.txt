@@ -1,0 +1,3 @@
+Initial stable release: local VPN/server DNS resolver, ad/tracker sinkhole,
+traffic dashboard, Quick Settings tile, home-screen widget, and OpenVPN/
+WireGuard config import (management only).

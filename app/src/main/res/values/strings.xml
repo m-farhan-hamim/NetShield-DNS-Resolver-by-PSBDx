@@ -17,6 +17,26 @@
     <string name="vpn_profile_set_active">%1$s set as active profile</string>
     <string name="vpn_profile_deleted">Profile deleted</string>
     <string name="manage_vpn_servers">Manage VPN Servers</string>
+
+    <!-- Hotspot tab -->
+    <string name="tab_hotspot">HOTSPOT</string>
+    <string name="hotspot_disclaimer_title">What this tab can and can\'t do</string>
+    <string name="hotspot_disclaimer_body">Android does not let a normal installed app turn the system hotspot on/off, list or kick specific hotspot clients, or measure a device\'s data usage in MB/GB - those need system-level permissions this app can\'t have. What IS real here: any device that sets this phone as its DNS server (Wi-Fi or hotspot) gets the same block/allow lists as this phone, and this screen can block or daily-limit that device\'s DNS queries specifically.</string>
+    <string name="hotspot_status_title">This phone\'s address</string>
+    <string name="hotspot_local_address_hint">On another device connected to this phone\'s Wi-Fi/hotspot, set its DNS server to this address to filter it with the same rules as this phone.</string>
+    <string name="action_open_hotspot_settings">Open Hotspot / Tethering Settings</string>
+    <string name="hotspot_global_limit_title">Global daily query limit</string>
+    <string name="action_set_global_limit">Set limit</string>
+    <string name="hotspot_devices_title">Devices using this DNS filter</string>
+    <string name="hotspot_no_devices">No devices have queried this resolver yet</string>
+    <string name="action_set_limit">Limit</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_view_history">History</string>
+    <string name="hotspot_scan_title">Other devices seen on network (best-effort)</string>
+    <string name="hotspot_scan_hint">Not authoritative and may be empty on some devices/Android versions - these are not necessarily hotspot clients, and can\'t be blocked or limited (they\'re not using this DNS resolver).</string>
+    <string name="action_rescan">Rescan</string>
+    <string name="hotspot_device_history_title">Recent queries</string>
+    <string name="hotspot_no_local_ip">No local network address found - connect to Wi-Fi or start the hotspot first</string>
     <string name="tagline">Local Resolver &amp; Privacy Sinkhole</string>
 
     <!-- Navigation Tabs -->

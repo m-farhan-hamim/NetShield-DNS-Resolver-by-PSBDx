@@ -159,6 +159,12 @@
         <com.google.android.material.tabs.TabItem
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:icon="@drawable/ic_hotspot"
+            android:text="@string/tab_hotspot" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:icon="@drawable/ic_settings"
             android:text="@string/tab_settings" />
 
@@ -188,6 +194,11 @@
         <include
             android:id="@+id/container_rules"
             layout="@layout/view_rules"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/container_hotspot"
+            layout="@layout/view_hotspot"
             android:visibility="gone" />
 
         <include

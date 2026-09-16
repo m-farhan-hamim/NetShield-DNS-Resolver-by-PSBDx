@@ -58,6 +58,12 @@ public class DnsServerService extends Service {
         isRunning = true;
         SharedPreferences prefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
         final int port = prefs.getInt("server_port", 5353);
+        // Listen on all interfaces (not just loopback) so devices on the
+        // same Wi-Fi/hotspot network can actually point their own DNS
+        // settings at this phone's local IP - see the Hotspot tab, which
+        // surfaces that IP:port to the user. Loopback-only made this mode
+        // reachable only from the phone itself.
+        final boolean listenOnAllInterfaces = prefs.getBoolean("server_listen_all_interfaces", true);
 
         serverThread = new Thread(new Runnable() {
             @Override
@@ -65,7 +71,10 @@ public class DnsServerService extends Service {
                 try {
                     serverSocket = new DatagramSocket(null);
                     serverSocket.setReuseAddress(true);
-                    serverSocket.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+                    InetSocketAddress bindAddress = listenOnAllInterfaces
+                            ? new InetSocketAddress(port)
+                            : new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port);
+                    serverSocket.bind(bindAddress);
 
                     byte[] buffer = new byte[1500];
 

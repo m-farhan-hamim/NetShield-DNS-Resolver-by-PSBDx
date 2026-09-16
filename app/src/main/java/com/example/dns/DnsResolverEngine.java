@@ -7,6 +7,7 @@ import android.os.SystemClock;
 
 import com.example.db.DatabaseHelper;
 import com.example.db.DnsLog;
+import com.example.hotspot.HotspotManager;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,6 +21,7 @@ public class DnsResolverEngine {
     private final Context context;
     private final DatabaseHelper dbHelper;
     private final BlocklistManager blocklistManager;
+    private final HotspotManager hotspotManager;
     private final DnsCache cache;
     private final ExecutorService logExecutor = Executors.newSingleThreadExecutor();
     private final SharedPreferences prefs;
@@ -35,6 +37,7 @@ public class DnsResolverEngine {
         this.context = context;
         this.dbHelper = DatabaseHelper.getInstance(context);
         this.blocklistManager = BlocklistManager.getInstance(context);
+        this.hotspotManager = HotspotManager.getInstance(context);
         this.cache = new DnsCache(2000);
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
@@ -53,6 +56,24 @@ public class DnsResolverEngine {
 
         String domain = q.domain;
         String typeName = DnsPacketParser.getTypeName(q.qType);
+
+        // 0. Per-device block / daily query-limit checks (Hotspot tab). This
+        // only affects devices that are actually using this resolver as
+        // their DNS server (VPN mode: this device itself; Local Server
+        // Mode: any device pointed at this phone's IP) - it cannot block a
+        // device's network access outright, only its name resolution here.
+        if (hotspotManager.isBlocked(clientIp)) {
+            byte[] response = DnsPacketParser.buildBlockedResponse(queryPacket, length, "ZERO_IP");
+            long latency = SystemClock.elapsedRealtime() - startTime;
+            recordLog(domain, typeName, "BLOCKED", latency, "Device blocked", clientIp);
+            return response;
+        }
+        if (!hotspotManager.recordAndCheckAllowed(clientIp)) {
+            byte[] response = DnsPacketParser.buildBlockedResponse(queryPacket, length, "ZERO_IP");
+            long latency = SystemClock.elapsedRealtime() - startTime;
+            recordLog(domain, typeName, "BLOCKED", latency, "Daily query limit reached", clientIp);
+            return response;
+        }
 
         // 1. Check Custom Local Mapping
         String customIp = blocklistManager.getCustomMapping(domain);

@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
+import android.text.InputType;
 import android.util.Log;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -59,6 +60,10 @@ import com.example.dns.BlocklistManager;
 import com.example.dns.DnsBenchmark;
 import com.example.dns.DnsPacketParser;
 import com.example.dns.DnsResolverEngine;
+import com.example.db.ClientDeviceStat;
+import com.example.hotspot.HotspotManager;
+import com.example.hotspot.LocalIpFinder;
+import com.example.hotspot.LocalNetworkScanner;
 import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
@@ -99,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
     private View containerTraffic;
     private View containerLogs;
     private View containerRules;
+    private View containerHotspot;
     private View containerSettings;
 
     // Header Views
@@ -253,6 +259,7 @@ public class MainActivity extends AppCompatActivity {
         setupTrafficDashboard();
         setupLogs();
         setupRules();
+        setupHotspotTab();
         setupSettings();
 
         updateServiceStatusUI();
@@ -323,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
         containerTraffic = findViewById(R.id.container_traffic);
         containerLogs = findViewById(R.id.container_logs);
         containerRules = findViewById(R.id.container_rules);
+        containerHotspot = findViewById(R.id.container_hotspot);
         containerSettings = findViewById(R.id.container_settings);
 
         tvHeaderStatus = findViewById(R.id.tv_header_status);
@@ -350,7 +358,8 @@ public class MainActivity extends AppCompatActivity {
         containerTraffic.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
         containerLogs.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
         containerRules.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
-        containerSettings.setVisibility(position == 4 ? View.VISIBLE : View.GONE);
+        containerHotspot.setVisibility(position == 4 ? View.VISIBLE : View.GONE);
+        containerSettings.setVisibility(position == 5 ? View.VISIBLE : View.GONE);
 
         if (position == 0) {
             refreshStats();
@@ -361,6 +370,8 @@ public class MainActivity extends AppCompatActivity {
             refreshLogs();
         } else if (position == 3) {
             refreshRules();
+        } else if (position == 4) {
+            refreshHotspotTab();
         }
     }
 
@@ -1618,6 +1629,261 @@ public class MainActivity extends AppCompatActivity {
                                 });
                             }
                         });
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // ==================== HOTSPOT ====================
+    private HotspotManager hotspotManager;
+    private RecyclerView rvHotspotDevices;
+    private HotspotDeviceAdapter hotspotDeviceAdapter;
+    private TextView tvNoDevices;
+    private TextView tvHotspotLocalAddress;
+    private TextView tvGlobalLimitStatus;
+    private LinearLayout layoutScannedDevices;
+
+    private void setupHotspotTab() {
+        hotspotManager = HotspotManager.getInstance(this);
+
+        tvHotspotLocalAddress = findViewById(R.id.tv_hotspot_local_address);
+        tvGlobalLimitStatus = findViewById(R.id.tv_global_limit_status);
+        tvNoDevices = findViewById(R.id.tv_no_devices);
+        layoutScannedDevices = findViewById(R.id.layout_scanned_devices);
+
+        rvHotspotDevices = findViewById(R.id.rv_hotspot_devices);
+        rvHotspotDevices.setLayoutManager(new LinearLayoutManager(this));
+        hotspotDeviceAdapter = new HotspotDeviceAdapter();
+        hotspotDeviceAdapter.setHotspotManager(hotspotManager);
+        hotspotDeviceAdapter.setListener(new HotspotDeviceAdapter.OnDeviceActionListener() {
+            @Override
+            public void onToggleBlock(ClientDeviceStat device, boolean blocked) {
+                hotspotManager.setBlocked(device.getClientIp(), blocked);
+                Toast.makeText(MainActivity.this,
+                        (blocked ? "Blocked " : "Unblocked ") + device.getClientIp(), Toast.LENGTH_SHORT).show();
+                refreshHotspotDevices();
+            }
+
+            @Override
+            public void onSetLimit(ClientDeviceStat device) {
+                showSetLimitDialog(device);
+            }
+
+            @Override
+            public void onRename(ClientDeviceStat device) {
+                showRenameDeviceDialog(device);
+            }
+
+            @Override
+            public void onViewHistory(ClientDeviceStat device) {
+                showDeviceHistoryDialog(device);
+            }
+        });
+        rvHotspotDevices.setAdapter(hotspotDeviceAdapter);
+
+        Button btnOpenHotspotSettings = findViewById(R.id.btn_open_hotspot_settings);
+        btnOpenHotspotSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openHotspotSettings();
+            }
+        });
+
+        Button btnSetGlobalLimit = findViewById(R.id.btn_set_global_limit);
+        btnSetGlobalLimit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSetGlobalLimitDialog();
+            }
+        });
+
+        Button btnRescan = findViewById(R.id.btn_rescan_network);
+        btnRescan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                refreshScannedDevices();
+            }
+        });
+    }
+
+    private void openHotspotSettings() {
+        // There is no public, guaranteed-stable API for a third-party app to
+        // toggle the system hotspot directly - Android reserves that to the
+        // system Settings app. This is the closest a normal app can get.
+        try {
+            startActivity(new Intent("android.settings.TETHER_SETTINGS"));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+            } catch (Exception e2) {
+                Toast.makeText(this, "Couldn't open hotspot settings on this device", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void refreshHotspotTab() {
+        String localIp = LocalIpFinder.getBestLocalIpv4();
+        int port = prefs.getInt("server_port", 5353);
+        if (localIp != null) {
+            tvHotspotLocalAddress.setText(localIp + ":" + port);
+        } else {
+            tvHotspotLocalAddress.setText(R.string.hotspot_no_local_ip);
+        }
+
+        int globalLimit = hotspotManager.getGlobalDailyLimit();
+        int globalCount = hotspotManager.getGlobalTodayQueryCount();
+        tvGlobalLimitStatus.setText(globalLimit > 0
+                ? String.format(Locale.getDefault(), "%d / %d queries today", globalCount, globalLimit)
+                : String.format(Locale.getDefault(), "%d queries today • no limit set", globalCount));
+
+        refreshHotspotDevices();
+        refreshScannedDevices();
+    }
+
+    private void refreshHotspotDevices() {
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                final List<ClientDeviceStat> devices = dbHelper.getClientDeviceStats();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        hotspotDeviceAdapter.setDevices(devices);
+                        tvNoDevices.setVisibility(devices.isEmpty() ? View.VISIBLE : View.GONE);
+                        rvHotspotDevices.setVisibility(devices.isEmpty() ? View.GONE : View.VISIBLE);
+                    }
+                });
+            }
+        });
+    }
+
+    private void refreshScannedDevices() {
+        layoutScannedDevices.removeAllViews();
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                final List<LocalNetworkScanner.ScannedDevice> scanned = LocalNetworkScanner.scan();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (scanned.isEmpty()) {
+                            TextView tvEmpty = new TextView(MainActivity.this);
+                            tvEmpty.setText("No devices found (or unavailable on this device)");
+                            tvEmpty.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_muted));
+                            tvEmpty.setTextSize(12f);
+                            layoutScannedDevices.addView(tvEmpty);
+                            return;
+                        }
+                        for (LocalNetworkScanner.ScannedDevice device : scanned) {
+                            TextView row = new TextView(MainActivity.this);
+                            row.setText(device.ip + "  •  " + device.mac);
+                            row.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_secondary));
+                            row.setTextSize(12f);
+                            row.setPadding(0, 8, 0, 8);
+                            layoutScannedDevices.addView(row);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void showSetLimitDialog(final ClientDeviceStat device) {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        int current = hotspotManager.getClientLimit(device.getClientIp());
+        if (current > 0) input.setText(String.valueOf(current));
+        input.setHint("Daily query limit (0 = no limit)");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Set limit for " + device.getClientIp())
+                .setView(input)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        int limit = 0;
+                        try {
+                            limit = Integer.parseInt(input.getText().toString().trim());
+                        } catch (Exception ignored) {
+                        }
+                        hotspotManager.setClientLimit(device.getClientIp(), limit);
+                        refreshHotspotDevices();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showRenameDeviceDialog(final ClientDeviceStat device) {
+        final EditText input = new EditText(this);
+        String currentName = hotspotManager.getClientName(device.getClientIp());
+        if (currentName != null) input.setText(currentName);
+        input.setHint("Device name (e.g. \"Kid's tablet\")");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Rename " + device.getClientIp())
+                .setView(input)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        hotspotManager.setClientName(device.getClientIp(), input.getText().toString());
+                        refreshHotspotDevices();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showDeviceHistoryDialog(final ClientDeviceStat device) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_device_history, null);
+        RecyclerView rv = dialogView.findViewById(R.id.rv_device_history);
+        rv.setLayoutManager(new LinearLayoutManager(this));
+        final LogAdapter adapter = new LogAdapter();
+        rv.setAdapter(adapter);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.hotspot_device_history_title) + " - " + device.getClientIp())
+                .setView(dialogView)
+                .setPositiveButton("Close", null)
+                .create();
+        dialog.show();
+
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                final List<DnsLog> logs = dbHelper.getLogsForClient(device.getClientIp(), 200);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        adapter.setLogs(logs);
+                    }
+                });
+            }
+        });
+    }
+
+    private void showSetGlobalLimitDialog() {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        int current = hotspotManager.getGlobalDailyLimit();
+        if (current > 0) input.setText(String.valueOf(current));
+        input.setHint("Global daily query limit (0 = no limit)");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Global daily query limit")
+                .setMessage("Once the total number of DNS queries across all devices reaches this in a day, further queries are blocked until midnight. This limits query count, not data/bandwidth - the resolver doesn't see the actual bytes transferred afterward.")
+                .setView(input)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        int limit = 0;
+                        try {
+                            limit = Integer.parseInt(input.getText().toString().trim());
+                        } catch (Exception ignored) {
+                        }
+                        hotspotManager.setGlobalDailyLimit(limit);
+                        refreshHotspotTab();
                     }
                 })
                 .setNegativeButton("Cancel", null)
