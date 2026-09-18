@@ -15,6 +15,7 @@ import android.util.Log;
 import androidx.core.content.ContextCompat;
 
 import com.example.R;
+import com.example.dns.BlocklistManager;
 import com.example.dns.DnsResolverEngine;
 import com.example.ui.MainActivity;
 
@@ -40,6 +41,7 @@ public class QuickSettingsTileService extends TileService {
         updateTile();
         if (!receiverRegistered) {
             IntentFilter filter = new IntentFilter(ServiceManager.ACTION_STATE_CHANGED);
+            filter.addAction(BlocklistManager.ACTION_PAUSE_STATE_CHANGED);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 ContextCompat.registerReceiver(this, stateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
             } else {
@@ -131,11 +133,17 @@ public class QuickSettingsTileService extends TileService {
         tile.setLabel(getString(R.string.qs_tile_label));
         tile.setIcon(Icon.createWithResource(this, R.drawable.ic_shield));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            tile.setSubtitle(running
-                    ? (state == ServiceManager.STATE_VPN
+            boolean paused = BlocklistManager.getInstance(this).isPaused();
+            String subtitle;
+            if (!running) {
+                subtitle = getString(R.string.status_stopped);
+            } else {
+                String modeText = state == ServiceManager.STATE_VPN
                         ? getString(R.string.status_vpn_running)
-                        : getString(R.string.status_server_running))
-                    : getString(R.string.status_stopped));
+                        : getString(R.string.status_server_running);
+                subtitle = paused ? modeText + " (blocklist paused)" : modeText;
+            }
+            tile.setSubtitle(subtitle);
         }
         tile.updateTile();
     }

@@ -25,6 +25,9 @@ import java.util.concurrent.Executors;
 public class BlocklistManager {
     private static BlocklistManager instance;
 
+    /** Broadcast whenever pause/resume happens, so widgets/tiles can refresh without waiting on their own periodic update. */
+    public static final String ACTION_PAUSE_STATE_CHANGED = "com.example.dns.ACTION_PAUSE_STATE_CHANGED";
+
     public interface SyncCallback {
         void onProgress(String message);
         void onComplete(int totalRules);
@@ -45,10 +48,18 @@ public class BlocklistManager {
 
     public void pauseProtection(long durationMillis) {
         this.pauseUntilTimestamp = System.currentTimeMillis() + durationMillis;
+        notifyPauseStateChanged();
     }
 
     public void resumeProtection() {
         this.pauseUntilTimestamp = 0;
+        notifyPauseStateChanged();
+    }
+
+    private void notifyPauseStateChanged() {
+        android.content.Intent intent = new android.content.Intent(ACTION_PAUSE_STATE_CHANGED);
+        intent.setPackage(context.getPackageName());
+        context.sendBroadcast(intent);
     }
 
     public boolean isPaused() {

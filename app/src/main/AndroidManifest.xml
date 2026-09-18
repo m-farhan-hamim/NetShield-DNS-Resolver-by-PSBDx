@@ -90,13 +90,26 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".service.PauseTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_power"
+            android:label="@string/pause_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".widget.NetShieldWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.example.widget.ACTION_TOGGLE_VPN" />
+                <action android:name="com.example.widget.ACTION_TOGGLE_PAUSE" />
                 <action android:name="com.example.dns.ACTION_STATE_CHANGED" />
+                <action android:name="com.example.dns.ACTION_PAUSE_STATE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

@@ -260,12 +260,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public synchronized List<DomainStat> getTopDomains(int limit, boolean blockedOnly) {
+        return getTopDomains(limit, blockedOnly, 0L);
+    }
+
+    /** @param sinceMillis 0 for all-time, or a timestamp to only count queries from then on (e.g. start of today). */
+    public synchronized List<DomainStat> getTopDomains(int limit, boolean blockedOnly, long sinceMillis) {
         List<DomainStat> list = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
-        String query = blockedOnly
-                ? "SELECT " + COL_LOG_DOMAIN + ", COUNT(*) as cnt, " + COL_LOG_STATUS + " FROM " + TABLE_LOGS + " WHERE " + COL_LOG_STATUS + " = 'BLOCKED' GROUP BY " + COL_LOG_DOMAIN + " ORDER BY cnt DESC LIMIT ?"
-                : "SELECT " + COL_LOG_DOMAIN + ", COUNT(*) as cnt, " + COL_LOG_STATUS + " FROM " + TABLE_LOGS + " WHERE " + COL_LOG_STATUS + " != 'BLOCKED' GROUP BY " + COL_LOG_DOMAIN + " ORDER BY cnt DESC LIMIT ?";
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(limit)});
+        String statusClause = blockedOnly ? COL_LOG_STATUS + " = 'BLOCKED'" : COL_LOG_STATUS + " != 'BLOCKED'";
+        String timeClause = sinceMillis > 0 ? " AND " + COL_LOG_TIME + " >= ?" : "";
+        String query = "SELECT " + COL_LOG_DOMAIN + ", COUNT(*) as cnt, " + COL_LOG_STATUS + " FROM " + TABLE_LOGS
+                + " WHERE " + statusClause + timeClause
+                + " GROUP BY " + COL_LOG_DOMAIN + " ORDER BY cnt DESC LIMIT ?";
+        String[] args = sinceMillis > 0
+                ? new String[]{String.valueOf(sinceMillis), String.valueOf(limit)}
+                : new String[]{String.valueOf(limit)};
+        Cursor cursor = db.rawQuery(query, args);
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 list.add(new DomainStat(cursor.getString(0), cursor.getInt(1), cursor.getString(2)));
@@ -273,6 +283,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             cursor.close();
         }
         return list;
+    }
+
+    /** Total query count strictly between two timestamps (inclusive start, exclusive end) - for day-over-day trend comparisons. */
+    public synchronized int getQueryCountBetween(long startMillis, long endMillis) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_LOGS + " WHERE " + COL_LOG_TIME + " >= ? AND " + COL_LOG_TIME + " < ?",
+                new String[]{String.valueOf(startMillis), String.valueOf(endMillis)});
+        int count = 0;
+        if (cursor != null) {
+            if (cursor.moveToNext()) {
+                count = cursor.getInt(0);
+            }
+            cursor.close();
+        }
+        return count;
     }
 
     public synchronized double getAverageResponseTimeMs() {

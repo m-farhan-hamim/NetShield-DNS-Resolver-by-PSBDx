@@ -9,28 +9,48 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.VpnService;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 import android.widget.RemoteViews;
 
 import androidx.core.content.ContextCompat;
 
 import com.example.R;
+import com.example.db.ClientDeviceStat;
 import com.example.db.DatabaseHelper;
+import com.example.db.DomainStat;
+import com.example.dns.BlocklistManager;
 import com.example.dns.DnsResolverEngine;
 import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
 import com.example.ui.MainActivity;
 
+import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
+
 public class NetShieldWidgetProvider extends AppWidgetProvider {
     private static final String TAG = "NetShieldWidget";
     public static final String ACTION_TOGGLE = "com.example.widget.ACTION_TOGGLE_VPN";
+    public static final String ACTION_TOGGLE_PAUSE = "com.example.widget.ACTION_TOGGLE_PAUSE";
+    private static final long PAUSE_DURATION_MS = 15 * 60 * 1000L;
+    // Below this placed height, hide the extra "detailed" row to avoid clipped/cramped text.
+    private static final int DETAILED_MIN_HEIGHT_DP = 110;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int id : appWidgetIds) {
             updateWidget(context, appWidgetManager, id);
         }
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+                                           int appWidgetId, Bundle newOptions) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+        // The user resized the widget - re-render so the detailed section can appear/disappear.
+        updateWidget(context, appWidgetManager, appWidgetId);
     }
 
     @Override
@@ -41,8 +61,22 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
             Log.d(TAG, "ACTION_TOGGLE received");
             handleToggle(context);
             refreshAllWidgets(context);
-        } else if (ServiceManager.ACTION_STATE_CHANGED.equals(action)) {
+        } else if (ACTION_TOGGLE_PAUSE.equals(action)) {
+            Log.d(TAG, "ACTION_TOGGLE_PAUSE received");
+            handleTogglePause(context);
             refreshAllWidgets(context);
+        } else if (ServiceManager.ACTION_STATE_CHANGED.equals(action)
+                || BlocklistManager.ACTION_PAUSE_STATE_CHANGED.equals(action)) {
+            refreshAllWidgets(context);
+        }
+    }
+
+    private void handleTogglePause(Context context) {
+        BlocklistManager manager = BlocklistManager.getInstance(context);
+        if (manager.isPaused()) {
+            manager.resumeProtection();
+        } else {
+            manager.pauseProtection(PAUSE_DURATION_MS);
         }
     }
 
@@ -91,12 +125,34 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    /** Prefers the Material You wallpaper-derived accent (API 31+); falls back to the app's fixed accent otherwise. */
+    private int resolveAccentColor(Context context, boolean running) {
+        if (!running) {
+            return ContextCompat.getColor(context, R.color.text_muted);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                return ContextCompat.getColor(context, android.R.color.system_accent1_400);
+            } catch (Exception ignored) {
+                // Fall through to the fixed color if the OEM's resource table is missing this.
+            }
+        }
+        return ContextCompat.getColor(context, R.color.colorAccent);
+    }
+
+    private boolean shouldShowDetailed(AppWidgetManager appWidgetManager, int appWidgetId) {
+        Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
+        if (options == null) return false;
+        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+        return minHeight >= DETAILED_MIN_HEIGHT_DP;
+    }
+
     private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_netshield);
 
         int state = ServiceManager.getCurrentState();
         boolean running = state != ServiceManager.STATE_STOPPED;
-        int accentColor = ContextCompat.getColor(context, running ? R.color.colorAccent : R.color.text_muted);
+        int accentColor = resolveAccentColor(context, running);
 
         String statusText = running
                 ? (state == ServiceManager.STATE_VPN
@@ -108,8 +164,30 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         views.setInt(R.id.iv_widget_icon, "setColorFilter", accentColor);
         views.setInt(R.id.btn_widget_toggle, "setColorFilter", accentColor);
 
-        long[] stats = DatabaseHelper.getInstance(context).getStats();
+        DatabaseHelper db = DatabaseHelper.getInstance(context);
+        long[] stats = db.getStats();
         views.setTextViewText(R.id.tv_widget_stats, stats[0] + " queries • " + stats[1] + " blocked");
+
+        List<ClientDeviceStat> devices = db.getClientDeviceStats();
+        views.setTextViewText(R.id.tv_widget_devices,
+                devices.size() == 1 ? context.getString(R.string.widget_devices_one)
+                        : context.getString(R.string.widget_devices_many, devices.size()));
+
+        BlocklistManager blocklistManager = BlocklistManager.getInstance(context);
+        boolean paused = blocklistManager.isPaused();
+        if (paused) {
+            long remainingMin = Math.max(1, blocklistManager.getRemainingPauseMillis() / 60000);
+            views.setTextViewText(R.id.tv_widget_pause_action,
+                    context.getString(R.string.widget_resume_paused_format, remainingMin));
+        } else {
+            views.setTextViewText(R.id.tv_widget_pause_action, context.getString(R.string.widget_pause_15m));
+        }
+
+        boolean detailed = shouldShowDetailed(appWidgetManager, appWidgetId);
+        views.setViewVisibility(R.id.layout_widget_detailed, detailed ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (detailed) {
+            populateDetailedSection(context, views, db);
+        }
 
         // Tap the card -> open the app.
         Intent openAppIntent = new Intent(context, MainActivity.class);
@@ -125,6 +203,44 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.btn_widget_toggle, togglePendingIntent);
 
+        // Tap "Pause 15m" / "Resume" -> toggle blocklist pause directly.
+        Intent pauseIntent = new Intent(context, NetShieldWidgetProvider.class);
+        pauseIntent.setAction(ACTION_TOGGLE_PAUSE);
+        PendingIntent pausePendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 100000, pauseIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(R.id.tv_widget_pause_action, pausePendingIntent);
+
         appWidgetManager.updateAppWidget(appWidgetId, views);
+    }
+
+    private void populateDetailedSection(Context context, RemoteViews views, DatabaseHelper db) {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        long startOfToday = cal.getTimeInMillis();
+        cal.add(Calendar.DAY_OF_YEAR, -1);
+        long startOfYesterday = cal.getTimeInMillis();
+
+        List<DomainStat> topBlockedToday = db.getTopDomains(1, true, startOfToday);
+        if (!topBlockedToday.isEmpty()) {
+            DomainStat top = topBlockedToday.get(0);
+            views.setTextViewText(R.id.tv_widget_top_blocked,
+                    context.getString(R.string.widget_top_blocked_format, top.getDomain(), top.getCount()));
+        } else {
+            views.setTextViewText(R.id.tv_widget_top_blocked, context.getString(R.string.widget_top_blocked_none));
+        }
+
+        int todayCount = db.getQueryCountBetween(startOfToday, System.currentTimeMillis());
+        int yesterdayCount = db.getQueryCountBetween(startOfYesterday, startOfToday);
+        if (yesterdayCount <= 0) {
+            views.setTextViewText(R.id.tv_widget_trend, context.getString(R.string.widget_trend_no_data));
+        } else {
+            int percentChange = (int) Math.round(((todayCount - yesterdayCount) / (double) yesterdayCount) * 100);
+            String arrow = percentChange > 0 ? "\u2191" : percentChange < 0 ? "\u2193" : "\u2192";
+            views.setTextViewText(R.id.tv_widget_trend,
+                    String.format(Locale.getDefault(), "%s %d%% vs yesterday at this time", arrow, Math.abs(percentChange)));
+        }
     }
 }
