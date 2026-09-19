@@ -64,6 +64,7 @@ import com.example.db.ClientDeviceStat;
 import com.example.hotspot.HotspotManager;
 import com.example.hotspot.LocalIpFinder;
 import com.example.hotspot.LocalNetworkScanner;
+import com.example.trust.TrustedListManager;
 import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
@@ -1582,6 +1583,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void addRule(final String domain, final String ruleType, final String targetIp) {
+        // Honest, disclosed warning - not a fabricated one: this app's own
+        // update checker (UpdateChecker) queries psbdx.com, so blocking it
+        // really does prevent update/security-fix notifications. The user
+        // can still proceed if they choose to.
+        if (CustomRule.TYPE_BLOCK.equals(ruleType)
+                && isSameOrSubdomain(domain, TrustedListManager.DEFAULT_TRUSTED_DOMAIN)) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.warn_block_update_domain_title)
+                    .setMessage(getString(R.string.warn_block_update_domain_body, domain))
+                    .setPositiveButton(R.string.action_block_anyway, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            proceedAddRule(domain, ruleType, targetIp);
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+            return;
+        }
+        proceedAddRule(domain, ruleType, targetIp);
+    }
+
+    private boolean isSameOrSubdomain(String domain, String parentDomain) {
+        String d = domain.toLowerCase(Locale.ROOT);
+        String p = parentDomain.toLowerCase(Locale.ROOT);
+        return d.equals(p) || d.endsWith("." + p);
+    }
+
+    private void proceedAddRule(final String domain, final String ruleType, final String targetIp) {
         backgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -1920,6 +1950,16 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     startActivity(new Intent(MainActivity.this, VpnServersActivity.class));
+                }
+            });
+        }
+
+        Button btnManageTrustedList = findViewById(R.id.btn_manage_trusted_list);
+        if (btnManageTrustedList != null) {
+            btnManageTrustedList.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(MainActivity.this, TrustedListActivity.class));
                 }
             });
         }

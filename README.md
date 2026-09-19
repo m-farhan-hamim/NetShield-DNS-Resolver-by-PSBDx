@@ -34,15 +34,26 @@ PR builds from forks can't access these secrets, so they only get the
 unsigned debug build - that's expected.
 
 Push a tag like `v1.1.0` (matching `versionName` in `app/build.gradle.kts`)
-and the workflow also publishes a GitHub Release with the signed APK
-attached - that's what the in-app update checker below looks for.
+for your own release records - the in-app update checker no longer reads
+GitHub Releases (see below), so this step is now optional/for archival.
 
 ## In-app update checker
 
-The app checks `GET /repos/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest`
-on launch and compares the release's tag against the installed
-`versionName`. If it's newer, a banner offers to download and install it
-(via the system package installer, using a `FileProvider`).
+The app checks `GET https://psbdx.com/wp-json/dns-app/v1/info` on launch,
+expecting:
+
+```json
+{
+  "version": "1.0.0",
+  "url": "https://psbdx.com/.../signed-download-link"
+}
+```
+
+`version` is compared against the installed `versionName`; if newer, a
+banner offers to download and install the APK at `url` (via the system
+package installer, using a `FileProvider`). `url` is followed as-is,
+redirects included, so a freshly generated/expiring signed link works
+transparently.
 
 **This is intentionally disabled for F-Droid installs.** F-Droid's
 inclusion policy doesn't want apps that self-update, since F-Droid's own

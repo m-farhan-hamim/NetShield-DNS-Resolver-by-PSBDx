@@ -5,7 +5,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -17,37 +16,36 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 
 /**
- * Checks the project's GitHub Releases for a newer tagged version, and can
- * download + hand off the release APK to the system package installer.
+ * Checks the developer's own update-info endpoint for a newer version, and
+ * can download + hand off the returned APK link to the system package
+ * installer.
  *
  * IMPORTANT - F-Droid: F-Droid explicitly does not want apps that implement
  * their own update mechanism, since its own client already verifies and
  * delivers updates from a reproducible build it controls. So this whole
  * feature is a no-op whenever the app was installed via F-Droid - see
  * {@link #isSelfUpdateAllowed(Context)}, which every entry point below
- * checks first. Only direct GitHub-distributed installs ever see it.
+ * checks first. Only direct (non-F-Droid) installs ever see it.
  */
 public final class UpdateChecker {
     private static final String TAG = "UpdateChecker";
-    private static final String RELEASES_API_URL =
-            "https://api.github.com/repos/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest";
+    private static final String UPDATE_INFO_URL = "https://psbdx.com/wp-json/dns-app/v1/info";
     private static final String FDROID_INSTALLER_PACKAGE = "org.fdroid.fdroid";
 
     private UpdateChecker() {
     }
 
     public static class UpdateInfo {
+        /** The version string reported by the server, e.g. "1.0.0". */
         public final String versionTag;
+        /** Download link for the new version, as returned by the server. */
         public final String downloadUrl;
-        public final String releaseNotes;
 
-        public UpdateInfo(String versionTag, String downloadUrl, String releaseNotes) {
+        public UpdateInfo(String versionTag, String downloadUrl) {
             this.versionTag = versionTag;
             this.downloadUrl = downloadUrl;
-            this.releaseNotes = releaseNotes;
         }
     }
 
@@ -95,18 +93,18 @@ public final class UpdateChecker {
                 UpdateInfo result = null;
                 HttpURLConnection conn = null;
                 try {
-                    conn = (HttpURLConnection) new URL(RELEASES_API_URL).openConnection();
-                    conn.setRequestProperty("Accept", "application/vnd.github+json");
+                    conn = (HttpURLConnection) new URL(UPDATE_INFO_URL).openConnection();
+                    conn.setRequestProperty("Accept", "application/json");
                     conn.setConnectTimeout(10_000);
                     conn.setReadTimeout(10_000);
                     int code = conn.getResponseCode();
                     if (code == HttpURLConnection.HTTP_OK) {
-                        JSONObject release = new JSONObject(readStream(conn.getInputStream()));
-                        String tag = release.optString("tag_name", "");
-                        String notes = release.optString("body", "");
-                        String apkUrl = findApkAssetUrl(release.optJSONArray("assets"));
-                        if (apkUrl != null && isNewerVersion(tag, currentVersionName(appContext))) {
-                            result = new UpdateInfo(tag, apkUrl, notes);
+                        JSONObject info = new JSONObject(readStream(conn.getInputStream()));
+                        String version = info.optString("version", "");
+                        String url = info.optString("url", "");
+                        if (!version.isEmpty() && !url.isEmpty()
+                                && isNewerVersion(version, currentVersionName(appContext))) {
+                            result = new UpdateInfo(version, url);
                         }
                     } else {
                         Log.w(TAG, "Update check HTTP " + code);
@@ -121,7 +119,13 @@ public final class UpdateChecker {
         }, "UpdateCheckThread").start();
     }
 
-    /** Downloads the APK to app-private external storage and reports progress/completion. Runs in the background. */
+    /**
+     * Downloads the APK to app-private external storage and reports
+     * progress/completion. Runs in the background. {@code downloadUrl} is
+     * followed as-is (redirects included), so a server that returns a
+     * freshly generated, expiring signed link for "url" works transparently
+     * here - the request just follows it like any other HTTP redirect.
+     */
     public static void downloadApk(final Context appContext, final String downloadUrl, final DownloadCallback callback) {
         new Thread(new Runnable() {
             @Override
@@ -170,20 +174,6 @@ public final class UpdateChecker {
                 }
             }
         }, "UpdateDownloadThread").start();
-    }
-
-    private static String findApkAssetUrl(JSONArray assets) {
-        if (assets == null) return null;
-        for (int i = 0; i < assets.length(); i++) {
-            JSONObject asset = assets.optJSONObject(i);
-            if (asset == null) continue;
-            String name = asset.optString("name", "");
-            if (name.toLowerCase(Locale.ROOT).endsWith(".apk")) {
-                String url = asset.optString("browser_download_url", null);
-                if (url != null) return url;
-            }
-        }
-        return null;
     }
 
     private static String currentVersionName(Context context) {

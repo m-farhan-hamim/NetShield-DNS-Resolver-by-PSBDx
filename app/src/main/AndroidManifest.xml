@@ -45,6 +45,12 @@
             android:label="@string/vpn_servers_title"
             android:theme="@style/Theme.MyApplication" />
 
+        <activity
+            android:name=".ui.TrustedListActivity"
+            android:exported="false"
+            android:label="@string/trusted_list_title"
+            android:theme="@style/Theme.MyApplication" />
+
         <service
             android:name=".service.DnsVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"

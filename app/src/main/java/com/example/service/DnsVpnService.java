@@ -113,8 +113,13 @@ public class DnsVpnService extends VpnService {
                                                     + (udp.sourceIp[1] & 0xFF) + "."
                                                     + (udp.sourceIp[2] & 0xFF) + "."
                                                     + (udp.sourceIp[3] & 0xFF);
+                                            String destIpStr = (udp.destIp[0] & 0xFF) + "."
+                                                    + (udp.destIp[1] & 0xFF) + "."
+                                                    + (udp.destIp[2] & 0xFF) + "."
+                                                    + (udp.destIp[3] & 0xFF);
 
-                                            byte[] dnsResponse = engine.resolve(queryPayload, queryPayload.length, clientIp);
+                                            byte[] dnsResponse = engine.resolve(queryPayload, queryPayload.length,
+                                                    clientIp, udp.sourcePort, destIpStr, udp.destPort);
                                             if (dnsResponse != null && isRunning && outStream != null) {
                                                 byte[] responsePacket = IpPacketUtils.buildUdpResponsePacket(udp, dnsResponse);
                                                 synchronized (outStream) {

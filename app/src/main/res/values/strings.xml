@@ -47,6 +47,21 @@
     <string name="widget_top_blocked_format">Top blocked: %1$s (%2$d)</string>
     <string name="widget_top_blocked_none">No blocks today yet</string>
     <string name="widget_trend_no_data">Not enough data for a trend yet</string>
+    <string name="warn_block_update_domain_title">This domain powers app updates</string>
+    <string name="warn_block_update_domain_body">%1$s is used to check for new versions and security fixes. Blocking it means the app won\'t be able to notify you about them. You can still block it - this is your call.</string>
+    <string name="action_block_anyway">Block anyway</string>
+    <string name="action_save">Save</string>
+    <string name="action_add">Add</string>
+    <string name="action_add_trusted_app">Add trusted app</string>
+    <string name="trusted_list_title">Trusted Apps &amp; Domains</string>
+    <string name="trusted_default_badge">Default</string>
+    <string name="trusted_list_disclaimer_title">What "trusted" actually means</string>
+    <string name="trusted_list_disclaimer_body">A domain or app on this list gets a full, unconditional bypass of every check this app makes: the sinkhole blocklist, per-device hotspot blocks, and query limits. Nothing here is hidden - everything you add or remove is exactly what\'s shown here. "psbdx.com" is pre-added because the app\'s own update checker depends on reaching it (blocking it would prevent update/security-fix notifications), and you can remove it like anything else. Per-app trusted status requires Android 10+ and VPN mode - it can\'t be determined in Local Server Mode or on older Android, and silently has no effect there rather than guessing.</string>
+    <string name="trusted_domains_title">Trusted domains</string>
+    <string name="trusted_domain_input_hint">example.com</string>
+    <string name="trusted_apps_title">Trusted apps</string>
+    <string name="trusted_apps_hint">Requires Android 10+ and VPN mode to identify which app a query came from.</string>
+    <string name="trusted_apps_empty">No trusted apps added</string>
     <string name="tagline">Local Resolver &amp; Privacy Sinkhole</string>
 
     <!-- Navigation Tabs -->

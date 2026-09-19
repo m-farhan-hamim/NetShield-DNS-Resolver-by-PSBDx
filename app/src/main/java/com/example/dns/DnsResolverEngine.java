@@ -8,6 +8,8 @@ import android.os.SystemClock;
 import com.example.db.DatabaseHelper;
 import com.example.db.DnsLog;
 import com.example.hotspot.HotspotManager;
+import com.example.trust.AppUidResolver;
+import com.example.trust.TrustedListManager;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,6 +24,7 @@ public class DnsResolverEngine {
     private final DatabaseHelper dbHelper;
     private final BlocklistManager blocklistManager;
     private final HotspotManager hotspotManager;
+    private final TrustedListManager trustedListManager;
     private final DnsCache cache;
     private final ExecutorService logExecutor = Executors.newSingleThreadExecutor();
     private final SharedPreferences prefs;
@@ -38,6 +41,7 @@ public class DnsResolverEngine {
         this.dbHelper = DatabaseHelper.getInstance(context);
         this.blocklistManager = BlocklistManager.getInstance(context);
         this.hotspotManager = HotspotManager.getInstance(context);
+        this.trustedListManager = TrustedListManager.getInstance(context);
         this.cache = new DnsCache(2000);
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
@@ -46,7 +50,17 @@ public class DnsResolverEngine {
         return cache;
     }
 
+    /** Local Server Mode call site - no per-app attribution possible (the client is a whole separate device). */
     public byte[] resolve(byte[] queryPacket, int length, String clientIp) {
+        return resolve(queryPacket, length, clientIp, -1, null, -1);
+    }
+
+    /**
+     * @param sourcePort the querying app's local UDP port, or -1 if not applicable/known (Local Server Mode)
+     * @param destIp     the DNS server the query was originally addressed to, or null if not applicable
+     * @param destPort   the destination port (normally 53), or -1 if not applicable
+     */
+    public byte[] resolve(byte[] queryPacket, int length, String clientIp, int sourcePort, String destIp, int destPort) {
         long startTime = SystemClock.elapsedRealtime();
 
         DnsPacketParser.DnsQuestion q = DnsPacketParser.parseQuestion(queryPacket, length);
@@ -57,18 +71,30 @@ public class DnsResolverEngine {
         String domain = q.domain;
         String typeName = DnsPacketParser.getTypeName(q.qType);
 
+        // -1. Trusted Apps & Domains (user-managed, seeded with this app's own
+        // update-check domain - see TrustedListManager): a full, unconditional
+        // bypass of every block/limit check below. Per-app attribution only
+        // works in VPN mode on Android 10+ - see AppUidResolver.
+        boolean trusted = trustedListManager.isDomainTrusted(domain);
+        if (!trusted && sourcePort > 0 && destIp != null) {
+            String owningPackage = AppUidResolver.resolvePackageName(context, clientIp, sourcePort, destIp, destPort);
+            if (owningPackage != null && trustedListManager.isAppTrusted(owningPackage)) {
+                trusted = true;
+            }
+        }
+
         // 0. Per-device block / daily query-limit checks (Hotspot tab). This
         // only affects devices that are actually using this resolver as
         // their DNS server (VPN mode: this device itself; Local Server
         // Mode: any device pointed at this phone's IP) - it cannot block a
         // device's network access outright, only its name resolution here.
-        if (hotspotManager.isBlocked(clientIp)) {
+        if (!trusted && hotspotManager.isBlocked(clientIp)) {
             byte[] response = DnsPacketParser.buildBlockedResponse(queryPacket, length, "ZERO_IP");
             long latency = SystemClock.elapsedRealtime() - startTime;
             recordLog(domain, typeName, "BLOCKED", latency, "Device blocked", clientIp);
             return response;
         }
-        if (!hotspotManager.recordAndCheckAllowed(clientIp)) {
+        if (!trusted && !hotspotManager.recordAndCheckAllowed(clientIp)) {
             byte[] response = DnsPacketParser.buildBlockedResponse(queryPacket, length, "ZERO_IP");
             long latency = SystemClock.elapsedRealtime() - startTime;
             recordLog(domain, typeName, "BLOCKED", latency, "Daily query limit reached", clientIp);
@@ -85,7 +111,7 @@ public class DnsResolverEngine {
         }
 
         // 2. Check Whitelist & Blocklist (Sinkhole)
-        if (blocklistManager.isBlocked(domain)) {
+        if (!trusted && blocklistManager.isBlocked(domain)) {
             String blockAction = prefs.getString("block_action", "ZERO_IP");
             byte[] response = DnsPacketParser.buildBlockedResponse(queryPacket, length, blockAction);
             long latency = SystemClock.elapsedRealtime() - startTime;
