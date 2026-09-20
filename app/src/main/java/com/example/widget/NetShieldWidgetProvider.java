@@ -6,25 +6,16 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.net.VpnService;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.RemoteViews;
-
-import androidx.core.content.ContextCompat;
 
 import com.example.R;
 import com.example.db.ClientDeviceStat;
 import com.example.db.DatabaseHelper;
 import com.example.db.DomainStat;
 import com.example.dns.BlocklistManager;
-import com.example.dns.DnsResolverEngine;
-import com.example.service.DnsServerService;
-import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
-import com.example.ui.MainActivity;
 
 import java.util.Calendar;
 import java.util.List;
@@ -59,7 +50,7 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         String action = intent.getAction();
         if (ACTION_TOGGLE.equals(action)) {
             Log.d(TAG, "ACTION_TOGGLE received");
-            handleToggle(context);
+            WidgetActionHelper.handleToggle(context);
             refreshAllWidgets(context);
         } else if (ACTION_TOGGLE_PAUSE.equals(action)) {
             Log.d(TAG, "ACTION_TOGGLE_PAUSE received");
@@ -80,42 +71,6 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private void handleToggle(Context context) {
-        int state = ServiceManager.getCurrentState();
-        if (state != ServiceManager.STATE_STOPPED) {
-            ServiceManager.stopActiveService(context);
-            ServiceManager.setCurrentState(context, ServiceManager.STATE_STOPPED);
-            return;
-        }
-
-        SharedPreferences prefs = context.getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
-        String mode = prefs.getString("operation_mode", "VPN");
-        if ("VPN".equalsIgnoreCase(mode)) {
-            Intent vpnPrepare = VpnService.prepare(context);
-            if (vpnPrepare == null) {
-                startForegroundServiceCompat(context, new Intent(context, DnsVpnService.class));
-                ServiceManager.setCurrentState(context, ServiceManager.STATE_VPN);
-            } else {
-                // First-time VPN consent can only be granted through an Activity.
-                Intent launch = new Intent(context, MainActivity.class);
-                launch.putExtra(MainActivity.EXTRA_AUTO_START, true);
-                launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                context.startActivity(launch);
-            }
-        } else {
-            startForegroundServiceCompat(context, new Intent(context, DnsServerService.class));
-            ServiceManager.setCurrentState(context, ServiceManager.STATE_SERVER);
-        }
-    }
-
-    private void startForegroundServiceCompat(Context context, Intent intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
-    }
-
     private void refreshAllWidgets(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName thisWidget = new ComponentName(context, NetShieldWidgetProvider.class);
@@ -123,21 +78,6 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         for (int id : ids) {
             updateWidget(context, manager, id);
         }
-    }
-
-    /** Prefers the Material You wallpaper-derived accent (API 31+); falls back to the app's fixed accent otherwise. */
-    private int resolveAccentColor(Context context, boolean running) {
-        if (!running) {
-            return ContextCompat.getColor(context, R.color.text_muted);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                return ContextCompat.getColor(context, android.R.color.system_accent1_400);
-            } catch (Exception ignored) {
-                // Fall through to the fixed color if the OEM's resource table is missing this.
-            }
-        }
-        return ContextCompat.getColor(context, R.color.colorAccent);
     }
 
     private boolean shouldShowDetailed(AppWidgetManager appWidgetManager, int appWidgetId) {
@@ -150,9 +90,9 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
     private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_netshield);
 
+        boolean running = WidgetActionHelper.isRunning();
         int state = ServiceManager.getCurrentState();
-        boolean running = state != ServiceManager.STATE_STOPPED;
-        int accentColor = resolveAccentColor(context, running);
+        int accentColor = WidgetActionHelper.resolveAccentColor(context, running);
 
         String statusText = running
                 ? (state == ServiceManager.STATE_VPN
@@ -190,9 +130,7 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         }
 
         // Tap the card -> open the app.
-        Intent openAppIntent = new Intent(context, MainActivity.class);
-        openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 0, openAppIntent,
+        PendingIntent openAppPendingIntent = PendingIntent.getActivity(context, 0, WidgetActionHelper.openAppIntent(context),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_root, openAppPendingIntent);
 

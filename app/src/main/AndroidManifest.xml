@@ -122,6 +122,33 @@
                 android:resource="@xml/widget_netshield_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.NetShieldQuickToggleWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.widget.ACTION_QUICK_TOGGLE" />
+                <action android:name="com.example.dns.ACTION_STATE_CHANGED" />
+                <action android:name="com.example.dns.ACTION_PAUSE_STATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_toggle_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.NetShieldStatsWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.dns.ACTION_STATE_CHANGED" />
+                <action android:name="com.example.dns.ACTION_PAUSE_STATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_stats_info" />
+        </receiver>
+
         <!-- Used only to hand a downloaded update APK to the system package
              installer (see UpdateChecker) - never used to share app data. -->
         <provider

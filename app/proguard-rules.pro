@@ -22,3 +22,25 @@
 # Keep line numbers in stack traces for crash reports, but hide the source file.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# --- Extra free hardening on top of the default R8 rules ---
+
+# Repackage every obfuscated class into a single flat, anonymous package
+# instead of preserving the original package structure. Makes the app's
+# internal architecture much less obvious from a decompiled release build.
+-repackageclasses ''
+
+# Let R8 relax access modifiers (private/protected -> package/public) where
+# doing so enables more aggressive inlining and merging. Slightly smaller,
+# slightly harder-to-follow bytecode; behavior is unaffected.
+-allowaccessmodification
+
+# Strip debug/verbose logging from release builds entirely - the Log.d/Log.v
+# calls scattered through the services and widgets exist for development
+# troubleshooting only, and have no reason to ship in a release APK (smaller
+# APK, nothing for a reverse engineer to read off logcat, no risk of
+# leaking implementation details in production).
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+}

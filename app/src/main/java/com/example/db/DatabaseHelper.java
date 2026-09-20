@@ -300,6 +300,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
+    /** Same as {@link #getQueryCountBetween}, but only counting blocked queries - used by the stats glance widget. */
+    public synchronized int getBlockedCountBetween(long startMillis, long endMillis) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_LOGS + " WHERE " + COL_LOG_STATUS + " = 'BLOCKED' AND "
+                        + COL_LOG_TIME + " >= ? AND " + COL_LOG_TIME + " < ?",
+                new String[]{String.valueOf(startMillis), String.valueOf(endMillis)});
+        int count = 0;
+        if (cursor != null) {
+            if (cursor.moveToNext()) {
+                count = cursor.getInt(0);
+            }
+            cursor.close();
+        }
+        return count;
+    }
+
     public synchronized double getAverageResponseTimeMs() {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.rawQuery("SELECT AVG(" + COL_LOG_RESPONSE_TIME + ") FROM " + TABLE_LOGS + " WHERE " + COL_LOG_STATUS + " != 'BLOCKED'", null);

@@ -8,6 +8,11 @@
     <string name="pause_tile_subtitle_active">Tap to pause 15m</string>
     <string name="pause_tile_subtitle_paused">Paused (%1$dm left)</string>
     <string name="widget_description">Toggle the DNS shield and see live status from your home screen</string>
+    <string name="widget_quick_toggle_description">A minimal 1x1 icon that toggles the DNS shield with a single tap</string>
+    <string name="widget_stats_description">Shows today\'s blocked count at a glance; tap to open the app</string>
+    <string name="widget_stats_blocked_today_label">blocked today</string>
+    <string name="widget_stats_sub_format">%1$d total queries • %2$s</string>
+    <string name="status_active_short">Active</string>
     <string name="vpn_servers_title">VPN Servers</string>
     <string name="vpn_servers_disclaimer_title">Import &amp; manage only, for now</string>
     <string name="vpn_servers_disclaimer_body">This screen imports and stores your OpenVPN (.ovpn) and WireGuard (.conf) config files and lets you pick one as active. It does not yet establish a tunnel through them - that needs the official OpenVPN/WireGuard client engines integrated, which is a separate, larger piece of work. No server list is bundled: only servers you provide, from a source you trust, ever get added here.</string>
