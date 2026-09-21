@@ -63,14 +63,15 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 
 <div align="center">
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="24%" alt="Screenshot 1">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="24%" alt="Screenshot 2">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="24%" alt="Screenshot 3">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="24%" alt="Screenshot 4">
-
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="24%" alt="Screenshot 5">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="24%" alt="Screenshot 6">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" width="24%" alt="Screenshot 7">
+<p>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="220" alt="NetShield DNS Resolver screenshot 1">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="220" alt="NetShield DNS Resolver screenshot 2">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="220" alt="NetShield DNS Resolver screenshot 3">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="220" alt="NetShield DNS Resolver screenshot 4">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="220" alt="NetShield DNS Resolver screenshot 5">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="220" alt="NetShield DNS Resolver screenshot 6">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" width="220" alt="NetShield DNS Resolver screenshot 7">
+</p>
 
 </div>
 
@@ -84,6 +85,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 | **F-Droid** | [Get it on F-Droid](https://f-droid.org) |
 | **APKPure** | [com.netshield.dns.psbdx on APKPure](https://apkpure.com/p/com.netshield.dns.psbdx) |
 | **GitHub Releases** | [Latest signed APK](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest) |
+| **VirusTotal** | [Scan report](https://www.virustotal.com/gui/file/378b86f21d3e4cddae92fe67eef3bfc17ebb335d6db3963e20338c97a4335640/) |
 
 **Package name:** `com.netshield.dns.psbdx`
 **Current version:** `3.0.0`
@@ -155,6 +157,17 @@ For a locally signed release build, set these environment variables:
 | `RELEASE_KEYALIAS` | Key alias inside the keystore |
 | `RELEASE_KEY_PASSWORD` | Key password |
 
+> [!WARNING]
+> **Building or signing with your own key can break remote features.**
+> If you modify the signing key, or re-sign the app with your own key, features that rely on the official release signature might stop working. This includes:
+>
+> - **App update checks**
+> - **VPN service**
+> - **Log saving**
+> - **Remote notifications**
+>
+> Android also refuses to update an installed app that was signed with a different key, so switching between official and self-signed builds means uninstalling first (and losing app data). For normal use, install the official release and [verify its signature](#verify-your-download).
+
 ### CI and releases
 
 The `release` job in `.github/workflows/build.yml` builds a signed production APK and AAB on every push to `main`/`master` (and on manual `workflow_dispatch` runs), using these GitHub Actions secrets:
@@ -186,6 +199,9 @@ apksigner verify --print-certs app-release.apk
 ```
 
 The `SHA-256 digest` line in the output should match the fingerprint above. If it doesn't, don't install the file.
+
+> [!WARNING]
+> A build signed with a different key is not an official release. Besides the security risk, it might break remote features such as update checks, the VPN service, log saving and remote notifications. See the [warning above](#building-from-source).
 
 ---
 
