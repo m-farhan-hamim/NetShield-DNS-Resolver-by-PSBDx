@@ -21,7 +21,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![Language](https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
 
-[![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com)
+[![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/378b86f21d3e4cddae92fe67eef3bfc17ebb335d6db3963e20338c97a4335640/)
 [![Available on F-Droid](https://img.shields.io/badge/F--Droid-available-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org)
 [![Get it on APKPure](https://img.shields.io/badge/APKPure-download-00B5A5?style=for-the-badge)](https://apkpure.com/p/com.netshield.dns.psbdx)
 [![GitHub Release](https://img.shields.io/github/v/release/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=for-the-badge&logo=github&label=GitHub)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest)
