@@ -232,6 +232,6 @@ This app was built by **PSBDx** ([M. Farhan Hamim](https://github.com/m-farhan-h
 
 <br>
 
-**Made with** <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f496/512.gif" alt="💖" width="24" height="24" align="absmiddle"> **by [PSBDx](https://psbdx.xyz)**
+**Made with** <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f496/512.gif" alt="💖" width="24" height="24" align="absmiddle"> **by [PSBDx](https://psbdx.com)**
 
 </div>
