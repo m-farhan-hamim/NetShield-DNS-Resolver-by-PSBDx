@@ -164,6 +164,8 @@
     <string name="btn_select_apps">Configure Excluded Apps</string>
 
     <string name="pref_category_system">System &amp; Automation</string>
+    <string name="listen_all_label">Share DNS on local network</string>
+    <string name="listen_all_desc">Local server mode only. Off: listens on 127.0.0.1 (this phone). On: listens on all interfaces so Wi-Fi/hotspot devices can use it. Restart the server to apply.</string>
     <string name="auto_start_label">Auto-Start on Device Boot</string>
     <string name="auto_start_desc">Automatically start DNS service on system startup</string>
     <string name="server_port_label">Local Server UDP Port</string>

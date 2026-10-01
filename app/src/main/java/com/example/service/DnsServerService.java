@@ -63,7 +63,7 @@ public class DnsServerService extends Service {
         // settings at this phone's local IP - see the Hotspot tab, which
         // surfaces that IP:port to the user. Loopback-only made this mode
         // reachable only from the phone itself.
-        final boolean listenOnAllInterfaces = prefs.getBoolean("server_listen_all_interfaces", true);
+        final boolean listenOnAllInterfaces = prefs.getBoolean("server_listen_all_interfaces", false);
 
         serverThread = new Thread(new Runnable() {
             @Override

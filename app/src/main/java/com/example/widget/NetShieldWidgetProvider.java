@@ -48,26 +48,9 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         String action = intent.getAction();
-        if (ACTION_TOGGLE.equals(action)) {
-            Log.d(TAG, "ACTION_TOGGLE received");
-            WidgetActionHelper.handleToggle(context);
-            refreshAllWidgets(context);
-        } else if (ACTION_TOGGLE_PAUSE.equals(action)) {
-            Log.d(TAG, "ACTION_TOGGLE_PAUSE received");
-            handleTogglePause(context);
-            refreshAllWidgets(context);
-        } else if (ServiceManager.ACTION_STATE_CHANGED.equals(action)
+        if (ServiceManager.ACTION_STATE_CHANGED.equals(action)
                 || BlocklistManager.ACTION_PAUSE_STATE_CHANGED.equals(action)) {
             refreshAllWidgets(context);
-        }
-    }
-
-    private void handleTogglePause(Context context) {
-        BlocklistManager manager = BlocklistManager.getInstance(context);
-        if (manager.isPaused()) {
-            manager.resumeProtection();
-        } else {
-            manager.pauseProtection(PAUSE_DURATION_MS);
         }
     }
 
@@ -135,15 +118,15 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_root, openAppPendingIntent);
 
         // Tap the power button -> toggle directly, single click, no app open needed.
-        Intent toggleIntent = new Intent(context, NetShieldWidgetProvider.class);
-        toggleIntent.setAction(ACTION_TOGGLE);
+        Intent toggleIntent = new Intent(context, WidgetActionReceiver.class);
+        toggleIntent.setAction(WidgetActionReceiver.ACTION_TOGGLE_VPN);
         PendingIntent togglePendingIntent = PendingIntent.getBroadcast(context, appWidgetId, toggleIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.btn_widget_toggle, togglePendingIntent);
 
         // Tap "Pause 15m" / "Resume" -> toggle blocklist pause directly.
-        Intent pauseIntent = new Intent(context, NetShieldWidgetProvider.class);
-        pauseIntent.setAction(ACTION_TOGGLE_PAUSE);
+        Intent pauseIntent = new Intent(context, WidgetActionReceiver.class);
+        pauseIntent.setAction(WidgetActionReceiver.ACTION_TOGGLE_PAUSE);
         PendingIntent pausePendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 100000, pauseIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.tv_widget_pause_action, pausePendingIntent);
