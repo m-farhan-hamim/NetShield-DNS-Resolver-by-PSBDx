@@ -206,6 +206,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnClearCacheAction;
     private Button btnConfigureSplitTunnel;
     private SwitchCompat switchAutoStart;
+    private SwitchCompat switchListenAll;
     private EditText etServerPort;
     private Button btnExportBackup;
     private Button btnImportBackup;
@@ -1940,6 +1941,7 @@ public class MainActivity extends AppCompatActivity {
         btnClearCacheAction = findViewById(R.id.btn_clear_cache_action);
         btnConfigureSplitTunnel = findViewById(R.id.btn_configure_split_tunnel);
         switchAutoStart = findViewById(R.id.switch_auto_start);
+        switchListenAll = findViewById(R.id.switch_listen_all);
         etServerPort = findViewById(R.id.et_server_port);
         btnExportBackup = findViewById(R.id.btn_export_backup);
         btnImportBackup = findViewById(R.id.btn_import_backup);
@@ -2167,6 +2169,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 prefs.edit().putBoolean("auto_start_on_boot", isChecked).apply();
+            }
+        });
+
+        // Listen on all interfaces (default off = loopback only)
+        switchListenAll.setChecked(prefs.getBoolean("server_listen_all_interfaces", false));
+        switchListenAll.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                prefs.edit().putBoolean("server_listen_all_interfaces", isChecked).apply();
             }
         });
 

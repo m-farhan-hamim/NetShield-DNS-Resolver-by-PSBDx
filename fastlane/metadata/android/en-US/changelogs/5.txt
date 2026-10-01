@@ -1,0 +1,2 @@
+Security fixes: no silent fallback to plaintext DNS when DoH/DoT fails, DoT now verifies the server hostname, widget actions can no longer be triggered by other apps.
+Local server mode now listens on 127.0.0.1 by default; new setting to share DNS on the local network.
