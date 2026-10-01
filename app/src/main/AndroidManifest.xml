@@ -108,12 +108,14 @@
         </service>
 
         <receiver
+            android:name=".widget.WidgetActionReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".widget.NetShieldWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.widget.ACTION_TOGGLE_VPN" />
-                <action android:name="com.example.widget.ACTION_TOGGLE_PAUSE" />
                 <action android:name="com.example.dns.ACTION_STATE_CHANGED" />
                 <action android:name="com.example.dns.ACTION_PAUSE_STATE_CHANGED" />
             </intent-filter>
@@ -127,7 +129,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.widget.ACTION_QUICK_TOGGLE" />
                 <action android:name="com.example.dns.ACTION_STATE_CHANGED" />
                 <action android:name="com.example.dns.ACTION_PAUSE_STATE_CHANGED" />
             </intent-filter>

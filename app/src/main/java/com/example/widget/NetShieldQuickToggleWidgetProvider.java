@@ -28,11 +28,7 @@ public class NetShieldQuickToggleWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         String action = intent.getAction();
-        if (ACTION_TOGGLE.equals(action)) {
-            Log.d(TAG, "ACTION_TOGGLE received");
-            WidgetActionHelper.handleToggle(context);
-            refreshAllWidgets(context);
-        } else if (ServiceManager.ACTION_STATE_CHANGED.equals(action)
+        if (ServiceManager.ACTION_STATE_CHANGED.equals(action)
                 || BlocklistManager.ACTION_PAUSE_STATE_CHANGED.equals(action)) {
             refreshAllWidgets(context);
         }
@@ -54,8 +50,8 @@ public class NetShieldQuickToggleWidgetProvider extends AppWidgetProvider {
         int accentColor = WidgetActionHelper.resolveAccentColor(context, running);
         views.setInt(R.id.iv_quick_toggle_icon, "setColorFilter", accentColor);
 
-        Intent toggleIntent = new Intent(context, NetShieldQuickToggleWidgetProvider.class);
-        toggleIntent.setAction(ACTION_TOGGLE);
+        Intent toggleIntent = new Intent(context, WidgetActionReceiver.class);
+        toggleIntent.setAction(WidgetActionReceiver.ACTION_QUICK_TOGGLE);
         PendingIntent togglePendingIntent = PendingIntent.getBroadcast(context, appWidgetId, toggleIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_quick_toggle_root, togglePendingIntent);

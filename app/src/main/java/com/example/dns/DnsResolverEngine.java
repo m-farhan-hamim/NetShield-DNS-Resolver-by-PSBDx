@@ -163,8 +163,10 @@ public class DnsResolverEngine {
             recordLog(domain, typeName, "ALLOWED", latency, upstreamDesc, clientIp);
             return upstreamResponse;
         } else {
-            // If DoH/DoT failed, try fallback to Plain UDP
-            if (!"UDP".equalsIgnoreCase(upstreamMode)) {
+            // Encrypted upstream failed. Never silently downgrade to plaintext UDP
+            // unless the user explicitly opted in (pref "allow_plain_udp_fallback", default off).
+            if (!"UDP".equalsIgnoreCase(upstreamMode)
+                    && prefs.getBoolean("allow_plain_udp_fallback", false)) {
                 upstreamResponse = DnsUdpClient.query("1.1.1.1", "8.8.8.8", queryPacket, length);
                 if (upstreamResponse != null) {
                     recordLog(domain, typeName, "ALLOWED", latency, "Fallback UDP (1.1.1.1)", clientIp);
