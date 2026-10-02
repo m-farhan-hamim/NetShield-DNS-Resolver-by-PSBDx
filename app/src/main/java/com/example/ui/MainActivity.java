@@ -543,30 +543,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startConfiguredService() {
-        String mode = prefs.getString("operation_mode", "VPN");
-        Log.d(TAG, "startConfiguredService: mode=" + mode);
-        if ("VPN".equalsIgnoreCase(mode)) {
-            Intent vpnIntent = VpnService.prepare(this);
-            if (vpnIntent != null) {
-                startActivityForResult(vpnIntent, REQUEST_VPN);
-            } else {
-                onActivityResult(REQUEST_VPN, RESULT_OK, null);
-            }
-        } else {
-            Intent intent = new Intent(this, DnsServerService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent);
-            } else {
-                startService(intent);
-            }
-            // Don't wait for the service's own onStartCommand broadcast to
-            // reflect this in the UI - set it directly, right here, so the
-            // button responds the instant the user taps it. The service
-            // will redundantly (harmlessly) confirm the same state shortly
-            // after via ACTION_STATE_CHANGED.
-            ServiceManager.setCurrentState(this, ServiceManager.STATE_SERVER);
-            updateServiceStatusUI();
-        }
+        // Every start goes through the connection check, which then starts the service itself.
+        Log.d(TAG, "startConfiguredService: verifying connection first");
+        startActivity(new Intent(this, ConnectionCheckActivity.class));
     }
 
     private void setupNotificationPermissionBanner() {

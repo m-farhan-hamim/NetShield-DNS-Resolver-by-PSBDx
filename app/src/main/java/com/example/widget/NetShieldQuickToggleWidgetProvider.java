@@ -50,9 +50,10 @@ public class NetShieldQuickToggleWidgetProvider extends AppWidgetProvider {
         int accentColor = WidgetActionHelper.resolveAccentColor(context, running);
         views.setInt(R.id.iv_quick_toggle_icon, "setColorFilter", accentColor);
 
-        Intent toggleIntent = new Intent(context, WidgetActionReceiver.class);
-        toggleIntent.setAction(WidgetActionReceiver.ACTION_QUICK_TOGGLE);
-        PendingIntent togglePendingIntent = PendingIntent.getBroadcast(context, appWidgetId, toggleIntent,
+        Intent toggleIntent = new Intent(context, com.example.ui.ConnectionCheckActivity.class);
+        toggleIntent.putExtra(com.example.ui.ConnectionCheckActivity.EXTRA_TOGGLE, true);
+        toggleIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent togglePendingIntent = PendingIntent.getActivity(context, appWidgetId, toggleIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_quick_toggle_root, togglePendingIntent);
 
