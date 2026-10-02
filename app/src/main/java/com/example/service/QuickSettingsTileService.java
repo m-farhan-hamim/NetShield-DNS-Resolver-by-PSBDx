@@ -4,9 +4,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.graphics.drawable.Icon;
-import android.net.VpnService;
 import android.os.Build;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
@@ -16,8 +14,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.R;
 import com.example.dns.BlocklistManager;
-import com.example.dns.DnsResolverEngine;
-import com.example.ui.MainActivity;
+import com.example.ui.ConnectionCheckActivity;
 
 /**
  * Lets the user activate/deactivate the resolver with a single tap from the
@@ -78,39 +75,13 @@ public class QuickSettingsTileService extends TileService {
     }
 
     private void startFromTile() {
-        SharedPreferences prefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, MODE_PRIVATE);
-        String mode = prefs.getString("operation_mode", "VPN");
-        Log.d(TAG, "startFromTile: mode=" + mode);
-
-        if ("VPN".equalsIgnoreCase(mode)) {
-            Intent vpnPrepare = VpnService.prepare(this);
-            if (vpnPrepare == null) {
-                // Permission already granted - start right here, no need to open the app.
-                startForegroundServiceCompat(new Intent(this, DnsVpnService.class));
-                ServiceManager.setCurrentState(this, ServiceManager.STATE_VPN);
-                updateTile();
-            } else {
-                // First-time VPN consent can only be granted through an Activity.
-                launchAppToFinishStart();
-            }
-        } else {
-            startForegroundServiceCompat(new Intent(this, DnsServerService.class));
-            ServiceManager.setCurrentState(this, ServiceManager.STATE_SERVER);
-            updateTile();
-        }
+        // Verifies the connection (dialog) and then starts the service; the VPN consent prompt,
+        // if still needed, is also handled there.
+        launchConnectionCheck();
     }
 
-    private void startForegroundServiceCompat(Intent intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
-        }
-    }
-
-    private void launchAppToFinishStart() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra(MainActivity.EXTRA_AUTO_START, true);
+    private void launchConnectionCheck() {
+        Intent intent = new Intent(this, ConnectionCheckActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,

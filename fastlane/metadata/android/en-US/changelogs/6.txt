@@ -1,0 +1,2 @@
+Starting from the app, widgets or the Quick Settings tile now first verifies the connection to your selected DNS method.
+If it fails you see the exact error (with a copy button) and can switch to Google UDP in one tap.

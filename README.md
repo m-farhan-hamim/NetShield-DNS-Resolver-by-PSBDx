@@ -16,7 +16,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/tag/3.1.0)
+[![Version](https://img.shields.io/badge/version-3.1.1-blue?style=for-the-badge)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/tag/3.1.1)
 [![License: GPL v3+](https://img.shields.io/badge/license-GPL--3.0--or--later-green?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![Language](https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
@@ -88,7 +88,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 | **VirusTotal** | [Scan report](https://www.virustotal.com/gui/file/378b86f21d3e4cddae92fe67eef3bfc17ebb335d6db3963e20338c97a4335640/) |
 
 **Package name:** `com.netshield.dns.psbdx`
-**Current version:** `3.1.0`
+**Current version:** `3.1.1`
 
 > <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4a1/512.gif" alt="💡" width="20" height="20" align="absmiddle"> Whichever source you use, you can [verify the APK's signing certificate](#verify-your-download) before installing.
 

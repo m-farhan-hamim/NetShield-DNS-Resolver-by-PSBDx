@@ -40,6 +40,14 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".ui.ConnectionCheckActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.MyApplication.Transparent" />
+
+        <activity
             android:name=".ui.VpnServersActivity"
             android:exported="false"
             android:label="@string/vpn_servers_title"

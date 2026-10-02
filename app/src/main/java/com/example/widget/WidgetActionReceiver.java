@@ -12,17 +12,13 @@ import com.example.dns.BlocklistManager;
  * the exported AppWidgetProviders no longer act on toggle/pause actions.
  */
 public class WidgetActionReceiver extends android.content.BroadcastReceiver {
-    public static final String ACTION_TOGGLE_VPN = "com.example.widget.ACTION_TOGGLE_VPN";
     public static final String ACTION_TOGGLE_PAUSE = "com.example.widget.ACTION_TOGGLE_PAUSE";
-    public static final String ACTION_QUICK_TOGGLE = "com.example.widget.ACTION_QUICK_TOGGLE";
     private static final long PAUSE_DURATION_MS = 15 * 60 * 1000L;
 
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (ACTION_TOGGLE_VPN.equals(action) || ACTION_QUICK_TOGGLE.equals(action)) {
-            WidgetActionHelper.handleToggle(context);
-        } else if (ACTION_TOGGLE_PAUSE.equals(action)) {
+        if (ACTION_TOGGLE_PAUSE.equals(action)) {
             BlocklistManager manager = BlocklistManager.getInstance(context);
             if (manager.isPaused()) {
                 manager.resumeProtection();

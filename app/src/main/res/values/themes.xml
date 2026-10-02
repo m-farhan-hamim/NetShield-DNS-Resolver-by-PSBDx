@@ -14,6 +14,15 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
 
+    <style name="Theme.MyApplication.Transparent" parent="Theme.MyApplication">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
     <style name="TextAppearance.MaterialComponents.Tab" parent="TextAppearance.Design.Tab">
         <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
