@@ -140,8 +140,8 @@
     <string name="pref_category_upstream">Upstream DNS Resolver</string>
     <string name="upstream_mode_label">Security Protocol</string>
     <string name="upstream_udp">Standard UDP (Plain)</string>
-    <string name="upstream_doh">DNS-over-HTTPS (DoH)</string>
-    <string name="upstream_dot">DNS-over-TLS (DoT)</string>
+    <string name="upstream_doh">DNS-over-HTTPS (DoH) — paused</string>
+    <string name="upstream_dot">DNS-over-TLS (DoT) — paused</string>
     <string name="doh_url_label">DoH Endpoint URL</string>
     <string name="dot_host_label">DoT Hostname</string>
     <string name="primary_dns_label">Primary DNS IP</string>

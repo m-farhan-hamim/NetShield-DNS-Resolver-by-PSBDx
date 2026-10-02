@@ -1013,31 +1013,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applyUpstreamBenchmark(DnsBenchmark.Result result) {
-        prefs.edit()
-                .putString("upstream_mode", "DOH")
-                .putString("doh_url", result.getDohUrl())
-                .apply();
-        if (etDohUrl != null) {
-            etDohUrl.setText(result.getDohUrl());
-        }
-        if (rbUpstreamDoh != null) {
-            rbUpstreamDoh.setChecked(true);
-        }
-        Toast.makeText(this, "Active upstream changed to " + result.getName(), Toast.LENGTH_SHORT).show();
-        if (tvTrafficUpstreamTag != null) {
-            tvTrafficUpstreamTag.setText("DoH: " + result.getName());
-        }
-
-        int state = ServiceManager.getCurrentState();
-        if (state != ServiceManager.STATE_STOPPED) {
-            stopActiveService();
-            mainHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    startConfiguredService();
-                }
-            }, 600);
-        }
+        // DoH/DoT are paused for now, so a DoH benchmark result cannot be applied.
+        EncryptedDnsNotice.show(this);
     }
 
     private void refreshTrafficDashboard() {
@@ -1052,7 +1029,7 @@ public class MainActivity extends AppCompatActivity {
                 final List<DomainStat> topAllowed = dbHelper.getTopDomains(5, false);
                 final Map<String, Integer> typeCounts = dbHelper.getQueryTypeCounts();
 
-                String mode = prefs.getString("upstream_mode", "DOH");
+                String mode = DnsResolverEngine.effectiveUpstreamMode(prefs);
                 final String upstreamLabel;
                 if ("DOT".equalsIgnoreCase(mode)) {
                     upstreamLabel = "DoT: " + prefs.getString("dot_host", "dns.google");
@@ -1951,7 +1928,21 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Load Upstream
-        String upstreamMode = prefs.getString("upstream_mode", "DOH");
+        String savedMode = prefs.getString("upstream_mode", "DOH");
+        String upstreamMode = DnsResolverEngine.effectiveUpstreamMode(prefs);
+        if (!"UDP".equalsIgnoreCase(savedMode)) {
+            // Migrate anyone who had DoH/DoT selected; tell them once.
+            prefs.edit().putString("upstream_mode", "UDP").apply();
+            if (!prefs.getBoolean("doh_dot_notice_shown", false)) {
+                prefs.edit().putBoolean("doh_dot_notice_shown", true).apply();
+                mainHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        EncryptedDnsNotice.show(MainActivity.this);
+                    }
+                }, 600);
+            }
+        }
         if ("DOT".equalsIgnoreCase(upstreamMode)) {
             rbUpstreamDot.setChecked(true);
             layoutDohSettings.setVisibility(View.GONE);
@@ -1977,6 +1968,18 @@ public class MainActivity extends AppCompatActivity {
         rgUpstreamProtocol.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (!DnsResolverEngine.ENCRYPTED_UPSTREAM_ENABLED
+                        && (checkedId == R.id.rb_upstream_dot || checkedId == R.id.rb_upstream_doh)) {
+                    // DoH/DoT are paused: bounce the selection back to UDP and explain why.
+                    EncryptedDnsNotice.show(MainActivity.this);
+                    group.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            rbUpstreamUdp.setChecked(true);
+                        }
+                    });
+                    return;
+                }
                 if (checkedId == R.id.rb_upstream_dot) {
                     prefs.edit().putString("upstream_mode", "DOT").apply();
                     layoutDohSettings.setVisibility(View.GONE);

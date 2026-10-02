@@ -55,7 +55,7 @@ public final class ConnectionVerifier {
 
     public static Result verifySelected(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
-        String mode = prefs.getString("upstream_mode", "DOH");
+        String mode = DnsResolverEngine.effectiveUpstreamMode(prefs);
         byte[] query = buildProbeQuery();
 
         String method;
