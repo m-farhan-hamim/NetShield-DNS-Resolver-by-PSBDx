@@ -1,0 +1,83 @@
+name: Bug Report
+description: Report an issue or bug in NetShield DNS Resolver
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🛡️ NetShield Bug Report System
+        **App Package:** `com.netshield.dns.psbdx` *(Non-editable)*
+
+  - type: dropdown
+    id: app-version
+    attributes:
+      label: App Version
+      description: Select the version of NetShield installed on your device.
+      options:
+        - "3.1.1"
+        - "3.1.0"
+        - "3.0.0"
+        - "2.0.0 (support closed)"
+        - "1.0.0 (support closed)"
+        - "BETA (support closed)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: download-source
+    attributes:
+      label: Where did you download the app from?
+      description: Select the source platform used to download the APK.
+      options:
+        - "Github"
+        - "F-droid"
+        - "APK Pure"
+        - "Play Store"
+        - "Other 3rd party platforms"
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android Version / API Level
+      placeholder: e.g. Android 14 (API 34)
+    validations:
+      required: true
+
+  - type: input
+    id: device-brand
+    attributes:
+      label: Device Brand & Model
+      placeholder: e.g. realme RMX3933 / Xiaomi Poco F3
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      placeholder: Describe what went wrong and how to reproduce it...
+    validations:
+      required: true
+
+  - type: textarea
+    id: app-log
+    attributes:
+      label: Diagnostic Log (Copied from App)
+      description: Copy and paste the diagnostic log directly from NetShield.
+      placeholder: |
+        NetShield 3.1.1 | Android 16 (API 36) | realme RMX3933
+        Upstream mode: DOT
+
+        [DoT (dns.adguard-dns.com:853)]
+        java.net.UnknownHostException: Unable to resolve host "dns.adguard-dns.com": No address associated with hostname
+        Caused by: android.system.GaiException: android_getaddrinfo failed: EAI_NODATA (No address associated with hostname)
+            at java.net.Inet6AddressImpl.lookupHostByName(Inet6AddressImpl.java:156)
+            at java.net.Inet6AddressImpl.lookupAllHostAddr(Inet6AddressImpl.java:103)
+            at java.net.InetAddress.getAllByName(InetAddress.java:1154)
+            at kp.f(SourceFile:12)
+      render: shell
+    validations:
+      required: true
