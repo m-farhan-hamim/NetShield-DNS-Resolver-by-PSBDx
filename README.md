@@ -21,8 +21,8 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![Language](https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
 
-[![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/d44e15c91cc2bfbb06cd87f90e319a1ad4d8421d778d572df8618c5384d67ba3)
-[![Coming_Soon on F-Droid](https://img.shields.io/badge/F--Droid-Coming-Soon-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org)
+[![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/378b86f21d3e4cddae92fe67eef3bfc17ebb335d6db3963e20338c97a4335640/)
+[![Available on F-Droid](https://img.shields.io/badge/F--Droid-available-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org)
 [![Get it on APKPure](https://img.shields.io/badge/APKPure-download-00B5A5?style=for-the-badge)](https://apkpure.com/p/com.netshield.dns.psbdx)
 [![GitHub Release](https://img.shields.io/github/v/release/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=for-the-badge&logo=github&label=GitHub)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest)
 
@@ -54,7 +54,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4ca/512.gif" alt="📊" width="32" height="32"> | **Real-time traffic logs** | Live dashboard with query logs and stats so you can see what your apps are talking to. |
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/26a1/512.gif" alt="⚡" width="32" height="32"> | **Quick Settings tile** | Toggle NetShield from the notification shade in one tap. |
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f31f/512.gif" alt="🌟" width="32" height="32"> | **Home-screen widget** | Resizable card with live status, query stats and a power button. |
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f98b/512.gif" alt="🦋" width="32" height="32"> | **Lightweight and clean** | Pure Java, only AndroidX and Material. No Kotlin, no Compose, no Firebase, no Google Play Services. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f98b/512.gif" alt="🦋" width="32" height="32"> | **Lightweight and clean** | Pure Java, only AndroidX and Material. No Kotlin, no Compose, no Firebase or Google Play Services. |
 
 ---
 
@@ -99,7 +99,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 
 NetShield sits between your apps and the internet's DNS servers:
 
-```
+```text
   Apps  ──►  NetShield (local sinkhole)  ──►  Upstream DNS (DoH / DoT / UDP)
                     │
                     ├─ blocked domain?  → answered locally, never leaves the device
@@ -188,7 +188,7 @@ Push a tag matching `versionName` in `app/build.gradle.kts` (for example `3.0.0`
 
 Official releases are signed with the same key. The SHA-256 fingerprint of the signing certificate is:
 
-```
+```text
 21:53:E6:6A:EA:E3:09:50:5C:8A:1C:21:76:66:B2:E4:64:01:28:29:0C:81:FF:E2:A4:0D:FF:75:E4:ED:62:A9
 ```
 
