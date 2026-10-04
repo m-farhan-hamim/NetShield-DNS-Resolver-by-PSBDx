@@ -6,15 +6,30 @@ body:
   - type: markdown
     attributes:
       value: |
-        ### 🛡️ NetShield Bug Report System
+        ### ðŸ›¡ï¸ NetShield Bug Report System
         **App Package:** `com.netshield.dns.psbdx` *(Non-editable)*
+
+  - type: dropdown
+    id: version-type
+    attributes:
+      label: Version Type
+      description: Select the branch / build channel you are running.
+      options:
+        - "Stable"
+        - "Github Prerelease No type mentioned"
+        - "Nightly Build"
+        - "Alpha Build"
+        - "Beta Build"
+    validations:
+      required: true
 
   - type: dropdown
     id: app-version
     attributes:
-      label: App Version
-      description: Select the version of NetShield installed on your device.
+      label: Stable App Version
+      description: If you selected "Stable" above, choose your installed version here.
       options:
+        - "N/A (I am using Prerelease / Nightly / Alpha / Beta)"
         - "3.1.1"
         - "3.1.0"
         - "3.0.0"
@@ -24,11 +39,20 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: build-tag
+    attributes:
+      label: Release Tag / Commit Hash (Prerelease / Test Builds Only)
+      description: If you selected a non-stable build type above, enter the exact GitHub release tag or commit hash (e.g. v3.2.0-beta.2 or commit ID). Enter "N/A" for Stable.
+      placeholder: e.g. v3.2.0-beta.1 or N/A
+    validations:
+      required: true
+
   - type: dropdown
     id: download-source
     attributes:
       label: Where did you download the app from?
-      description: Select the source platform used to download the APK.
+      description: Select the source platform used to obtain the APK.
       options:
         - "Github"
         - "F-droid"
@@ -58,7 +82,7 @@ body:
     id: bug-description
     attributes:
       label: Bug Description
-      placeholder: Describe what went wrong and how to reproduce it...
+      placeholder: Describe what went wrong and steps to reproduce the issue...
     validations:
       required: true
 
