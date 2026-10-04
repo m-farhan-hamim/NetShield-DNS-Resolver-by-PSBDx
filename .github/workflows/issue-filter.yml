@@ -1,56 +1,205 @@
-name: Issue Filter & Auto Responder
+name: Issue Filter & Smart Assistant
 
 on:
   issues:
     types: [opened, edited]
 
 jobs:
-  filter-issue:
+  filter-and-answer:
     runs-on: ubuntu-latest
     permissions:
       issues: write
     steps:
-      - name: Process Issue Rules
+      - name: Process Issue Rules and Smart FAQ
         uses: actions/github-script@v7
         with:
           script: |
             const body = context.payload.issue.body || "";
+            const lowerBody = body.toLowerCase();
             const issueNumber = context.payload.issue.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // 1. Play Store Filter Rule
-            if (body.includes("Play Store")) {
-              const playStoreMsg = `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
-                `Thank you for reaching out! However, **NetShield DNS Resolver has NOT been uploaded to the Google Play Store**.\n\n` +
-                `If you downloaded an app with this name from the Play Store, it is an **unofficial or potentially modified build** not maintained by this project.\n\n` +
-                `🔒 **Security Recommendation:** For your safety and privacy, please uninstall that version immediately and get the official release directly from our [GitHub Releases](https://github.com/${owner}/${repo}/releases) or **F-Droid**.\n\n` +
-                `*This issue is being automatically closed as we do not support third-party Play Store uploads.* 🛑`;
+            // Helper to parse GitHub Issue Form fields by heading
+            function getFieldValue(headerText) {
+              const regex = new RegExp(`### ${headerText}\\s*\\n\\s*([\\s\\S]*?)(?=\\n### |$)`, 'i');
+              const match = body.match(regex);
+              return match ? match[1].trim() : '';
+            }
 
-              await github.rest.issues.createComment({
-                owner, repo, issue_number: issueNumber, body: playStoreMsg
+            // Helper to manage status labels without clearing other labels (e.g. 'bug')
+            async function updateStatusLabel(targetLabel) {
+              const issueResponse = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              const currentLabels = issueResponse.data.labels.map(l => typeof l === 'string' ? l : l.name);
+              const managedStatusLabels = ["on-hold", "handed-over-to-developer"];
+              
+              const cleanedLabels = currentLabels.filter(l => !managedStatusLabels.includes(l));
+              if (targetLabel) {
+                cleanedLabels.push(targetLabel);
+              }
+              
+              await github.rest.issues.setLabels({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                labels: cleanedLabels
               });
+            }
 
-              await github.rest.issues.update({
-                owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned"
-              });
+            const versionType = getFieldValue("Version Type");
+            const stableVersion = getFieldValue("Stable App Version");
+            const buildTag = getFieldValue("Release Tag / Commit Hash \\(Prerelease / Test Builds Only\\)");
+
+            const isStableType = versionType.toLowerCase().includes("stable");
+            const isPrereleaseBuild = lowerBody.includes("github prerelease") ||
+                                      lowerBody.includes("nightly build") ||
+                                      lowerBody.includes("alpha build") ||
+                                      lowerBody.includes("beta build");
+
+            // ==========================================
+            // 🛑 STRICT FILTERS (UNSUPPORTED / UNOFFICIAL -> AUTO-CLOSE)
+            // ==========================================
+
+            const isPlayStore = body.includes("Play Store");
+            const isThirdParty = body.includes("APK Pure") || body.includes("Other 3rd party platforms");
+            const isInvalidSource = isPlayStore || isThirdParty;
+            const isLegacyVersion = isStableType && body.includes("support closed");
+
+            // 1. Combined Policy Rule: Legacy Version + Invalid Download Source
+            if (isLegacyVersion && isInvalidSource) {
+              const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
+              const combinedMsg = `🚨 **Multiple Policy Issues Detected (Unsupported Version & Unofficial Source)** 🛡️\n\n` +
+                `Thank you for reaching out! Your report triggered two policy filters:\n\n` +
+                `1. ⚠️ **Unofficial Download Source (${sourceLabel}):** NetShield DNS Resolver is ONLY officially distributed via **GitHub Releases** and **F-Droid**.\n` +
+                `2. 📦 **End of Support Version:** You selected a legacy version marked as **Support Closed**.\n\n` +
+                `🚀 **Recommended Action:** Please uninstall your current build immediately, and download the **latest stable release (v3.1.1+)** from our official [GitHub Releases](https://github.com/${owner}/${repo}/releases) or **F-Droid**.\n\n` +
+                `*This issue has been automatically closed.* 🤖`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: combinedMsg });
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
               return;
             }
 
-            // 2. Closed Support Versions Filter Rule
-            if (body.includes("support closed")) {
-              const closedSupportMsg = `📦 **End of Support Notice** ⏳\n\n` +
-                `Thank you for filing this bug report! You have selected a version marked as **Support Closed** (BETA, 1.0.0, or 2.0.0).\n\n` +
-                `🚀 **Action Required:** We no longer maintain or provide patches for legacy releases. Most bugs from earlier versions have already been fixed in newer updates.\n\n` +
-                `Please update your application to the **latest stable release (v3.1.1+)** from our GitHub Releases or F-Droid. If the bug still exists on the latest version, feel free to submit a new issue with updated logs.\n\n` +
+            // 2. Unofficial Download Source
+            if (isInvalidSource) {
+              const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
+              const sourceMsg = `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
+                `Thank you for reaching out! However, **NetShield DNS Resolver is NOT published on ${sourceLabel}**.\n\n` +
+                `If you downloaded an app with this name from ${sourceLabel}, it is an **unofficial or modified build** not maintained by this project.\n\n` +
+                `🔒 **Security Recommendation:** Please uninstall that version immediately and get official releases from [GitHub Releases](https://github.com/${owner}/${repo}/releases) or **F-Droid**.\n\n` +
                 `*This issue has been automatically closed.* 🤖`;
 
-              await github.rest.issues.createComment({
-                owner, repo, issue_number: issueNumber, body: closedSupportMsg
-              });
-
-              await github.rest.issues.update({
-                owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned"
-              });
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: sourceMsg });
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
               return;
+            }
+
+            // 3. Legacy / Support Closed Version
+            if (isLegacyVersion) {
+              const closedSupportMsg = `📦 **End of Support Notice** ⏳\n\n` +
+                `Thank you for filing this bug report! You have selected a legacy release marked as **Support Closed**.\n\n` +
+                `🚀 **Action Required:** Please update your application to the **latest stable release (v3.1.1+)** from GitHub Releases or F-Droid.\n\n` +
+                `*This issue has been automatically closed.* 🤖`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: closedSupportMsg });
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+              return;
+            }
+
+            // ==========================================
+            // 🔎 INFORMATION VALIDATION (KEEP OPEN & ON-HOLD)
+            // ==========================================
+
+            // Check A: Missing Stable Version Details
+            if (isStableType && (stableVersion.includes("N/A") || !stableVersion)) {
+              await updateStatusLabel("on-hold");
+              
+              const missingVersionMsg = `⚠️ **Action Required: Missing App Version** 🛡️\n\n` +
+                `You selected **Stable** as your Version Type, but did not choose a valid release version.\n\n` +
+                `📝 **How to Fix:** Please click **Edit** on your issue report above and select your installed version (e.g. \`3.1.1\` or \`3.1.0\`).\n\n` +
+                `*This issue has been placed **On Hold** until the missing information is provided.* ⏳`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: missingVersionMsg });
+              return;
+            }
+
+            // Check B: Missing Prerelease Tag / Commit Hash
+            const invalidBuildTag = !buildTag || buildTag.toLowerCase() === "n/a" || buildTag.includes("e.g.");
+            if (isPrereleaseBuild && invalidBuildTag) {
+              await updateStatusLabel("on-hold");
+
+              const missingTagMsg = `⚠️ **Action Required: Missing Release Tag / Commit Hash** 🧪\n\n` +
+                `You selected a test build type (**${versionType}**), but did not provide a valid Release Tag or Commit Hash.\n\n` +
+                `📝 **How to Fix:** Please click **Edit** on your issue report above and enter the exact GitHub release tag or commit hash (e.g., \`v3.2.0-beta.2\` or \`a1b2c3d\`).\n\n` +
+                `*This issue has been placed **On Hold** until the missing information is provided.* ⏳`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: missingTagMsg });
+              return;
+            }
+
+            // ==========================================
+            // ✅ VALIDATION PASSED -> HAND OVER TO DEVELOPER
+            // ==========================================
+
+            await updateStatusLabel("handed-over-to-developer");
+
+            // Tester acknowledgment for prerelease builds
+            if (isPrereleaseBuild) {
+              const testerMsg = `🧪 **Testing Build Report Handed Over!** 🚀\n\n` +
+                `Thank you so much for testing our preview builds! Your early feedback is super valuable.\n\n` +
+                `👨‍💻 **Status Update:** All required build details for **\`${buildTag}\`** have been validated. This issue has been tagged as **\`handed-over-to-developer\`** and queued for inspection as soon as the developer is available.\n\n` +
+                `*Thank you for helping us improve NetShield!* 🛠️`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: testerMsg });
+            }
+
+            // ==========================================
+            // 💡 SMART FAQ ANSWERS (KEPT OPEN)
+            // ==========================================
+
+            let faqTips = [];
+
+            if (lowerBody.includes("battery") || lowerBody.includes("drain") || lowerBody.includes("power usage")) {
+              faqTips.push(
+                `🔋 **Regarding Battery Usage:**\n` +
+                `Android attributes all routed device network traffic directly to NetShield because it operates as a local \`VpnService\`. ` +
+                `The Android battery stats menu incorrectly counts bandwidth passing through the local DNS proxy as CPU consumption. Actual battery usage by NetShield itself is negligible (~1–2%).`
+              );
+            }
+
+            if (lowerBody.includes("another vpn") || lowerBody.includes("wireguard") || lowerBody.includes("openvpn") || lowerBody.includes("dual vpn")) {
+              faqTips.push(
+                `🔌 **Regarding Running Multiple VPNs:**\n` +
+                `Android OS architecture strictly limits the device to **one active \`VpnService\` interface at a time**. ` +
+                `Running NetShield alongside WireGuard, ExpressVPN, or another VPN app will cause one of the services to disconnect automatically.`
+              );
+            }
+
+            if (lowerBody.includes("private dns") || lowerBody.includes("settings dns")) {
+              faqTips.push(
+                `⚙️ **Regarding Android System "Private DNS":**\n` +
+                `If you have **Private DNS** turned ON in Android System Settings (\`Settings -> Network & Internet -> Private DNS\`), it can block NetShield's local encrypted tunnel socket binding. ` +
+                `Please set Android System Private DNS to **Off** or **Automatic** for NetShield to resolve DoT/DoH properly.`
+              );
+            }
+
+            if (lowerBody.includes("unknownhostexception") || lowerBody.includes("eai_nodata") || lowerBody.includes("unable to resolve host")) {
+              faqTips.push(
+                `🌐 **Regarding Host Resolution Errors (\`UnknownHostException\` / \`EAI_NODATA\`):**\n` +
+                `This error indicates that the encrypted upstream DNS server endpoint could not be reached over port 853 (DoT) or port 443 (DoH).\n` +
+                `* Check if your WiFi / Mobile Network ISP blocks outgoing TLS port 853.\n` +
+                `* Enable **Auto-Switch to UDP Fallback** in NetShield settings, or verify that your Bootstrap DNS IP configuration is intact.`
+              );
+            }
+
+            if (faqTips.length > 0) {
+              const faqComment = `🤖 **Automated Helper & Frequently Asked Questions** 💡\n\n` +
+                `Based on your issue description, here are some automated troubleshooting solutions that might help you right away:\n\n` +
+                faqTips.join("\n\n---\n\n") +
+                `\n\n---\n` +
+                `✨ **Did this solve your problem?**\n` +
+                `* **Yes:** Please click **"Close issue"** below to let us know! 😊\n` +
+                `* **No:** Reply to this thread with any extra context, and the developer will inspect your issue report shortly. 🚀`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: faqComment });
             }
