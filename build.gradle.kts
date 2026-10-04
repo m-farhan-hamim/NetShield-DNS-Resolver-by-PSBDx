@@ -23,6 +23,8 @@ buildscript {
     // advisory. This crosses two Kotlin minors, so it is a separate commit: if CI objects,
     // revert just this one.
     classpath(platform("org.jetbrains.kotlin:kotlin-bom:2.4.20"))
+    // Kotlin Gradle Plugin itself is managed by this separate BOM, not by kotlin-bom.
+    classpath(platform("org.jetbrains.kotlin:kotlin-gradle-plugins-bom:2.4.20"))
 
     constraints {
       // Bouncy Castle: keep the provider, PKIX and util artifacts on one version.
@@ -60,6 +62,23 @@ allprojects {
         requested.group == "org.apache.httpcomponents" &&
           (requested.name == "httpclient" || requested.name == "httpmime") ->
           useVersion("4.5.14")
+      }
+    }
+  }
+}
+
+// Kotlin: AGP 9.1.1 resolves the Kotlin Gradle Plugin family (plugin, API, build tools, compiler,
+// stdlib, ...) at 2.2.10 in its project-level configurations. Move the whole family together to
+// the stable 2.4.20 so versions stay consistent. kotlin-gradle-plugin-model was dropped after
+// 2.2.x, so it is left alone. Isolated in its own commit: if CI objects, revert just that one.
+allprojects {
+  configurations.configureEach {
+    resolutionStrategy.eachDependency {
+      if (requested.group == "org.jetbrains.kotlin" &&
+        requested.version == "2.2.10" &&
+        requested.name != "kotlin-gradle-plugin-model"
+      ) {
+        useVersion("2.4.20")
       }
     }
   }
