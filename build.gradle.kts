@@ -41,3 +41,26 @@ buildscript {
 plugins {
   alias(libs.plugins.android.application) apply false
 }
+
+// The buildscript constraints above only reach the build-script classpath. AGP also resolves
+// its own tooling configurations per project (unified test platform, bundletool, lint, ...),
+// which pull in older Netty, Bouncy Castle, commons-lang3 and httpclient. Raise those to the
+// patched releases too. These are build/test tooling only and are never packaged into the APK.
+allprojects {
+  configurations.configureEach {
+    resolutionStrategy.eachDependency {
+      val requestedVersion = requested.version.orEmpty()
+      when {
+        requested.group == "io.netty" && requestedVersion.startsWith("4.1.") ->
+          useVersion("4.1.137.Final")
+        requested.group == "org.bouncycastle" && requested.name.endsWith("-jdk18on") ->
+          useVersion("1.86")
+        requested.group == "org.apache.commons" && requested.name == "commons-lang3" ->
+          useVersion("3.18.0")
+        requested.group == "org.apache.httpcomponents" &&
+          (requested.name == "httpclient" || requested.name == "httpmime") ->
+          useVersion("4.5.14")
+      }
+    }
+  }
+}
