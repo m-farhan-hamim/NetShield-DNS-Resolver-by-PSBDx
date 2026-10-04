@@ -18,6 +18,12 @@ buildscript {
     // Netty: a BOM keeps every netty-* module on the same patched release.
     classpath(platform("io.netty:netty-bom:4.1.137.Final"))
 
+    // Kotlin: AGP 9.1.1 bundles Kotlin Gradle Plugin 2.2.10. The BOM keeps the plugin, its API and
+    // the stdlib aligned on the first stable release that fixes the build-cache deserialization
+    // advisory. This crosses two Kotlin minors, so it is a separate commit: if CI objects,
+    // revert just this one.
+    classpath(platform("org.jetbrains.kotlin:kotlin-bom:2.4.20"))
+
     constraints {
       // Bouncy Castle: keep the provider, PKIX and util artifacts on one version.
       add("classpath", "org.bouncycastle:bcprov-jdk18on:1.86") { because("Dependabot: Bouncy Castle advisories fixed in 1.85+") }
