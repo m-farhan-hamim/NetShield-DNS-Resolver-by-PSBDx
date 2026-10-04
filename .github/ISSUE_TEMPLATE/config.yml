@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "📖 Documentation & Wiki (Instant Help)"
+    url: "https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/wiki"
+    about: "Please check our official Wiki for quick setup guides, FAQs, and instant troubleshooting solutions before opening an issue."
+  - name: "💬 Community Discussions & Questions"
+    url: "https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/discussions"
+    about: "For general questions, configuration help, or community discussion, please start a discussion thread."
+  - name: "📧 Direct Email Support & Security"
+    url: "mailto:support@psbdx.com"
+    about: "Send private inquiries, security disclosures, or non-public donation screenshots directly to support@psbdx.com."
