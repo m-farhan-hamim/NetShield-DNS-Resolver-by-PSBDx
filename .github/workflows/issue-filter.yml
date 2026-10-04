@@ -26,7 +26,7 @@ jobs:
               return match ? match[1].trim() : '';
             }
 
-            // Helper to manage status labels without clearing other labels (e.g. 'bug')
+            // Helper to manage status labels without clearing existing labels (e.g. 'bug', 'donation')
             async function updateStatusLabel(targetLabel) {
               const issueResponse = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
               const currentLabels = issueResponse.data.labels.map(l => typeof l === 'string' ? l : l.name);
@@ -46,20 +46,58 @@ jobs:
             }
 
             // ==========================================
-            // 📋 TEMPLATE VALIDATION FILTER
+            // 💖 DONATION / SPONSOR ISSUE AUTOMATION
+            // ==========================================
+            const donationPlatform = getFieldValue("Which platform did you choose\\?");
+
+            if (donationPlatform) {
+              // 1. https://donate.psbdx.com -> Auto-close with expectation notice
+              if (donationPlatform.includes("https://donate.psbdx.com")) {
+                const donatePsbdxMsg = `🚧 **Self-Hosted Donation Site Under Construction** 💖\n\n` +
+                  `Thank you so much for your generosity and interest in supporting NetShield!\n\n` +
+                  `Please note that **https://donate.psbdx.com** is currently under active development and is not yet ready to process payments. It is expected that transactions on this domain will not work right now.\n\n` +
+                  `🚀 **Alternative:** You can support us via **https://superchat.bd** or check back later once our self-hosted portal officially launches!\n\n` +
+                  `*This issue has been automatically closed.* 🤖`;
+
+                await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: donatePsbdxMsg });
+                await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+                return;
+              }
+
+              // 2. https://superchat.bd -> Acknowledge, apply label, keep open
+              if (donationPlatform.includes("https://superchat.bd")) {
+                await updateStatusLabel("handed-over-to-developer");
+
+                const superchatMsg = `💖 **Thank You for Your Support!** 🚀\n\n` +
+                  `We really appreciate your willingness to back the NetShield project!\n\n` +
+                  `🛠️ **Status Update:** Our team is actively investigating the issue with **superchat.bd**. This report has been tagged as **\`handed-over-to-developer\`** for immediate inspection.\n\n` +
+                  `*Note: If you emailed screenshots to \`support@psbdx.com\`, our team will match them with this Issue ID.* 📧`;
+
+                await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: superchatMsg });
+                return;
+              }
+            }
+
+            // ==========================================
+            // 📋 TEMPLATE VALIDATION FILTER (BUG REPORTS)
             // ==========================================
             const versionType = getFieldValue("Version Type");
             const downloadSource = getFieldValue("Where did you download the app from\\?");
 
-            // If template headers are completely missing, close issue with template request
-            if (!versionType || !downloadSource) {
+            // If template headers are completely missing (and it's not a donation form), close with request to use template
+            if (!versionType && !downloadSource && !donationPlatform && !body.includes("Feature Category")) {
               const noTemplateMsg = `🛑 **Invalid Issue Format** 🛑\n\n` +
-                `Thank you for reaching out! However, this issue report does not use our official **Bug Report Template**.\n\n` +
-                `📋 **How to Fix:** Please open a new issue using our [Bug Report Form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic information is captured properly.\n\n` +
+                `Thank you for reaching out! However, this issue report does not use one of our official **Issue Templates**.\n\n` +
+                `📋 **How to Fix:** Please open a new issue using our [Bug Report / Feature Request Form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic information is captured properly.\n\n` +
                 `*This issue has been automatically closed.* 🤖`;
 
               await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: noTemplateMsg });
               await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+              return;
+            }
+
+            // If it's a feature request template, skip bug filters
+            if (body.includes("Feature Category")) {
               return;
             }
 
@@ -69,18 +107,15 @@ jobs:
             const isStableType = versionType.toLowerCase().includes("stable");
             const isPrereleaseBuild = !isStableType;
 
-            // Supported platforms: GitHub, F-Droid, APK Pure
-            // Invalid platforms: Play Store, Other 3rd party platforms
             const isPlayStore = downloadSource.toLowerCase().includes("play store");
             const isOtherThirdParty = downloadSource.toLowerCase().includes("other 3rd party");
             const isInvalidSource = isPlayStore || isOtherThirdParty;
             const isLegacyVersion = isStableType && stableVersion.toLowerCase().includes("support closed");
 
             // ==========================================
-            // 🛑 STRICT FILTERS (UNSUPPORTED / UNOFFICIAL -> AUTO-CLOSE)
+            // 🛑 STRICT BUG FILTERS (AUTO-CLOSE)
             // ==========================================
 
-            // 1. Combined Policy Rule: Legacy Version + Invalid Download Source
             if (isLegacyVersion && isInvalidSource) {
               const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
               const combinedMsg = `🚨 **Multiple Policy Issues Detected (Unsupported Version & Unofficial Source)** 🛡️\n\n` +
@@ -95,7 +130,6 @@ jobs:
               return;
             }
 
-            // 2. Unofficial Download Source
             if (isInvalidSource) {
               const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
               const sourceMsg = `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
@@ -109,7 +143,6 @@ jobs:
               return;
             }
 
-            // 3. Legacy / Support Closed Version
             if (isLegacyVersion) {
               const closedSupportMsg = `📦 **End of Support Notice** ⏳\n\n` +
                 `Thank you for filing this bug report! You have selected a legacy release marked as **Support Closed**.\n\n` +
@@ -125,7 +158,6 @@ jobs:
             // 🔎 INFORMATION VALIDATION (KEEP OPEN & ON-HOLD)
             // ==========================================
 
-            // Check A: Missing Stable Version Details
             if (isStableType && (stableVersion.includes("N/A") || !stableVersion)) {
               await updateStatusLabel("on-hold");
               
@@ -138,7 +170,6 @@ jobs:
               return;
             }
 
-            // Check B: Missing Prerelease Tag / Commit Hash
             const invalidBuildTag = !buildTag || buildTag.toLowerCase() === "n/a" || buildTag.toLowerCase().includes("e.g.");
             if (isPrereleaseBuild && invalidBuildTag) {
               await updateStatusLabel("on-hold");
@@ -158,7 +189,6 @@ jobs:
 
             await updateStatusLabel("handed-over-to-developer");
 
-            // Tester acknowledgment for prerelease builds
             if (isPrereleaseBuild) {
               const testerMsg = `🧪 **Testing Build Report Handed Over!** 🚀\n\n` +
                 `Thank you so much for testing our preview builds! Your early feedback is super valuable.\n\n` +
