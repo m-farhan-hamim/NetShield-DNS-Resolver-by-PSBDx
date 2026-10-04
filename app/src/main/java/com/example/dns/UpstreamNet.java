@@ -12,6 +12,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Network access for the encrypted upstreams (DoH/DoT).
@@ -89,5 +91,51 @@ public final class UpstreamNet {
             }
         }
         throw last != null ? last : new IOException("No address found for " + host);
+    }
+
+    /**
+     * True if the device has a working internet connection on a real (non-VPN) network.
+     * Android's own validation flag is trusted when set; otherwise (captive-portal check blocked,
+     * flaky probe) a short TCP connect to well-known public IPs decides. Blocking: call off the
+     * main thread.
+     */
+    public static boolean hasInternet() {
+        Context c = appContext;
+        if (c == null) return true;
+        List<Network> unvalidated = new ArrayList<>();
+        try {
+            ConnectivityManager cm = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            for (Network n : cm.getAllNetworks()) {
+                NetworkCapabilities caps = cm.getNetworkCapabilities(n);
+                if (caps == null) continue;
+                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue;
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue;
+                if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) return true;
+                unvalidated.add(n);
+            }
+        } catch (Exception e) {
+            return true; // cannot tell: do not lock the user out
+        }
+        String[] probes = {"1.1.1.1", "8.8.8.8"};
+        for (Network n : unvalidated) {
+            for (String ip : probes) {
+                Socket s = null;
+                try {
+                    s = n.getSocketFactory().createSocket();
+                    s.connect(new InetSocketAddress(ip, 443), 3000);
+                    return true;
+                } catch (Exception ignored) {
+                } finally {
+                    if (s != null) {
+                        try {
+                            s.close();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

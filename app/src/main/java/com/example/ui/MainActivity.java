@@ -14,6 +14,10 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.Uri;
 import android.net.VpnService;
 import android.os.Build;
@@ -60,6 +64,7 @@ import com.example.dns.BlocklistManager;
 import com.example.dns.DnsBenchmark;
 import com.example.dns.DnsPacketParser;
 import com.example.dns.DnsResolverEngine;
+import com.example.dns.UpstreamNet;
 import com.example.db.ClientDeviceStat;
 import com.example.hotspot.HotspotManager;
 import com.example.hotspot.LocalIpFinder;
@@ -117,6 +122,28 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvDashboardSubtitle;
     private ImageView ivStatusIcon;
     private Button btnToggleService;
+    private View bannerOffline;
+    private volatile boolean online = true;
+    private ConnectivityManager.NetworkCallback netCallback;
+    private final Runnable connectivityRunnable = new Runnable() {
+        @Override
+        public void run() {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final boolean now = UpstreamNet.hasInternet();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isFinishing() || isDestroyed()) return;
+                            online = now;
+                            applyOnlineState();
+                        }
+                    });
+                }
+            }, "netshield-connectivity").start();
+        }
+    };
     private RadioGroup rgOperationMode;
     private RadioButton rbModeVpn;
     private RadioButton rbModeServer;
@@ -312,6 +339,7 @@ public class MainActivity extends AppCompatActivity {
         refreshStats();
         updatePauseUi();
         updateNotificationPermissionBannerVisibility();
+        startConnectivityMonitor();
         if (blocklistManager != null && blocklistManager.isPaused()) {
             mainHandler.post(pauseTickRunnable);
         }
@@ -321,6 +349,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         mainHandler.removeCallbacks(pauseTickRunnable);
+        stopConnectivityMonitor();
         try {
             unregisterReceiver(updateReceiver);
         } catch (Exception ignored) {
@@ -383,6 +412,7 @@ public class MainActivity extends AppCompatActivity {
         tvDashboardSubtitle = findViewById(R.id.tv_dashboard_subtitle);
         ivStatusIcon = findViewById(R.id.iv_status_icon);
         btnToggleService = findViewById(R.id.btn_toggle_service);
+        bannerOffline = findViewById(R.id.banner_offline);
         rgOperationMode = findViewById(R.id.rg_operation_mode);
         rbModeVpn = findViewById(R.id.rb_mode_vpn);
         rbModeServer = findViewById(R.id.rb_mode_server);
@@ -448,6 +478,8 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "btnToggleService clicked, currentState=" + state);
                 if (state != ServiceManager.STATE_STOPPED) {
                     stopActiveService();
+                } else if (!online) {
+                    Toast.makeText(MainActivity.this, R.string.offline_banner, Toast.LENGTH_SHORT).show();
                 } else {
                     startConfiguredService();
                 }
@@ -739,11 +771,71 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startConnectivityMonitor() {
+        UpstreamNet.init(this);
+        mainHandler.removeCallbacks(connectivityRunnable);
+        mainHandler.post(connectivityRunnable);
+        if (netCallback != null) return;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return;
+            NetworkRequest request = new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                    .build();
+            netCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    scheduleConnectivityCheck();
+                }
+
+                @Override
+                public void onLost(Network network) {
+                    scheduleConnectivityCheck();
+                }
+
+                @Override
+                public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
+                    scheduleConnectivityCheck();
+                }
+            };
+            cm.registerNetworkCallback(request, netCallback);
+        } catch (Exception e) {
+            netCallback = null;
+        }
+    }
+
+    private void scheduleConnectivityCheck() {
+        // Debounce bursts of callbacks; the check itself runs on a worker thread.
+        mainHandler.removeCallbacks(connectivityRunnable);
+        mainHandler.postDelayed(connectivityRunnable, 500);
+    }
+
+    private void stopConnectivityMonitor() {
+        mainHandler.removeCallbacks(connectivityRunnable);
+        if (netCallback == null) return;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) cm.unregisterNetworkCallback(netCallback);
+        } catch (Exception ignored) {
+        }
+        netCallback = null;
+    }
+
+    private void applyOnlineState() {
+        if (bannerOffline != null) {
+            bannerOffline.setVisibility(online ? View.GONE : View.VISIBLE);
+        }
+        updateServiceStatusUI();
+    }
+
     private void updateServiceStatusUI() {
         int state = ServiceManager.getCurrentState();
         int port = prefs.getInt("server_port", 5353);
         tvServerAddress.setText("127.0.0.1:" + port);
-        btnToggleService.setEnabled(true);
+        boolean canToggle = online || state != ServiceManager.STATE_STOPPED;
+        btnToggleService.setEnabled(canToggle);
+        btnToggleService.setAlpha(canToggle ? 1f : 0.4f);
 
         if (state == ServiceManager.STATE_VPN) {
             tvHeaderStatus.setText("PROTECTED (VPN)");
@@ -775,7 +867,9 @@ public class MainActivity extends AppCompatActivity {
             indicatorStatusDot.getBackground().setTint(ContextCompat.getColor(this, R.color.colorBlocked));
 
             tvDashboardStatus.setText(R.string.status_stopped);
-            tvDashboardSubtitle.setText("Tap start below to enable local privacy protection");
+            tvDashboardSubtitle.setText(online
+                    ? "Tap start below to enable local privacy protection"
+                    : getString(R.string.status_waiting_internet));
             btnToggleService.setText(R.string.btn_start);
             btnToggleService.setBackgroundResource(R.drawable.bg_button_start);
             btnToggleService.setTextColor(Color.parseColor("#031024"));

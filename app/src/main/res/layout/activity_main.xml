@@ -88,6 +88,27 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- Offline banner (shown when the device has no working internet) -->
+    <LinearLayout
+        android:id="@+id/banner_offline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorBlocked"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/offline_banner"
+            android:textColor="@android:color/white"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- Update-available banner (GitHub-distributed installs only; see UpdateChecker) -->
     <LinearLayout
         android:id="@+id/banner_update_available"
