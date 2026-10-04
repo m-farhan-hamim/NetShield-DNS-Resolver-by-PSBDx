@@ -1,0 +1,2 @@
+Security: imported OpenVPN/WireGuard files are now validated before they are read.
+Build tooling dependencies updated to patched versions.
