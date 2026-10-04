@@ -21,8 +21,8 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![Language](https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
 
-[![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/d44e15c91cc2bfbb06cd87f90e319a1ad4d8421d778d572df8618c5384d67ba3)
-[![Coming soon on F-Droid](https://img.shields.io/badge/F--Droid-coming_soon-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org)
+[![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/d44e15c91cc2bfbb06cd87f90e319a1ad4d8421d778d572df8618c5384d67ba3/)
+[![Available on F-Droid](https://img.shields.io/badge/F--Droid-available-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org/packages/com.netshield.dns.psbdx/)
 [![Get it on APKPure](https://img.shields.io/badge/APKPure-download-00B5A5?style=for-the-badge)](https://apkpure.com/p/com.netshield.dns.psbdx)
 [![GitHub Release](https://img.shields.io/github/v/release/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=for-the-badge&logo=github&label=GitHub)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest)
 
@@ -45,16 +45,16 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 
 | | Feature | Description |
 |---|---|---|
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4a5/512.gif" alt="💥" width="32" height="32"> | **DNS sinkhole** | Blocks ads, trackers and unwanted domains at the DNS level, for every app on the device. |
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f30f/512.gif" alt="🌏" width="32" height="32"> | **VPN mode** | Routes all system DNS queries through a local sinkhole using Android's VPN API. Nothing leaves your device except the DNS queries you allow. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4a5/512.gif" alt="💥" width="32" height="32"> | **DNS sinkhole** | Blocks ads, trackers and unwanted domains at the DNS level, for everything from browsers to apps. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f30f/512.gif" alt="🌏" width="32" height="32"> | **VPN mode** | Routes all system DNS queries through a local sinkhole using Android's VPN service, without needing a separate proxy app. |
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f916/512.gif" alt="🤖" width="32" height="32"> | **Local server mode** | Prefer no VPN? Run as a local UDP DNS server on `127.0.0.1`. |
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f512/512.gif" alt="🔒" width="32" height="32"> | **Encrypted upstreams** | Resolve through **DoH** (DNS over HTTPS), **DoT** (DNS over TLS) or plain **UDP**. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f512/512.gif" alt="🔒" width="32" height="32"> | **Encrypted upstreams** | Resolve through **DoH** (DNS over HTTPS), **DoT** (DNS over TLS) or plain UDP with optional TLS validation. |
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f9a0/512.gif" alt="🦠" width="32" height="32"> | **Custom blocklists** | Add your own blocklists and rules. |
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f449/512.gif" alt="👉" width="32" height="32"> | **Per-app split tunneling** | Choose which apps go through NetShield and which bypass it. |
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4ca/512.gif" alt="📊" width="32" height="32"> | **Real-time traffic logs** | Live dashboard with query logs and stats so you can see what your apps are talking to. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4ca/512.gif" alt="📊" width="32" height="32"> | **Real-time traffic logs** | Live dashboard with query logs and stats so you can see exactly what is being blocked and resolved. |
 | <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/26a1/512.gif" alt="⚡" width="32" height="32"> | **Quick Settings tile** | Toggle NetShield from the notification shade in one tap. |
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f31f/512.gif" alt="🌟" width="32" height="32"> | **Home-screen widget** | Resizable card with live status, query stats and a power button. |
-| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f98b/512.gif" alt="🦋" width="32" height="32"> | **Lightweight and clean** | Pure Java, only AndroidX and Material. No Kotlin, no Compose, no Firebase or Google Play Services. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f31f/512.gif" alt="🌟" width="32" height="32"> | **Home-screen widget** | Resizable card with live status, query stats and a power button to toggle instantly. |
+| <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f98b/512.gif" alt="🦋" width="32" height="32"> | **Lightweight and clean** | Pure Java, only AndroidX and Material. No Kotlin, no Compose, no Firebase and no Google Play Services. |
 
 ---
 
@@ -82,7 +82,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 
 | Source | Link |
 |---|---|
-| **F-Droid** | [Get it on F-Droid](https://f-droid.org) |
+| **F-Droid** | [Get it on F-Droid](https://f-droid.org/packages/com.netshield.dns.psbdx/) |
 | **APKPure** | [com.netshield.dns.psbdx on APKPure](https://apkpure.com/p/com.netshield.dns.psbdx) |
 | **GitHub Releases** | [Latest signed APK](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest) |
 | **VirusTotal** | [Scan report](https://www.virustotal.com/gui/file/d44e15c91cc2bfbb06cd87f90e319a1ad4d8421d778d572df8618c5384d67ba3/) |
@@ -119,15 +119,15 @@ Beyond the in-app Start/Stop button, the resolver can be toggled with a single t
 - **Quick Settings:** add the "NetShield" tile from the panel's edit screen. It reflects the Active/Inactive state live.
 - **Home-screen widget:** a resizable card showing live status and query stats, with a dedicated power button to toggle instantly. Tapping the rest of the card opens the app.
 
-Both use the same underlying `ServiceManager.ACTION_STOP` self-stop mechanism as the in-app button, so behavior stays consistent everywhere. If VPN mode hasn't been granted permission yet, tapping either will briefly open the app to complete the one-time system consent dialog, then behave identically afterward.
+Both use the same underlying `ServiceManager.ACTION_STOP` self-stop mechanism as the in-app button, so behavior stays consistent everywhere. If VPN mode hasn't been granted permission yet, tapping the tile/widget will prompt for it.
 
 ---
 
 ## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f331/512.gif" alt="🌱" width="32" height="32" align="absmiddle"> In-app update checker
 
-On launch, the app checks `GET /repos/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest` and compares the release tag against the installed `versionName`. If a newer version exists, a banner offers to download and install it via the system package installer (using a `FileProvider`).
+On launch, the app checks `GET /repos/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest` and compares the release tag against the installed `versionName`. If a newer version exists, it offers a direct APK download.
 
-> **Disabled for F-Droid installs, on purpose.** F-Droid's client already verifies and delivers updates from its own build, so self-updating apps aren't wanted there. `UpdateChecker.isSelfUpdateAllowed()` checks the installer package name (`getInstallSourceInfo` / `getInstallerPackageName`), and the whole feature is a silent no-op when it is `org.fdroid.fdroid`. Keep this check in place for F-Droid builds.
+> **Disabled for F-Droid installs, on purpose.** F-Droid's client already verifies and delivers updates from its own build, so self-updating apps aren't wanted there. `UpdateChecker.isSelfUpdateAllowed()` short-circuits the feature when the app was installed via F-Droid.
 
 ---
 
@@ -160,13 +160,13 @@ For a locally signed release build, set these environment variables:
 > [!WARNING]
 > **Building or signing with your own key can break remote features.**
 > If you modify the signing key, or re-sign the app with your own key, features that rely on the official release signature might stop working. This includes:
->
+> 
 > - **App update checks**
 > - **VPN service**
 > - **Log saving**
 > - **Remote notifications**
->
-> Android also refuses to update an installed app that was signed with a different key, so switching between official and self-signed builds means uninstalling first (and losing app data). For normal use, install the official release and [verify its signature](#verify-your-download).
+> 
+> Android also refuses to update an installed app that was signed with a different key, so switching between official and self-signed builds means uninstalling first (and losing app data). For non-official builds, the project may still run locally but receive limited or no remote functionality.
 
 ### CI and releases
 
@@ -179,7 +179,7 @@ The `release` job in `.github/workflows/build.yml` builds a signed production AP
 
 Pull requests from forks can't access these secrets, so they only get the unsigned debug build. That's expected.
 
-Push a tag matching `versionName` in `app/build.gradle.kts` (for example `3.0.0`) and the workflow also publishes a GitHub Release with the signed APK attached. That's what the in-app update checker looks for.
+Push a tag matching `versionName` in `app/build.gradle.kts` (for example `3.0.0`) and the workflow also publishes a GitHub Release with the signed APK attached. That's what the in-app update checker compares against.
 
 ---
 
@@ -201,7 +201,7 @@ apksigner verify --print-certs app-release.apk
 The `SHA-256 digest` line in the output should match the fingerprint above. If it doesn't, don't install the file.
 
 > [!WARNING]
-> A build signed with a different key is not an official release. Besides the security risk, it might break remote features such as update checks, the VPN service, log saving and remote notifications. See the [warning above](#building-from-source).
+> A build signed with a different key is not an official release. Besides the security risk, it might break remote features such as update checks, the VPN service, log saving and remote notifications. You should only install packages from the project's official sources: GitHub Releases, F-Droid, and APKPure.
 
 ---
 
