@@ -16,21 +16,6 @@ import java.util.concurrent.Executors;
 
 public class DnsResolverEngine {
     public static final String ACTION_LOG_UPDATED = "com.example.dns.ACTION_LOG_UPDATED";
-    /**
-     * DoH/DoT are temporarily disabled (reliability + security fixes pending). While false, every
-     * code path - saved settings, backups, widgets - resolves through plain UDP regardless of the
-     * stored "upstream_mode". Flip to true to bring encrypted DNS back.
-     */
-    public static final boolean ENCRYPTED_UPSTREAM_ENABLED = false;
-
-    public static String effectiveUpstreamMode(android.content.SharedPreferences p) {
-        String mode = p.getString("upstream_mode", "DOH");
-        if (!ENCRYPTED_UPSTREAM_ENABLED && !"UDP".equalsIgnoreCase(mode)) {
-            return "UDP";
-        }
-        return mode;
-    }
-
     public static final String PREFS_NAME = "dns_prefs";
 
     private static DnsResolverEngine instance;
@@ -59,6 +44,7 @@ public class DnsResolverEngine {
         this.trustedListManager = TrustedListManager.getInstance(context);
         this.cache = new DnsCache(2000);
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        UpstreamNet.init(context);
     }
 
     public DnsCache getCache() {
@@ -146,7 +132,7 @@ public class DnsResolverEngine {
         }
 
         // 4. Query Upstream
-        String upstreamMode = effectiveUpstreamMode(prefs);
+        String upstreamMode = prefs.getString("upstream_mode", "DOH");
         String upstreamDesc;
         byte[] upstreamResponse = null;
 

@@ -2,7 +2,6 @@ package com.example.dns;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocket;
@@ -15,9 +14,7 @@ public class DoTClient {
         Socket socket = null;
         try {
             SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-            Socket plain = new Socket();
-            plain.connect(new InetSocketAddress(host, port), TIMEOUT_MS);
-            plain.setSoTimeout(TIMEOUT_MS);
+            Socket plain = UpstreamNet.connect(host, port, TIMEOUT_MS);
             // Layer TLS over the connected socket so SNI is sent for `host`.
             SSLSocket ssl = (SSLSocket) factory.createSocket(plain, host, port, true);
             socket = ssl;

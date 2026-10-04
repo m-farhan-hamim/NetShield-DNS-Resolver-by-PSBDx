@@ -5,16 +5,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import javax.net.ssl.HttpsURLConnection;
 
 public class DoHClient {
     private static final int TIMEOUT_MS = 5000;
 
     public static byte[] query(String dohUrl, byte[] queryPacket, int length) {
-        HttpsURLConnection conn = null;
+        HttpURLConnection conn = null;
+        boolean ok = false;
         try {
             URL url = new URL(dohUrl);
-            conn = (HttpsURLConnection) url.openConnection();
+            conn = UpstreamNet.openHttps(url);
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(TIMEOUT_MS);
             conn.setReadTimeout(TIMEOUT_MS);
@@ -41,11 +41,14 @@ public class DoHClient {
                     baos.write(buffer, 0, n);
                 }
                 is.close();
+                ok = true;
                 return baos.toByteArray();
             }
         } catch (Exception ignored) {
         } finally {
-            if (conn != null) {
+            // On success the body was fully read, so keep the connection alive for reuse
+            // (avoids a fresh TCP+TLS handshake per lookup). Only tear down failed ones.
+            if (conn != null && !ok) {
                 try {
                     conn.disconnect();
                 } catch (Exception ignored) {

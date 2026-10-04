@@ -1,3 +1,3 @@
 Starting from the app, widgets or the Quick Settings tile now verifies the connection to your DNS upstream first; on failure you get the exact error and can switch to Google UDP.
-DNS-over-HTTPS and DNS-over-TLS are temporarily disabled; NetShield uses plain UDP while they are being fixed.
+Fixed DNS-over-HTTPS and DNS-over-TLS timing out while the VPN is active: the upstream is now reached over the real network instead of looping through NetShield itself.
 Fixed corrupt launcher icon images (replaced with valid PNGs).
