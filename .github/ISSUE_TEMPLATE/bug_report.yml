@@ -5,15 +5,13 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: |
-        ### ðŸ›¡ï¸ NetShield Bug Report System
-        **App Package:** `com.netshield.dns.psbdx` *(Non-editable)*
+      value: "### 🛡️️ NetShield Bug Report System\n**App Package:** `com.netshield.dns.psbdx` *(Non-editable)*"
 
   - type: dropdown
     id: version-type
     attributes:
-      label: Version Type
-      description: Select the branch / build channel you are running.
+      label: "Version Type"
+      description: "Select the branch / build channel you are running."
       options:
         - "Stable"
         - "Github Prerelease No type mentioned"
@@ -26,8 +24,8 @@ body:
   - type: dropdown
     id: app-version
     attributes:
-      label: Stable App Version
-      description: If you selected "Stable" above, choose your installed version here.
+      label: "Stable App Version"
+      description: "If you selected Stable above, choose your installed version here."
       options:
         - "N/A (I am using Prerelease / Nightly / Alpha / Beta)"
         - "3.1.1"
@@ -42,17 +40,17 @@ body:
   - type: input
     id: build-tag
     attributes:
-      label: Release Tag / Commit Hash (Prerelease / Test Builds Only)
-      description: If you selected a non-stable build type above, enter the exact GitHub release tag or commit hash (e.g. v3.2.0-beta.2 or commit ID). Enter "N/A" for Stable.
-      placeholder: e.g. v3.2.0-beta.1 or N/A
+      label: "Release Tag / Commit Hash (Prerelease / Test Builds Only)"
+      description: "If you selected a non-stable build type above, enter the exact GitHub release tag or commit hash (e.g. v3.2.0-beta.2). Enter N/A for Stable."
+      placeholder: "e.g. v3.2.0-beta.1 or N/A"
     validations:
       required: true
 
   - type: dropdown
     id: download-source
     attributes:
-      label: Where did you download the app from?
-      description: Select the source platform used to obtain the APK.
+      label: "Where did you download the app from?"
+      description: "Select the source platform used to obtain the APK."
       options:
         - "Github"
         - "F-droid"
@@ -65,43 +63,33 @@ body:
   - type: input
     id: android-version
     attributes:
-      label: Android Version / API Level
-      placeholder: e.g. Android 14 (API 34)
+      label: "Android Version / API Level"
+      placeholder: "e.g. Android 14 (API 34)"
     validations:
       required: true
 
   - type: input
     id: device-brand
     attributes:
-      label: Device Brand & Model
-      placeholder: e.g. realme RMX3933 / Xiaomi Poco F3
+      label: "Device Brand & Model"
+      placeholder: "e.g. realme RMX3933 / Xiaomi Poco F3"
     validations:
       required: true
 
   - type: textarea
     id: bug-description
     attributes:
-      label: Bug Description
-      placeholder: Describe what went wrong and steps to reproduce the issue...
+      label: "Bug Description"
+      placeholder: "Describe what went wrong and steps to reproduce the issue..."
     validations:
       required: true
 
   - type: textarea
     id: app-log
     attributes:
-      label: Diagnostic Log (Copied from App)
-      description: Copy and paste the diagnostic log directly from NetShield.
-      placeholder: |
-        NetShield 3.1.1 | Android 16 (API 36) | realme RMX3933
-        Upstream mode: DOT
-
-        [DoT (dns.adguard-dns.com:853)]
-        java.net.UnknownHostException: Unable to resolve host "dns.adguard-dns.com": No address associated with hostname
-        Caused by: android.system.GaiException: android_getaddrinfo failed: EAI_NODATA (No address associated with hostname)
-            at java.net.Inet6AddressImpl.lookupHostByName(Inet6AddressImpl.java:156)
-            at java.net.Inet6AddressImpl.lookupAllHostAddr(Inet6AddressImpl.java:103)
-            at java.net.InetAddress.getAllByName(InetAddress.java:1154)
-            at kp.f(SourceFile:12)
+      label: "Diagnostic Log (Copied from App)"
+      description: "Copy and paste the diagnostic log directly from NetShield."
+      placeholder: "NetShield 3.1.1 | Android 16 (API 36) | realme RMX3933\nUpstream mode: DOT\n\n[DoT (dns.adguard-dns.com:853)]\njava.net.UnknownHostException: Unable to resolve host \"dns.adguard-dns.com\": No address associated with hostname"
       render: shell
     validations:
       required: true
