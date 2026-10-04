@@ -1,5 +1,6 @@
 package com.example.ui;
 
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -28,6 +29,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 public class VpnServersActivity extends AppCompatActivity {
     private static final String TAG = "VpnServersActivity";
@@ -112,6 +114,11 @@ public class VpnServersActivity extends AppCompatActivity {
         if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
 
         Uri uri = data.getData();
+        if (!isSafePickedUri(uri)) {
+            Log.w(TAG, "Rejected picked file: unexpected URI");
+            Toast.makeText(this, R.string.vpn_profile_read_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
         String fileText = readTextFromUri(uri);
         if (fileText == null) {
             Toast.makeText(this, R.string.vpn_profile_read_failed, Toast.LENGTH_LONG).show();
@@ -164,6 +171,35 @@ public class VpnServersActivity extends AppCompatActivity {
         adapter.setProfiles(profiles, profileStore.getActiveProfileId());
         tvEmpty.setVisibility(profiles.isEmpty() ? View.VISIBLE : View.GONE);
         rvProfiles.setVisibility(profiles.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    /**
+     * The system picker (ACTION_OPEN_DOCUMENT) only returns content:// URIs issued by
+     * another app's document provider. The result still originates outside this app,
+     * so before resolving it make sure it cannot be steered at this app's own content
+     * providers (confused deputy), at file:// paths, or through path traversal.
+     */
+    private boolean isSafePickedUri(@Nullable Uri uri) {
+        if (uri == null || !ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
+            return false;
+        }
+        String authority = uri.getAuthority();
+        if (authority == null || authority.isEmpty()) {
+            return false;
+        }
+        // content://<userId>@<authority>/... is resolved against <authority>, so drop the user info.
+        int at = authority.lastIndexOf('@');
+        String providerName = (at >= 0 ? authority.substring(at + 1) : authority).toLowerCase(Locale.ROOT);
+        String ownPackage = getPackageName().toLowerCase(Locale.ROOT);
+        if (providerName.equals(ownPackage) || providerName.startsWith(ownPackage + ".")) {
+            return false;
+        }
+        for (String segment : uri.getPathSegments()) {
+            if ("..".equals(segment)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Nullable
