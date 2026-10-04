@@ -1,0 +1,56 @@
+name: Issue Filter & Auto Responder
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  filter-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Process Issue Rules
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || "";
+            const issueNumber = context.payload.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // 1. Play Store Filter Rule
+            if (body.includes("Play Store")) {
+              const playStoreMsg = `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
+                `Thank you for reaching out! However, **NetShield DNS Resolver has NOT been uploaded to the Google Play Store**.\n\n` +
+                `If you downloaded an app with this name from the Play Store, it is an **unofficial or potentially modified build** not maintained by this project.\n\n` +
+                `🔒 **Security Recommendation:** For your safety and privacy, please uninstall that version immediately and get the official release directly from our [GitHub Releases](https://github.com/${owner}/${repo}/releases) or **F-Droid**.\n\n` +
+                `*This issue is being automatically closed as we do not support third-party Play Store uploads.* 🛑`;
+
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issueNumber, body: playStoreMsg
+              });
+
+              await github.rest.issues.update({
+                owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned"
+              });
+              return;
+            }
+
+            // 2. Closed Support Versions Filter Rule
+            if (body.includes("support closed")) {
+              const closedSupportMsg = `📦 **End of Support Notice** ⏳\n\n` +
+                `Thank you for filing this bug report! You have selected a version marked as **Support Closed** (BETA, 1.0.0, or 2.0.0).\n\n` +
+                `🚀 **Action Required:** We no longer maintain or provide patches for legacy releases. Most bugs from earlier versions have already been fixed in newer updates.\n\n` +
+                `Please update your application to the **latest stable release (v3.1.1+)** from our GitHub Releases or F-Droid. If the bug still exists on the latest version, feel free to submit a new issue with updated logs.\n\n` +
+                `*This issue has been automatically closed.* 🤖`;
+
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issueNumber, body: closedSupportMsg
+              });
+
+              await github.rest.issues.update({
+                owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned"
+              });
+              return;
+            }
