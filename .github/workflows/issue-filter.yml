@@ -15,7 +15,6 @@ jobs:
         with:
           script: |
             const body = context.payload.issue.body || "";
-            const lowerBody = body.toLowerCase();
             const issueNumber = context.payload.issue.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -46,33 +45,49 @@ jobs:
               });
             }
 
+            // ==========================================
+            // 📋 TEMPLATE VALIDATION FILTER
+            // ==========================================
             const versionType = getFieldValue("Version Type");
+            const downloadSource = getFieldValue("Where did you download the app from\\?");
+
+            // If template headers are completely missing, close issue with template request
+            if (!versionType || !downloadSource) {
+              const noTemplateMsg = `🛑 **Invalid Issue Format** 🛑\n\n` +
+                `Thank you for reaching out! However, this issue report does not use our official **Bug Report Template**.\n\n` +
+                `📋 **How to Fix:** Please open a new issue using our [Bug Report Form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic information is captured properly.\n\n` +
+                `*This issue has been automatically closed.* 🤖`;
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: noTemplateMsg });
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+              return;
+            }
+
             const stableVersion = getFieldValue("Stable App Version");
             const buildTag = getFieldValue("Release Tag / Commit Hash \\(Prerelease / Test Builds Only\\)");
 
             const isStableType = versionType.toLowerCase().includes("stable");
-            const isPrereleaseBuild = lowerBody.includes("github prerelease") ||
-                                      lowerBody.includes("nightly build") ||
-                                      lowerBody.includes("alpha build") ||
-                                      lowerBody.includes("beta build");
+            const isPrereleaseBuild = !isStableType;
+
+            // Supported platforms: GitHub, F-Droid, APK Pure
+            // Invalid platforms: Play Store, Other 3rd party platforms
+            const isPlayStore = downloadSource.toLowerCase().includes("play store");
+            const isOtherThirdParty = downloadSource.toLowerCase().includes("other 3rd party");
+            const isInvalidSource = isPlayStore || isOtherThirdParty;
+            const isLegacyVersion = isStableType && stableVersion.toLowerCase().includes("support closed");
 
             // ==========================================
             // 🛑 STRICT FILTERS (UNSUPPORTED / UNOFFICIAL -> AUTO-CLOSE)
             // ==========================================
-
-            const isPlayStore = body.includes("Play Store");
-            const isThirdParty = body.includes("APK Pure") || body.includes("Other 3rd party platforms");
-            const isInvalidSource = isPlayStore || isThirdParty;
-            const isLegacyVersion = isStableType && body.includes("support closed");
 
             // 1. Combined Policy Rule: Legacy Version + Invalid Download Source
             if (isLegacyVersion && isInvalidSource) {
               const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
               const combinedMsg = `🚨 **Multiple Policy Issues Detected (Unsupported Version & Unofficial Source)** 🛡️\n\n` +
                 `Thank you for reaching out! Your report triggered two policy filters:\n\n` +
-                `1. ⚠️ **Unofficial Download Source (${sourceLabel}):** NetShield DNS Resolver is ONLY officially distributed via **GitHub Releases** and **F-Droid**.\n` +
+                `1. ⚠️ **Unofficial Download Source (${sourceLabel}):** NetShield DNS Resolver is ONLY officially distributed via **GitHub Releases**, **F-Droid**, and **APK Pure**.\n` +
                 `2. 📦 **End of Support Version:** You selected a legacy version marked as **Support Closed**.\n\n` +
-                `🚀 **Recommended Action:** Please uninstall your current build immediately, and download the **latest stable release (v3.1.1+)** from our official [GitHub Releases](https://github.com/${owner}/${repo}/releases) or **F-Droid**.\n\n` +
+                `🚀 **Recommended Action:** Please uninstall your current build immediately, and download the **latest stable release (v3.1.1+)** from **GitHub Releases**, **F-Droid**, or **APK Pure**.\n\n` +
                 `*This issue has been automatically closed.* 🤖`;
 
               await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: combinedMsg });
@@ -86,7 +101,7 @@ jobs:
               const sourceMsg = `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
                 `Thank you for reaching out! However, **NetShield DNS Resolver is NOT published on ${sourceLabel}**.\n\n` +
                 `If you downloaded an app with this name from ${sourceLabel}, it is an **unofficial or modified build** not maintained by this project.\n\n` +
-                `🔒 **Security Recommendation:** Please uninstall that version immediately and get official releases from [GitHub Releases](https://github.com/${owner}/${repo}/releases) or **F-Droid**.\n\n` +
+                `🔒 **Security Recommendation:** Please uninstall that version immediately and get official releases from **GitHub Releases**, **F-Droid**, or **APK Pure**.\n\n` +
                 `*This issue has been automatically closed.* 🤖`;
 
               await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: sourceMsg });
@@ -98,7 +113,7 @@ jobs:
             if (isLegacyVersion) {
               const closedSupportMsg = `📦 **End of Support Notice** ⏳\n\n` +
                 `Thank you for filing this bug report! You have selected a legacy release marked as **Support Closed**.\n\n` +
-                `🚀 **Action Required:** Please update your application to the **latest stable release (v3.1.1+)** from GitHub Releases or F-Droid.\n\n` +
+                `🚀 **Action Required:** Please update your application to the **latest stable release (v3.1.1+)** from GitHub Releases, F-Droid, or APK Pure.\n\n` +
                 `*This issue has been automatically closed.* 🤖`;
 
               await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: closedSupportMsg });
@@ -124,7 +139,7 @@ jobs:
             }
 
             // Check B: Missing Prerelease Tag / Commit Hash
-            const invalidBuildTag = !buildTag || buildTag.toLowerCase() === "n/a" || buildTag.includes("e.g.");
+            const invalidBuildTag = !buildTag || buildTag.toLowerCase() === "n/a" || buildTag.toLowerCase().includes("e.g.");
             if (isPrereleaseBuild && invalidBuildTag) {
               await updateStatusLabel("on-hold");
 
@@ -147,7 +162,7 @@ jobs:
             if (isPrereleaseBuild) {
               const testerMsg = `🧪 **Testing Build Report Handed Over!** 🚀\n\n` +
                 `Thank you so much for testing our preview builds! Your early feedback is super valuable.\n\n` +
-                `👨‍💻 **Status Update:** All required build details for **\`${buildTag}\`** have been validated. This issue has been tagged as **\`handed-over-to-developer\`** and queued for inspection as soon as the developer is available.\n\n` +
+                `👨‍💻 **Status Update:** All required build details for **\`${buildTag}\`** have been validated. This issue has been tagged as **\`handed-over-to-developer\`** and queued for inspection as soon as the developer is free to inspect it.\n\n` +
                 `*Thank you for helping us improve NetShield!* 🛠️`;
 
               await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: testerMsg });
@@ -157,6 +172,7 @@ jobs:
             // 💡 SMART FAQ ANSWERS (KEPT OPEN)
             // ==========================================
 
+            const lowerBody = body.toLowerCase();
             let faqTips = [];
 
             if (lowerBody.includes("battery") || lowerBody.includes("drain") || lowerBody.includes("power usage")) {
