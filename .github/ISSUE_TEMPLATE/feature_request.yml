@@ -1,0 +1,65 @@
+name: "Feature Suggestion"
+description: "Propose a new feature, idea, or enhancement for NetShield DNS Resolver"
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "### 💡 NetShield Feature Suggestion\nThank you for helping us improve NetShield! Please describe your proposed feature idea below."
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: "Feature Category"
+      description: "Select the component this feature belongs to."
+      options:
+        - "DNS Engine & Protocols (DoT / DoH / DoQ / UDP)"
+        - "User Interface & UX / Themes"
+        - "Filter Lists & Blocklists"
+        - "Network & Routing Options"
+        - "Other / General Idea"
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-problem
+    attributes:
+      label: "Problem / Motivation"
+      description: "What problem or limitation are you trying to solve?"
+      placeholder: "I find it difficult to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe clearly how you envision this feature working in NetShield."
+      placeholder: "Add an option in settings to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-alternatives
+    attributes:
+      label: "Alternative Solutions"
+      description: "Have you considered any alternative workarounds or options?"
+      placeholder: "Alternatively, we could..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: feature-attachments
+    attributes:
+      label: "Mockups / Screenshots"
+      description: "Attach any UI wireframes, diagrams, or additional context."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: feature-check
+    attributes:
+      label: "Verification"
+      options:
+        - label: "I have searched open issues to confirm this feature hasn't been requested already."
+          required: true
