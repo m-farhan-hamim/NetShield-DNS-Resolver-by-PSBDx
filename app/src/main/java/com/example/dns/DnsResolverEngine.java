@@ -44,6 +44,7 @@ public class DnsResolverEngine {
         this.trustedListManager = TrustedListManager.getInstance(context);
         this.cache = new DnsCache(2000);
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        UpstreamNet.init(context);
     }
 
     public DnsCache getCache() {

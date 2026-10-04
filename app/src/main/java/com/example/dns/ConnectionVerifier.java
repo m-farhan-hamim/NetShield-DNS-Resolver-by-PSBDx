@@ -54,6 +54,7 @@ public final class ConnectionVerifier {
     }
 
     public static Result verifySelected(Context context) {
+        UpstreamNet.init(context);
         SharedPreferences prefs = context.getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
         String mode = prefs.getString("upstream_mode", "DOH");
         byte[] query = buildProbeQuery();
@@ -107,7 +108,7 @@ public final class ConnectionVerifier {
     private static void probeDoh(String dohUrl, byte[] query) throws Exception {
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(dohUrl).openConnection();
+            conn = UpstreamNet.openHttps(new URL(dohUrl));
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(TIMEOUT_MS);
             conn.setReadTimeout(TIMEOUT_MS);
@@ -141,11 +142,10 @@ public final class ConnectionVerifier {
     }
 
     private static void probeDot(String host, int port, byte[] query) throws Exception {
-        Socket plain = new Socket();
+        Socket plain = null;
         SSLSocket ssl = null;
         try {
-            plain.connect(new InetSocketAddress(host, port), TIMEOUT_MS);
-            plain.setSoTimeout(TIMEOUT_MS);
+            plain = UpstreamNet.connect(host, port, TIMEOUT_MS);
             SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
             ssl = (SSLSocket) factory.createSocket(plain, host, port, true);
             ssl.startHandshake();
@@ -170,7 +170,7 @@ public final class ConnectionVerifier {
             } catch (Exception ignored) {
             }
             try {
-                plain.close();
+                if (plain != null) plain.close();
             } catch (Exception ignored) {
             }
         }

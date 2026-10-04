@@ -180,6 +180,8 @@
     <string name="about_disclaimer">This app has been built by PSBDx (M. Farhan Hamim). Significant use of Google AI has been made.</string>
     <string name="about_license">Free and open source software, licensed under the GNU General Public License v3.0 (GPL-3.0-or-later). The full source code is available for anyone to read, modify, and redistribute.</string>
     <string name="about_version_format">Version %1$s</string>
+    <string name="offline_banner">You are currently offline. NetShield cannot be used without an internet connection.</string>
+    <string name="status_waiting_internet">Connect to the internet to start protection</string>
     <string name="notification_permission_banner">Notifications are needed so the running shield status stays visible and controllable. Tap to enable.</string>
     <string name="action_enable">Enable</string>
     <string name="action_update">Update</string>

@@ -1,2 +1,4 @@
-Starting from the app, widgets or the Quick Settings tile now first verifies the connection to your selected DNS method.
-If it fails you see the exact error (with a copy button) and can switch to Google UDP in one tap.
+Connection is verified before starting; on failure you see the exact error and can switch to Google UDP.
+Fixed DoH/DoT timeouts while the VPN is active.
+Offline check: Start is disabled with a banner when there is no internet.
+Fixed corrupt launcher icons.
