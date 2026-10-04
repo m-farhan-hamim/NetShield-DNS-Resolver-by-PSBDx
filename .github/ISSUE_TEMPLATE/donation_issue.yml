@@ -1,0 +1,46 @@
+name: "Donation / Sponsor Issue"
+description: "Report an issue or inquiry regarding project donations or sponsorship"
+title: "[DONATION ISSUE]: "
+labels: ["donation"]
+body:
+  - type: markdown
+    attributes:
+      value: "### 💖 NetShield Donation & Sponsorship Support\nThank you so much for wanting to support NetShield! If you encountered an issue while attempting to donate, please fill out the details below."
+
+  - type: dropdown
+    id: donation-platform
+    attributes:
+      label: "Which platform did you choose?"
+      description: "Select the donation platform or URL you attempted to use."
+      options:
+        - "https://superchat.bd"
+        - "https://donate.psbdx.com"
+        - "Other / GitHub Sponsors"
+    validations:
+      required: true
+
+  - type: textarea
+    id: donation-description
+    attributes:
+      label: "Explain the issue you faced"
+      description: "Describe what went wrong during the transaction or loading process."
+      placeholder: "The payment gateway failed to respond when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: donation-screenshot
+    attributes:
+      label: "Screenshots / Error Proof"
+      description: "You may drag and drop non-sensitive screenshots here. If you prefer not to share images publicly, feel free to email them directly to support@psbdx.com along with this Issue ID and repository link."
+      placeholder: "Paste screenshot or note that proof was sent via email..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacy-consent
+    attributes:
+      label: "Privacy Confirmation"
+      options:
+        - label: "I confirm that I have redacted any sensitive payment information (e.g. card numbers, PINs) before posting."
+          required: true
