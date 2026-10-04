@@ -1,11 +1,11 @@
-name: Bug Report
-description: Report an issue or bug in NetShield DNS Resolver
+name: "Bug Report"
+description: "Report an issue or bug in NetShield DNS Resolver"
 title: "[BUG]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: "### 🛡️️ NetShield Bug Report System\n**App Package:** `com.netshield.dns.psbdx` *(Non-editable)*"
+      value: "### 🛡️ NetShield Bug Report System\n**App Package:** `com.netshield.dns.psbdx` *(Non-editable)*"
 
   - type: dropdown
     id: version-type
@@ -44,7 +44,7 @@ body:
       description: "If you selected a non-stable build type above, enter the exact GitHub release tag or commit hash (e.g. v3.2.0-beta.2). Enter N/A for Stable."
       placeholder: "e.g. v3.2.0-beta.1 or N/A"
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: download-source
