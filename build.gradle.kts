@@ -36,6 +36,7 @@ buildscript {
       add("classpath", "org.jdom:jdom2:2.0.6.1") { because("Dependabot: XXE injection in JDOM") }
       add("classpath", "org.apache.commons:commons-lang3:3.18.0") { because("Dependabot: uncontrolled recursion on long inputs") }
       add("classpath", "org.apache.httpcomponents:httpclient:4.5.14") { because("Dependabot: XSS in Apache HttpClient (fixed in 4.5.13)") }
+      add("classpath", "org.apache.httpcomponents:httpmime:4.5.14") { because("must match httpclient") }
     }
   }
 }
