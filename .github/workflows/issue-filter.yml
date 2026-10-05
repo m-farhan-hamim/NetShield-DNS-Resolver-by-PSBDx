@@ -3,249 +3,499 @@ name: Issue Filter & Smart Assistant
 on:
   issues:
     types: [opened, edited]
+  schedule:
+    - cron: "0 3 * * *" # daily sweep for stale on-hold issues
+
+# One run per issue at a time, newest edit wins
+concurrency:
+  group: issue-assistant-${{ github.event.issue.number || 'sweep' }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   filter-and-answer:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     permissions:
-      issues: write
+      contents: read # only used to clone the wiki for documentation lookup
     steps:
-      - name: Process Issue Rules and Smart FAQ
+      # Mint a short-lived token for the GitHub App so comments/labels
+      # appear under the bot's own identity (e.g. "netshield-bot[bot]").
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      # The wiki is a separate git repo (<repo>.wiki). It's skipped gracefully
+      # if the wiki is disabled or has no pages yet.
+      - name: Checkout wiki
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - name: Process issue
         uses: actions/github-script@v7
         with:
+          github-token: ${{ steps.app-token.outputs.token }}
           script: |
-            const body = context.payload.issue.body || "";
-            const issueNumber = context.payload.issue.number;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            const issue = context.payload.issue;
+            const { owner, repo } = context.repo;
+            const issueNumber = issue.number;
+            const body = issue.body || "";
+            const action = context.payload.action;
 
-            // Helper to parse GitHub Issue Form fields by heading
-            function getFieldValue(headerText) {
-              const regex = new RegExp(`### ${headerText}\\s*\\n\\s*([\\s\\S]*?)(?=\\n### |$)`, 'i');
-              const match = body.match(regex);
-              return match ? match[1].trim() : '';
+            // ---------- Guards ----------
+            if (issue.pull_request) return;
+            if (context.payload.sender?.type === "Bot") return;
+            if (issue.state === "closed") return; // don't resurrect/reprocess closed issues
+            const isMaintainer = ["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association);
+            if (isMaintainer) {
+              core.info("Author is a maintainer; skipping automation.");
+              return;
             }
 
-            // Helper to manage status labels without clearing existing labels (e.g. 'bug', 'donation')
-            async function updateStatusLabel(targetLabel) {
-              const issueResponse = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
-              const currentLabels = issueResponse.data.labels.map(l => typeof l === 'string' ? l : l.name);
-              const managedStatusLabels = ["on-hold", "handed-over-to-developer"];
-              
-              const cleanedLabels = currentLabels.filter(l => !managedStatusLabels.includes(l));
-              if (targetLabel) {
-                cleanedLabels.push(targetLabel);
+            // ---------- Helpers ----------
+            const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+            // Read a GitHub Issue Form field by its heading; treats "_No response_" as empty
+            function field(header) {
+              const re = new RegExp(`### ${esc(header)}\\s*\\n\\s*([\\s\\S]*?)(?=\\n### |$)`, "i");
+              const m = body.match(re);
+              const v = m ? m[1].trim() : "";
+              return /^_?no response_?$/i.test(v) ? "" : v;
+            }
+
+            // Make user-provided text safe to echo in a comment
+            const safe = (s, max = 80) =>
+              s.replace(/[`\r\n]/g, " ").replace(/@/g, "@\u200b").trim().slice(0, max);
+
+            const MARK = (key) => `<!-- netshield-bot:${key} -->`;
+            const MANAGED = {
+              "on-hold": { color: "fbca04", description: "Waiting for required info from the reporter" },
+              "handed-over-to-developer": { color: "0e8a16", description: "Validated and queued for the developer" },
+              "invalid-source": { color: "b60205", description: "Reported from an unofficial download source" },
+              "duplicate-suspected": { color: "cfd3d7", description: "Bot found possibly related issues" },
+            };
+
+            async function ensureLabel(name) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (e) {
+                if (e.status !== 404) throw e;
+                await github.rest.issues.createLabel({ owner, repo, name, ...MANAGED[name] });
               }
-              
-              await github.rest.issues.setLabels({
-                owner,
-                repo,
-                issue_number: issueNumber,
-                labels: cleanedLabels
+            }
+
+            const DEVELOPER = "m-farhan-hamim";
+            // How the reported app version is tracked on bug reports: "milestone" | "label"
+            const VERSION_MODE = "label";
+
+            // Replace only the bot's workflow-status labels; keep everything else (bug, donation, ...)
+            // Also keeps the developer assignment in sync with the status.
+            const STATUS = ["on-hold", "handed-over-to-developer"];
+            async function setStatus(target) {
+              const { data } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              const current = data.labels.map((l) => (typeof l === "string" ? l : l.name));
+              const next = current.filter((l) => !STATUS.includes(l));
+              if (target) { await ensureLabel(target); next.push(target); }
+              if (!(next.length === current.length && next.every((l) => current.includes(l)))) {
+                await github.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels: next });
+              }
+
+              const assigned = (data.assignees || []).some((a) => a.login === DEVELOPER);
+              try {
+                if (target === "handed-over-to-developer" && !assigned) {
+                  await github.rest.issues.addAssignees({ owner, repo, issue_number: issueNumber, assignees: [DEVELOPER] });
+                } else if (target === "on-hold" && assigned) {
+                  // info is missing again, so it's not the developer's turn yet
+                  await github.rest.issues.removeAssignees({ owner, repo, issue_number: issueNumber, assignees: [DEVELOPER] });
+                }
+              } catch (e) {
+                core.warning(`Assignee update failed: ${e.message}`);
+              }
+            }
+
+            // Track the app version the bug was reported on
+            async function trackVersion(ver) {
+              const title = `v${ver}`;
+              if (VERSION_MODE === "label") {
+                const label = `affects-${title}`;
+                try { await github.rest.issues.getLabel({ owner, repo, name: label }); }
+                catch (e) {
+                  if (e.status !== 404) throw e;
+                  await github.rest.issues.createLabel({ owner, repo, name: label, color: "c5def5", description: `Reported on ${title}` });
+                }
+                const { data } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+                const names = data.labels.map((l) => (typeof l === "string" ? l : l.name));
+                const next = names.filter((n) => !n.startsWith("affects-v")).concat(label);
+                await github.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels: next });
+                return;
+              }
+              // Milestone mode: never overwrite a milestone a maintainer already chose
+              if (issue.milestone) return;
+              const all = await github.paginate(github.rest.issues.listMilestones, { owner, repo, state: "all", per_page: 100 });
+              let m = all.find((x) => x.title.replace(/^v/i, "") === ver);
+              if (!m) {
+                m = (await github.rest.issues.createMilestone({
+                  owner, repo, title, description: `Bug reports filed against ${title}`,
+                })).data;
+              }
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, milestone: m.number });
+            }
+
+            async function addLabel(name) {
+              await ensureLabel(name);
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [name] });
+            }
+
+            // Upsert: one bot comment per "key" per issue, edited in place instead of spamming
+            async function findComment(key) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: issueNumber, per_page: 100,
+              });
+              return comments.find((c) => c.user?.type === "Bot" && c.body?.includes(MARK(key)));
+            }
+            async function say(key, text) {
+              const full = `${MARK(key)}\n${text}`;
+              const existing = await findComment(key);
+              if (existing) {
+                if (existing.body === full) return;
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: full });
+              } else {
+                await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: full });
+              }
+            }
+
+            async function closeWith(key, text) {
+              await say(key, text + `\n\n*This issue has been automatically closed.* 🤖`);
+              await github.rest.issues.update({
+                owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned",
               });
             }
 
             // ==========================================
-            // 💖 DONATION / SPONSOR ISSUE AUTOMATION
+            // 💖 DONATION / SPONSOR ISSUES
             // ==========================================
-            const donationPlatform = getFieldValue("Which platform did you choose\\?");
+            const donationPlatform = field("Which platform did you choose?");
 
             if (donationPlatform) {
-              // 1. https://donate.psbdx.com -> Auto-close with expectation notice
               if (donationPlatform.includes("https://donate.psbdx.com")) {
-                const donatePsbdxMsg = `🚧 **Self-Hosted Donation Site Under Construction** 💖\n\n` +
+                await closeWith("donation",
+                  `🚧 **Self-Hosted Donation Site Under Construction** 💖\n\n` +
                   `Thank you so much for your generosity and interest in supporting NetShield!\n\n` +
-                  `Please note that **https://donate.psbdx.com** is currently under active development and is not yet ready to process payments. It is expected that transactions on this domain will not work right now.\n\n` +
-                  `🚀 **Alternative:** You can support us via **https://superchat.bd** or check back later once our self-hosted portal officially launches!\n\n` +
-                  `*This issue has been automatically closed.* 🤖`;
-
-                await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: donatePsbdxMsg });
-                await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+                  `**https://donate.psbdx.com** is still under active development and cannot process payments yet, so transactions there are expected to fail.\n\n` +
+                  `🚀 **Alternative:** support us via **https://superchat.bd**, or check back once our self-hosted portal launches!`);
                 return;
               }
-
-              // 2. https://superchat.bd -> Acknowledge, apply label, keep open
               if (donationPlatform.includes("https://superchat.bd")) {
-                await updateStatusLabel("handed-over-to-developer");
-
-                const superchatMsg = `💖 **Thank You for Your Support!** 🚀\n\n` +
+                await setStatus("handed-over-to-developer");
+                await say("donation",
+                  `💖 **Thank You for Your Support!** 🚀\n\n` +
                   `We really appreciate your willingness to back the NetShield project!\n\n` +
-                  `🛠️ **Status Update:** Our team is actively investigating the issue with **superchat.bd**. This report has been tagged as **\`handed-over-to-developer\`** for immediate inspection.\n\n` +
-                  `*Note: If you emailed screenshots to \`support@psbdx.com\`, our team will match them with this Issue ID.* 📧`;
-
-                await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: superchatMsg });
+                  `🛠️ **Status Update:** We're investigating the issue with **superchat.bd**. This report is tagged **\`handed-over-to-developer\`**.\n\n` +
+                  `*If you emailed screenshots to \`support@psbdx.com\`, we'll match them with this issue number (#${issueNumber}).* 📧`);
                 return;
               }
             }
 
             // ==========================================
-            // 📋 TEMPLATE VALIDATION FILTER (BUG REPORTS)
+            // 📋 TEMPLATE DETECTION
             // ==========================================
-            const versionType = getFieldValue("Version Type");
-            const downloadSource = getFieldValue("Where did you download the app from\\?");
+            const isFeature = body.includes("Feature Category");
+            const versionType = field("Version Type");
+            const downloadSource = field("Where did you download the app from?");
 
-            // If template headers are completely missing (and it's not a donation form), close with request to use template
-            if (!versionType && !downloadSource && !donationPlatform && !body.includes("Feature Category")) {
-              const noTemplateMsg = `🛑 **Invalid Issue Format** 🛑\n\n` +
-                `Thank you for reaching out! However, this issue report does not use one of our official **Issue Templates**.\n\n` +
-                `📋 **How to Fix:** Please open a new issue using our [Bug Report / Feature Request Form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic information is captured properly.\n\n` +
-                `*This issue has been automatically closed.* 🤖`;
-
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: noTemplateMsg });
-              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+            if (!versionType && !downloadSource && !donationPlatform && !isFeature) {
+              await closeWith("template",
+                `🛑 **Invalid Issue Format** 🛑\n\n` +
+                `This report doesn't use one of our official **Issue Templates**.\n\n` +
+                `📋 **How to Fix:** please open a new issue with the [Bug Report / Feature Request form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic info is captured.`);
               return;
             }
-
-            // If it's a feature request template, skip bug filters
-            if (body.includes("Feature Category")) {
-              return;
-            }
-
-            const stableVersion = getFieldValue("Stable App Version");
-            const buildTag = getFieldValue("Release Tag / Commit Hash \\(Prerelease / Test Builds Only\\)");
-
-            const isStableType = versionType.toLowerCase().includes("stable");
-            const isPrereleaseBuild = !isStableType;
-
-            const isPlayStore = downloadSource.toLowerCase().includes("play store");
-            const isOtherThirdParty = downloadSource.toLowerCase().includes("other 3rd party");
-            const isInvalidSource = isPlayStore || isOtherThirdParty;
-            const isLegacyVersion = isStableType && stableVersion.toLowerCase().includes("support closed");
+            if (isFeature) return;
 
             // ==========================================
-            // 🛑 STRICT BUG FILTERS (AUTO-CLOSE)
+            // 🧠 PARSE BUG REPORT
             // ==========================================
+            const stableVersion = field("Stable App Version");
+            const buildTag = field("Release Tag / Commit Hash (Prerelease / Test Builds Only)");
 
-            if (isLegacyVersion && isInvalidSource) {
-              const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
-              const combinedMsg = `🚨 **Multiple Policy Issues Detected (Unsupported Version & Unofficial Source)** 🛡️\n\n` +
-                `Thank you for reaching out! Your report triggered two policy filters:\n\n` +
+            const isStable = versionType.toLowerCase().includes("stable");
+            const isPrerelease = !isStable;
+
+            const src = downloadSource.toLowerCase();
+            const isPlayStore = src.includes("play store");
+            const isOtherThirdParty = src.includes("other 3rd party");
+            const badSource = isPlayStore || isOtherThirdParty;
+            const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
+            const isLegacy = isStable && stableVersion.toLowerCase().includes("support closed");
+
+            // ==========================================
+            // 🛑 STRICT FILTERS (AUTO-CLOSE)
+            // ==========================================
+            if (badSource) await addLabel("invalid-source").catch(() => {});
+
+            if (isLegacy && badSource) {
+              await closeWith("policy",
+                `🚨 **Multiple Policy Issues Detected** 🛡️\n\n` +
                 `1. ⚠️ **Unofficial Download Source (${sourceLabel}):** NetShield DNS Resolver is ONLY officially distributed via **GitHub Releases**, **F-Droid**, and **APK Pure**.\n` +
-                `2. 📦 **End of Support Version:** You selected a legacy version marked as **Support Closed**.\n\n` +
-                `🚀 **Recommended Action:** Please uninstall your current build immediately, and download the **latest stable release (v3.1.1+)** from **GitHub Releases**, **F-Droid**, or **APK Pure**.\n\n` +
-                `*This issue has been automatically closed.* 🤖`;
-
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: combinedMsg });
-              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+                `2. 📦 **End of Support Version:** you selected a legacy version marked **Support Closed**.\n\n` +
+                `🚀 **Recommended Action:** uninstall your current build and install the **latest stable release (v3.1.1+)** from **GitHub Releases**, **F-Droid**, or **APK Pure**.`);
               return;
             }
-
-            if (isInvalidSource) {
-              const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
-              const sourceMsg = `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
-                `Thank you for reaching out! However, **NetShield DNS Resolver is NOT published on ${sourceLabel}**.\n\n` +
-                `If you downloaded an app with this name from ${sourceLabel}, it is an **unofficial or modified build** not maintained by this project.\n\n` +
-                `🔒 **Security Recommendation:** Please uninstall that version immediately and get official releases from **GitHub Releases**, **F-Droid**, or **APK Pure**.\n\n` +
-                `*This issue has been automatically closed.* 🤖`;
-
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: sourceMsg });
-              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+            if (badSource) {
+              await closeWith("policy",
+                `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n` +
+                `**NetShield DNS Resolver is NOT published on ${sourceLabel}.**\n\n` +
+                `If you installed an app with this name from there, it is an **unofficial or modified build** not maintained by this project.\n\n` +
+                `🔒 **Security Recommendation:** uninstall it and get official releases from **GitHub Releases**, **F-Droid**, or **APK Pure**.`);
               return;
             }
-
-            if (isLegacyVersion) {
-              const closedSupportMsg = `📦 **End of Support Notice** ⏳\n\n` +
-                `Thank you for filing this bug report! You have selected a legacy release marked as **Support Closed**.\n\n` +
-                `🚀 **Action Required:** Please update your application to the **latest stable release (v3.1.1+)** from GitHub Releases, F-Droid, or APK Pure.\n\n` +
-                `*This issue has been automatically closed.* 🤖`;
-
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: closedSupportMsg });
-              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: "closed", state_reason: "not_planned" });
+            if (isLegacy) {
+              await closeWith("policy",
+                `📦 **End of Support Notice** ⏳\n\n` +
+                `You selected a legacy release marked **Support Closed**.\n\n` +
+                `🚀 **Action Required:** update to the **latest stable release (v3.1.1+)** from GitHub Releases, F-Droid, or APK Pure.`);
               return;
             }
 
             // ==========================================
-            // 🔎 INFORMATION VALIDATION (KEEP OPEN & ON-HOLD)
+            // 🔎 INFORMATION VALIDATION (ON-HOLD)
             // ==========================================
+            const missing = [];
+            if (isStable && (!stableVersion || /^n\/?a$/i.test(stableVersion) || stableVersion.includes("N/A"))) {
+              missing.push("stable");
+            }
+            const invalidBuildTag = !buildTag || /^n\/?a$/i.test(buildTag) || /e\.g\./i.test(buildTag);
+            if (isPrerelease && invalidBuildTag) missing.push("prerelease");
 
-            if (isStableType && (stableVersion.includes("N/A") || !stableVersion)) {
-              await updateStatusLabel("on-hold");
-              
-              const missingVersionMsg = `⚠️ **Action Required: Missing App Version** 🛡️\n\n` +
-                `You selected **Stable** as your Version Type, but did not choose a valid release version.\n\n` +
-                `📝 **How to Fix:** Please click **Edit** on your issue report above and select your installed version (e.g. \`3.1.1\` or \`3.1.0\`).\n\n` +
-                `*This issue has been placed **On Hold** until the missing information is provided.* ⏳`;
-
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: missingVersionMsg });
+            if (missing.includes("stable")) {
+              await setStatus("on-hold");
+              await say("needs-info",
+                `⚠️ **Action Required: Missing App Version** 🛡️\n\n` +
+                `You selected **Stable** but didn't choose a valid release version.\n\n` +
+                `📝 **How to Fix:** click **Edit** on your issue above and select your installed version (e.g. \`3.1.1\` or \`3.1.0\`). I'll re-check automatically when you save.\n\n` +
+                `*On Hold until the missing information is provided. Issues on hold for 7 days with no update are closed automatically.* ⏳`);
+              return;
+            }
+            if (missing.includes("prerelease")) {
+              await setStatus("on-hold");
+              await say("needs-info",
+                `⚠️ **Action Required: Missing Release Tag / Commit Hash** 🧪\n\n` +
+                `You selected a test build type (**${safe(versionType)}**) but didn't provide a valid Release Tag or Commit Hash.\n\n` +
+                `📝 **How to Fix:** click **Edit** on your issue above and enter the exact GitHub release tag or commit hash (e.g. \`v3.2.0-beta.2\` or \`a1b2c3d\`). I'll re-check automatically when you save.\n\n` +
+                `*On Hold until the missing information is provided. Issues on hold for 7 days with no update are closed automatically.* ⏳`);
               return;
             }
 
-            const invalidBuildTag = !buildTag || buildTag.toLowerCase() === "n/a" || buildTag.toLowerCase().includes("e.g.");
-            if (isPrereleaseBuild && invalidBuildTag) {
-              await updateStatusLabel("on-hold");
+            // ==========================================
+            // ✅ VALIDATION PASSED -> HAND OVER
+            // ==========================================
+            await setStatus("handed-over-to-developer");
 
-              const missingTagMsg = `⚠️ **Action Required: Missing Release Tag / Commit Hash** 🧪\n\n` +
-                `You selected a test build type (**${versionType}**), but did not provide a valid Release Tag or Commit Hash.\n\n` +
-                `📝 **How to Fix:** Please click **Edit** on your issue report above and enter the exact GitHub release tag or commit hash (e.g., \`v3.2.0-beta.2\` or \`a1b2c3d\`).\n\n` +
-                `*This issue has been placed **On Hold** until the missing information is provided.* ⏳`;
+            // If we previously asked for info, mark that request as resolved (edit in place)
+            const prevNeedsInfo = await findComment("needs-info");
+            if (prevNeedsInfo) {
+              await say("needs-info",
+                `✅ **Thanks, the missing information has been provided.** This issue is no longer on hold.`);
+            }
 
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: missingTagMsg });
-              return;
+            // Stable: "3.1.1" -> v3.1.1. Prerelease: tag "v3.2.0-beta.2" -> v3.2.0 (the upcoming release).
+            // A bare commit hash has no version, so it's skipped.
+            try {
+              const vm = (isStable ? stableVersion : buildTag).match(/(\d+\.\d+(?:\.\d+)?)/);
+              if (vm) await trackVersion(vm[1]);
+            } catch (e) {
+              core.warning(`Version tracking failed: ${e.message}`);
+            }
+
+            if (isPrerelease) {
+              await say("handover",
+                `🧪 **Testing Build Report Handed Over!** 🚀\n\n` +
+                `Thanks for testing our preview builds! Build details for **\`${safe(buildTag)}\`** are validated, and the issue is tagged **\`handed-over-to-developer\`** for inspection as soon as the developer is free.`);
             }
 
             // ==========================================
-            // ✅ VALIDATION PASSED -> HAND OVER TO DEVELOPER
+            // 💡 SMART FAQ (scored, de-duplicated, one editable comment)
             // ==========================================
+            const text = `${issue.title}\n${body}`.toLowerCase();
 
-            await updateStatusLabel("handed-over-to-developer");
+            const FAQ = [
+              {
+                id: "battery",
+                match: /\b(battery|drain(ing|s|ed)?|power usage|wakelock)\b/,
+                tip: `🔋 **Regarding Battery Usage:**\nAndroid attributes all routed traffic to NetShield because it runs as a local \`VpnService\`, so the battery stats menu counts bandwidth passing through the local DNS proxy as CPU use. Actual consumption by NetShield itself is negligible (~1–2%).`,
+              },
+              {
+                id: "multi-vpn",
+                match: /\b(another vpn|wireguard|openvpn|dual vpn|expressvpn|nordvpn|proton ?vpn|mullvad|warp|always[- ]on vpn)\b/,
+                tip: `🔌 **Regarding Running Multiple VPNs:**\nAndroid allows only **one active \`VpnService\` at a time**. Running NetShield next to WireGuard, ExpressVPN or any other VPN app makes one of them disconnect automatically.`,
+              },
+              {
+                id: "private-dns",
+                match: /\b(private dns|settings dns|dns[- ]over[- ]tls in settings)\b/,
+                tip: `⚙️ **Regarding Android "Private DNS":**\nIf **Private DNS** is ON in system settings (\`Settings → Network & Internet → Private DNS\`), it can block NetShield's local encrypted tunnel socket binding. Set it to **Off** or **Automatic** so DoT/DoH can resolve properly.`,
+              },
+              {
+                id: "host-resolution",
+                match: /(unknownhostexception|eai_nodata|unable to resolve host|sockettimeoutexception|ssl(handshake)?exception|connection (timed out|refused))/,
+                tip: `🌐 **Regarding Host Resolution / Connection Errors:**\nThe encrypted upstream DNS endpoint couldn't be reached over port 853 (DoT) or 443 (DoH).\n* Check whether your Wi-Fi or mobile ISP blocks outgoing TLS port 853.\n* Enable **Auto-Switch to UDP Fallback** in NetShield settings, or verify your Bootstrap DNS IP is intact.`,
+              },
+              {
+                id: "killed-in-background",
+                match: /\b(stops? (working|running)|keeps? (stopping|closing|disconnecting)|killed|disconnects?|not (staying|running) in (the )?background|after (a )?(reboot|restart))\b/,
+                tip: `🛑 **Regarding the app stopping in the background:**\nAggressive OEM battery managers (MIUI, ColorOS, OneUI, etc.) often kill VPN services. Set NetShield's battery mode to **Unrestricted**, lock it in the recents screen, and enable auto-start if your device has that option. See https://dontkillmyapp.com for device-specific steps.`,
+              },
+              {
+                id: "slow",
+                match: /\b(slow(er)?|latency|lag(gy|ging)?|high ping|page(s)? (load|loading) (slow|forever))\b/,
+                tip: `🐢 **Regarding slow browsing:**\nA slow upstream resolver or blocked DoT port causes long DNS waits. Try a different upstream provider in NetShield, and enable UDP fallback if your network blocks port 853.`,
+              },
+              {
+                id: "site-broken",
+                match: /\b(website|site|app|page)s?\b.{0,40}\b(not (loading|working|opening)|broken|blocked|won'?t (load|open))\b|\bfalse positive\b/,
+                tip: `🚫 **Regarding a site or app that breaks:**\nA blocklist entry may be catching a legitimate domain. Check NetShield's query log for the blocked domain and add it to your **allowlist**. If it's a false positive in a default list, include the domain in this issue so we can report it upstream.`,
+              },
+            ];
 
-            if (isPrereleaseBuild) {
-              const testerMsg = `🧪 **Testing Build Report Handed Over!** 🚀\n\n` +
-                `Thank you so much for testing our preview builds! Your early feedback is super valuable.\n\n` +
-                `👨‍💻 **Status Update:** All required build details for **\`${buildTag}\`** have been validated. This issue has been tagged as **\`handed-over-to-developer\`** and queued for inspection as soon as the developer is free to inspect it.\n\n` +
-                `*Thank you for helping us improve NetShield!* 🛠️`;
-
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: testerMsg });
+            const hits = FAQ.filter((f) => f.match.test(text));
+            if (hits.length) {
+              await say("faq",
+                `🤖 **Automated Helper & Frequently Asked Questions** 💡\n\n` +
+                `Based on your report, these might help right away:\n\n` +
+                hits.map((h) => h.tip).join("\n\n---\n\n") +
+                `\n\n---\n✨ **Did this solve your problem?**\n` +
+                `* **Yes:** please click **"Close issue"** below. 😊\n` +
+                `* **No:** reply with extra context and the developer will take a look. 🚀`);
             }
 
             // ==========================================
-            // 💡 SMART FAQ ANSWERS (KEPT OPEN)
+            // 📚 WIKI DISCOVERY (keyword-scored against wiki pages)
             // ==========================================
+            try {
+              const fs = require("fs");
+              const nodePath = require("path");
+              const wikiDir = nodePath.join(process.env.GITHUB_WORKSPACE, "wiki");
 
-            const lowerBody = body.toLowerCase();
-            let faqTips = [];
+              if (fs.existsSync(wikiDir)) {
+                const STOP = new Set(("the and for with not you your this that have has had was were are but can cant dont " +
+                  "does did when after before from into out all any app apps issue bug version stable release releases " +
+                  "download downloaded github droid fdroid apk pure android tag commit hash build builds test prerelease " +
+                  "steps expected actual behavior behaviour describe reproduce problem using use used get got just also " +
+                  "please thanks netshield dns resolver psbdx").split(" "));
+                const tok = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ")
+                  .split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
 
-            if (lowerBody.includes("battery") || lowerBody.includes("drain") || lowerBody.includes("power usage")) {
-              faqTips.push(
-                `🔋 **Regarding Battery Usage:**\n` +
-                `Android attributes all routed device network traffic directly to NetShield because it operates as a local \`VpnService\`. ` +
-                `The Android battery stats menu incorrectly counts bandwidth passing through the local DNS proxy as CPU consumption. Actual battery usage by NetShield itself is negligible (~1–2%).`
-              );
+                // Query: title words count triple, body words once (form headings stripped)
+                const query = new Map();
+                for (const w of tok(issue.title)) query.set(w, (query.get(w) || 0) + 3);
+                for (const w of tok(body.replace(/^###.*$/gm, ""))) query.set(w, (query.get(w) || 0) + 1);
+
+                const pages = fs.readdirSync(wikiDir).filter((f) => f.endsWith(".md") && !f.startsWith("_"));
+                const scored = [];
+                for (const file of pages) {
+                  const base = file.replace(/\.md$/, "");
+                  const content = fs.readFileSync(nodePath.join(wikiDir, file), "utf8");
+                  const nameToks = new Set(tok(base.replace(/-/g, " ")));
+                  const headToks = new Set(tok((content.match(/^#+ .*$/gm) || []).join(" ")));
+                  const bodyToks = tok(content);
+                  const counts = new Map();
+                  for (const w of bodyToks) counts.set(w, (counts.get(w) || 0) + 1);
+
+                  let score = 0;
+                  const matched = [];
+                  for (const [w, q] of query) {
+                    let s = 0;
+                    if (nameToks.has(w)) s += q * 4;
+                    if (headToks.has(w)) s += q * 2;
+                    if (counts.has(w)) s += q * Math.min(counts.get(w), 3) * 0.5;
+                    if (s > 0) { score += s; matched.push(w); }
+                  }
+                  if (matched.length >= 2 && score >= 8) {
+                    scored.push({ base, score, matched: matched.slice(0, 4) });
+                  }
+                }
+
+                scored.sort((a, b) => b.score - a.score);
+                const top = scored.slice(0, 2);
+                if (top.length) {
+                  await say("wiki",
+                    `📚 **I think this GitHub Wiki documentation might fix your problem:**\n\n` +
+                    top.map((p) =>
+                      `* [${p.base.replace(/-/g, " ")}](https://github.com/${owner}/${repo}/wiki/${encodeURIComponent(p.base)})` +
+                      ` _(matched: ${p.matched.join(", ")})_`).join("\n") +
+                    `\n\nThis is an automatic keyword match, so it may not be exact. If it doesn't help, just reply here and the developer will take a look. 🚀`);
+                }
+              }
+            } catch (e) {
+              core.warning(`Wiki discovery skipped: ${e.message}`);
             }
 
-            if (lowerBody.includes("another vpn") || lowerBody.includes("wireguard") || lowerBody.includes("openvpn") || lowerBody.includes("dual vpn")) {
-              faqTips.push(
-                `🔌 **Regarding Running Multiple VPNs:**\n` +
-                `Android OS architecture strictly limits the device to **one active \`VpnService\` interface at a time**. ` +
-                `Running NetShield alongside WireGuard, ExpressVPN, or another VPN app will cause one of the services to disconnect automatically.`
-              );
+            // ==========================================
+            // 🔍 POSSIBLE DUPLICATES (only suggests, never closes)
+            // ==========================================
+            if (action === "opened") {
+              try {
+                const stop = new Set(["the","and","for","with","not","app","netshield","issue","bug","when","after","but","this","that","does","doesn't","cannot","can't","working","error"]);
+                const words = issue.title.toLowerCase().replace(/[^a-z0-9\s]/g, " ")
+                  .split(/\s+/).filter((w) => w.length > 3 && !stop.has(w)).slice(0, 6);
+                if (words.length >= 2) {
+                  const q = `repo:${owner}/${repo} is:issue is:open in:title ${words.join(" ")}`;
+                  const { data } = await github.rest.search.issuesAndPullRequests({ q, per_page: 5 });
+                  const related = data.items.filter((i) => i.number !== issueNumber).slice(0, 3);
+                  if (related.length) {
+                    await addLabel("duplicate-suspected").catch(() => {});
+                    await say("related",
+                      `🔍 **Possibly related open issues:**\n\n` +
+                      related.map((i) => `* #${i.number}: ${safe(i.title, 100)}`).join("\n") +
+                      `\n\nIf one of these matches your problem, please add your details there. A maintainer will confirm whether this is a duplicate.`);
+                  }
+                }
+              } catch (e) {
+                core.warning(`Duplicate search skipped: ${e.message}`);
+              }
             }
 
-            if (lowerBody.includes("private dns") || lowerBody.includes("settings dns")) {
-              faqTips.push(
-                `⚙️ **Regarding Android System "Private DNS":**\n` +
-                `If you have **Private DNS** turned ON in Android System Settings (\`Settings -> Network & Internet -> Private DNS\`), it can block NetShield's local encrypted tunnel socket binding. ` +
-                `Please set Android System Private DNS to **Off** or **Automatic** for NetShield to resolve DoT/DoH properly.`
-              );
-            }
+  stale-sweep:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
 
-            if (lowerBody.includes("unknownhostexception") || lowerBody.includes("eai_nodata") || lowerBody.includes("unable to resolve host")) {
-              faqTips.push(
-                `🌐 **Regarding Host Resolution Errors (\`UnknownHostException\` / \`EAI_NODATA\`):**\n` +
-                `This error indicates that the encrypted upstream DNS server endpoint could not be reached over port 853 (DoT) or port 443 (DoH).\n` +
-                `* Check if your WiFi / Mobile Network ISP blocks outgoing TLS port 853.\n` +
-                `* Enable **Auto-Switch to UDP Fallback** in NetShield settings, or verify that your Bootstrap DNS IP configuration is intact.`
-              );
-            }
+      - name: Close stale on-hold issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-            if (faqTips.length > 0) {
-              const faqComment = `🤖 **Automated Helper & Frequently Asked Questions** 💡\n\n` +
-                `Based on your issue description, here are some automated troubleshooting solutions that might help you right away:\n\n` +
-                faqTips.join("\n\n---\n\n") +
-                `\n\n---\n` +
-                `✨ **Did this solve your problem?**\n` +
-                `* **Yes:** Please click **"Close issue"** below to let us know! 😊\n` +
-                `* **No:** Reply to this thread with any extra context, and the developer will inspect your issue report shortly. 🚀`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: "open", labels: "on-hold", per_page: 100,
+            });
 
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: faqComment });
+            for (const i of issues) {
+              if (i.pull_request) continue;
+              if (new Date(i.updated_at).getTime() > cutoff) continue;
+
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: i.number,
+                body: `⏳ **Closing due to inactivity.** This issue stayed **On Hold** for 7 days without the required information.\n\n` +
+                      `Feel free to open a new issue with the complete details. 🤖`,
+              });
+              await github.rest.issues.update({
+                owner, repo, issue_number: i.number, state: "closed", state_reason: "not_planned",
+              });
             }
