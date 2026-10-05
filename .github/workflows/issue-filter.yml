@@ -30,17 +30,17 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
-      # The wiki is a separate git repo (<repo>.wiki). It's skipped gracefully
-      # if the wiki is disabled or has no pages yet.
-      - name: Checkout wiki
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository }}.wiki
-          path: wiki
+      # The wiki is a separate git repo (<repo>.wiki) that only exists once the
+      # first page is created. A failed clone is just a notice, not an error.
+      - name: Fetch wiki (optional)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki 2>/dev/null \
+            || echo "::notice::No wiki found yet. Create a first wiki page to enable documentation suggestions."
 
       - name: Process issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -54,8 +54,10 @@ jobs:
             if (issue.pull_request) return;
             if (context.payload.sender?.type === "Bot") return;
             if (issue.state === "closed") return; // don't resurrect/reprocess closed issues
+            // Set to false while testing with your own account, otherwise your own issues are skipped
+            const SKIP_MAINTAINERS = false;
             const isMaintainer = ["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association);
-            if (isMaintainer) {
+            if (SKIP_MAINTAINERS && isMaintainer) {
               core.info("Author is a maintainer; skipping automation.");
               return;
             }
@@ -475,7 +477,7 @@ jobs:
           permission-issues: write
 
       - name: Close stale on-hold issues
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
