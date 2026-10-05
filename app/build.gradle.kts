@@ -10,8 +10,8 @@ android {
     applicationId = "com.netshield.dns.psbdx"
     minSdk = 24
     targetSdk = 36
-    versionCode = 6
-    versionName = "3.1.1"
+    versionCode = 7
+    versionName = "3.1.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

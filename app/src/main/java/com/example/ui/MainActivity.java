@@ -2,6 +2,8 @@ package com.example.ui;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -40,7 +42,9 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.DatePicker;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -84,6 +88,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -195,6 +201,12 @@ public class MainActivity extends AppCompatActivity {
     private Button btnExportLogs;
     private Button btnClearLogs;
     private RecyclerView rvLogs;
+    private TextView chipLogFrom;
+    private TextView chipLogTo;
+    private TextView btnLogRangeClear;
+    private long logRangeFrom = 0L; // 0 = no lower bound
+    private long logRangeTo = 0L;   // 0 = no upper bound
+    private final SimpleDateFormat logRangeFormat = new SimpleDateFormat("MMM d, HH:mm", Locale.getDefault());
     private View layoutLogsEmpty;
     private LogAdapter logAdapter;
     private String currentLogFilter = "ALL";
@@ -1341,6 +1353,98 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable s) {}
         });
+
+        chipLogFrom = findViewById(R.id.chip_log_from);
+        chipLogTo = findViewById(R.id.chip_log_to);
+        btnLogRangeClear = findViewById(R.id.btn_log_range_clear);
+        chipLogFrom.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickLogRangeBoundary(true);
+            }
+        });
+        chipLogTo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickLogRangeBoundary(false);
+            }
+        });
+        btnLogRangeClear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                logRangeFrom = 0L;
+                logRangeTo = 0L;
+                updateLogRangeChips();
+                refreshLogs();
+            }
+        });
+        updateLogRangeChips();
+    }
+
+    /** Date then time picker for the start/end of the log time range (logs only go back 72 h). */
+    private void pickLogRangeBoundary(final boolean isFrom) {
+        final long now = System.currentTimeMillis();
+        long current = isFrom ? logRangeFrom : logRangeTo;
+        long initial = current > 0 ? current : (isFrom ? now - DatabaseHelper.LOG_RETENTION_MS : now);
+        final Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(initial);
+
+        DatePickerDialog dateDialog = new DatePickerDialog(this, new DatePickerDialog.OnDateSetListener() {
+            @Override
+            public void onDateSet(DatePicker view, final int year, final int month, final int day) {
+                new TimePickerDialog(MainActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(TimePicker timePicker, int hour, int minute) {
+                        Calendar picked = Calendar.getInstance();
+                        picked.clear();
+                        picked.set(year, month, day, hour, minute, 0);
+                        long millis = picked.getTimeInMillis();
+                        if (!isFrom) {
+                            millis += 59_999L; // the end covers the whole chosen minute
+                        }
+                        applyLogRangeBoundary(isFrom, millis);
+                    }
+                }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE),
+                        android.text.format.DateFormat.is24HourFormat(MainActivity.this)).show();
+            }
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+        dateDialog.getDatePicker().setMinDate(now - DatabaseHelper.LOG_RETENTION_MS);
+        dateDialog.getDatePicker().setMaxDate(now);
+        dateDialog.show();
+    }
+
+    private void applyLogRangeBoundary(boolean isFrom, long millis) {
+        long from = isFrom ? millis : logRangeFrom;
+        long to = isFrom ? logRangeTo : millis;
+        if (from > 0 && to > 0 && from > to) {
+            Toast.makeText(this, R.string.logs_range_invalid, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        logRangeFrom = from;
+        logRangeTo = to;
+        updateLogRangeChips();
+        refreshLogs();
+    }
+
+    private void updateLogRangeChips() {
+        boolean hasFrom = logRangeFrom > 0;
+        boolean hasTo = logRangeTo > 0;
+        int selectedText = Color.parseColor("#031024");
+        int idleText = ContextCompat.getColor(this, R.color.text_secondary);
+
+        chipLogFrom.setText(hasFrom
+                ? getString(R.string.logs_range_from, logRangeFormat.format(new java.util.Date(logRangeFrom)))
+                : getString(R.string.logs_range_from_any));
+        chipLogFrom.setBackgroundResource(hasFrom ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
+        chipLogFrom.setTextColor(hasFrom ? selectedText : idleText);
+
+        chipLogTo.setText(hasTo
+                ? getString(R.string.logs_range_to, logRangeFormat.format(new java.util.Date(logRangeTo)))
+                : getString(R.string.logs_range_to_any));
+        chipLogTo.setBackgroundResource(hasTo ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
+        chipLogTo.setTextColor(hasTo ? selectedText : idleText);
+
+        btnLogRangeClear.setVisibility(hasFrom || hasTo ? View.VISIBLE : View.GONE);
     }
 
     private void setLogFilter(String filter) {
@@ -1359,10 +1463,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshLogs() {
         final String query = etSearchLogs.getText().toString().trim();
+        final long rangeFrom = logRangeFrom;
+        final long rangeTo = logRangeTo;
         backgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                final List<DnsLog> logs = dbHelper.getFilteredLogs(currentLogFilter, query);
+                final List<DnsLog> logs = dbHelper.getFilteredLogs(currentLogFilter, query, rangeFrom, rangeTo);
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {

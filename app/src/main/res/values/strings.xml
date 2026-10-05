@@ -101,7 +101,13 @@
     <string name="test_result_ready">Resolved: %1$s in %2$d ms (%3$s)</string>
 
     <!-- Logs -->
-    <string name="logs_search_hint">Filter domains or status…</string>
+    <string name="logs_search_hint">Search domain or time (14:30, 10-05)…</string>
+    <string name="logs_range_from_any">From: any</string>
+    <string name="logs_range_to_any">To: any</string>
+    <string name="logs_range_from">From: %1$s</string>
+    <string name="logs_range_to">To: %1$s</string>
+    <string name="logs_range_clear">Clear</string>
+    <string name="logs_range_invalid">Start must be before the end</string>
     <string name="filter_all">All</string>
     <string name="filter_blocked">Blocked</string>
     <string name="filter_allowed">Allowed</string>

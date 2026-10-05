@@ -18,6 +18,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "dns_resolver.db";
     private static final int DATABASE_VERSION = 1;
 
+    /** Query logs older than this are deleted (72 hours). */
+    public static final long LOG_RETENTION_MS = 72L * 60L * 60L * 1000L;
+    private static final long LOG_PRUNE_INTERVAL_MS = 60_000L;
+    /** Result caps: a time-range search gets a higher cap so a whole window can be browsed. */
+    private static final int LOG_LIMIT_DEFAULT = 500;
+    private static final int LOG_LIMIT_RANGE = 5000;
+    /** Local-time text of a log row, in the same layout the log list and CSV export use. */
+    private static final String LOG_TIME_TEXT_SQL =
+            "strftime('%Y-%m-%d %H:%M:%S', timestamp / 1000, 'unixepoch', 'localtime')";
+    private long lastLogPruneAt = 0L;
+
     // Table: query_logs
     public static final String TABLE_LOGS = "query_logs";
     public static final String COL_LOG_ID = "id";
@@ -144,7 +155,36 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
+    @Override
+    public void onOpen(SQLiteDatabase db) {
+        super.onOpen(db);
+        if (!db.isReadOnly()) {
+            pruneExpiredLogs(db);
+        }
+    }
+
     // --- Log operations ---
+    private int pruneExpiredLogs(SQLiteDatabase db) {
+        long now = System.currentTimeMillis();
+        lastLogPruneAt = now;
+        return db.delete(TABLE_LOGS, COL_LOG_TIME + " < ?",
+                new String[]{String.valueOf(now - LOG_RETENTION_MS)});
+    }
+
+    /** Deletes query logs older than the 72 hour retention window. */
+    public synchronized int pruneExpiredLogs() {
+        return pruneExpiredLogs(getWritableDatabase());
+    }
+
+    /**
+     * True when the search text looks like part of a timestamp (14:30, 10-05, 2026-10-05 14:3),
+     * so plain domain searches such as "5" or "mail" are not matched against dates.
+     */
+    private static boolean looksLikeTimestampQuery(String q) {
+        return q.matches("\\d{1,4}(-\\d{1,2}){1,2}( \\d{1,2}(:\\d{0,2}){0,2})?")
+                || q.matches("\\d{1,2}:\\d{0,2}(:\\d{0,2})?");
+    }
+
     public synchronized void insertLog(DnsLog log) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
@@ -157,11 +197,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put(COL_LOG_CLIENT_IP, log.getClientIp());
         db.insert(TABLE_LOGS, null, cv);
 
-        // Limit logs to keep DB fast and compact (keep last 2000 entries)
-        db.execSQL("DELETE FROM " + TABLE_LOGS + " WHERE id NOT IN (SELECT id FROM " + TABLE_LOGS + " ORDER BY id DESC LIMIT 2000)");
+        // Keep only the last 72 hours; throttled so busy resolvers don't run a DELETE per query.
+        if (System.currentTimeMillis() - lastLogPruneAt >= LOG_PRUNE_INTERVAL_MS) {
+            pruneExpiredLogs(db);
+        }
     }
 
     public synchronized List<DnsLog> getRecentLogs(int limit, String search, String statusFilter) {
+        return getRecentLogs(limit, search, statusFilter, 0L, 0L);
+    }
+
+    /**
+     * @param fromMillis inclusive lower bound on the log time, or 0 for none
+     * @param toMillis   inclusive upper bound on the log time, or 0 for none
+     */
+    public synchronized List<DnsLog> getRecentLogs(int limit, String search, String statusFilter,
+                                                   long fromMillis, long toMillis) {
+        pruneExpiredLogs();
         List<DnsLog> logs = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
 
@@ -169,8 +221,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         List<String> args = new ArrayList<>();
 
         if (search != null && !search.trim().isEmpty()) {
-            query.append(" AND " + COL_LOG_DOMAIN + " LIKE ?");
-            args.add("%" + search.trim() + "%");
+            String term = "%" + search.trim() + "%";
+            if (looksLikeTimestampQuery(search.trim())) {
+                query.append(" AND (" + COL_LOG_DOMAIN + " LIKE ? OR " + LOG_TIME_TEXT_SQL + " LIKE ?)");
+                args.add(term);
+                args.add(term);
+            } else {
+                query.append(" AND " + COL_LOG_DOMAIN + " LIKE ?");
+                args.add(term);
+            }
+        }
+
+        if (fromMillis > 0) {
+            query.append(" AND " + COL_LOG_TIME + " >= ?");
+            args.add(String.valueOf(fromMillis));
+        }
+        if (toMillis > 0) {
+            query.append(" AND " + COL_LOG_TIME + " <= ?");
+            args.add(String.valueOf(toMillis));
         }
 
         if (statusFilter != null && !statusFilter.equals("ALL")) {
@@ -201,11 +269,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public synchronized List<DnsLog> getFilteredLogs(String statusFilter, String search) {
-        return getRecentLogs(500, search, statusFilter);
+        return getFilteredLogs(statusFilter, search, 0L, 0L);
+    }
+
+    public synchronized List<DnsLog> getFilteredLogs(String statusFilter, String search,
+                                                     long fromMillis, long toMillis) {
+        int limit = (fromMillis > 0 || toMillis > 0) ? LOG_LIMIT_RANGE : LOG_LIMIT_DEFAULT;
+        return getRecentLogs(limit, search, statusFilter, fromMillis, toMillis);
     }
 
     /** Recent logs for one client IP (Hotspot tab's per-device history view). */
     public synchronized List<DnsLog> getLogsForClient(String clientIp, int limit) {
+        pruneExpiredLogs();
         List<DnsLog> logs = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.rawQuery(
@@ -443,7 +518,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         StringBuilder sb = new StringBuilder();
         sb.append("Timestamp,FormattedTime,Domain,RecordType,Status,ResponseTimeMs,Upstream,ClientIp\n");
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
-        List<DnsLog> logs = getRecentLogs(2000, null, "ALL");
+        List<DnsLog> logs = getRecentLogs(10000, null, "ALL");
         for (DnsLog log : logs) {
             sb.append(log.getTimestamp()).append(",");
             sb.append("\"").append(sdf.format(new Date(log.getTimestamp()))).append("\",");
