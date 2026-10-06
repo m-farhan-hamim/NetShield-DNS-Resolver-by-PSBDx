@@ -60,7 +60,7 @@ jobs:
             if (context.payload.sender?.type === "Bot") return;
             if (issue.state === "closed") return; // don't resurrect/reprocess closed issues
             // Set to false while testing with your own account, otherwise your own issues are skipped
-            const SKIP_MAINTAINERS = true;
+            const SKIP_MAINTAINERS = false;
             const isMaintainer = ["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association);
             if (SKIP_MAINTAINERS && isMaintainer) {
               core.info("Author is a maintainer; skipping automation.");
