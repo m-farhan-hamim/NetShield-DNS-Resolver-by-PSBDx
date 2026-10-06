@@ -22,32 +22,6 @@ body:
       required: true
 
   - type: dropdown
-    id: app-version
-    attributes:
-      label: "Stable App Version"
-      description: "If you selected Stable above, choose your installed version here."
-      options:
-        - "N/A (I am using Prerelease / Nightly / Alpha / Beta)"
-        - "3.1.2"
-        - "3.1.1"
-        - "3.1.0"
-        - "3.0.0"
-        - "2.0.0 (support closed)"
-        - "1.0.0 (support closed)"
-        - "BETA (support closed)"
-    validations:
-      required: true
-
-  - type: input
-    id: build-tag
-    attributes:
-      label: "Release Tag / Commit Hash (Prerelease / Test Builds Only)"
-      description: "If you selected a non-stable build type above, enter the exact GitHub release tag or commit hash (e.g. v3.2.0-beta.2). Enter N/A for Stable."
-      placeholder: "e.g. v3.2.0-beta.1 or N/A"
-    validations:
-      required: false
-
-  - type: dropdown
     id: download-source
     attributes:
       label: "Where did you download the app from?"
