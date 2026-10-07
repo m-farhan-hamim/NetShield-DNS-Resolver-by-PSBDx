@@ -339,6 +339,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        syncOperationModeFromPrefs();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ServiceManager.ACTION_STATE_CHANGED);
         filter.addAction(DnsResolverEngine.ACTION_LOG_UPDATED);
@@ -354,6 +355,17 @@ public class MainActivity extends AppCompatActivity {
         startConnectivityMonitor();
         if (blocklistManager != null && blocklistManager.isPaused()) {
             mainHandler.post(pauseTickRunnable);
+        }
+    }
+
+    /** The start flow can switch to Local server mode behind this screen; reflect it in the toggle. */
+    private void syncOperationModeFromPrefs() {
+        if (rbModeServer == null || rbModeVpn == null) return;
+        boolean server = "SERVER".equalsIgnoreCase(prefs.getString("operation_mode", "VPN"));
+        if (server && !rbModeServer.isChecked()) {
+            rbModeServer.setChecked(true);
+        } else if (!server && !rbModeVpn.isChecked()) {
+            rbModeVpn.setChecked(true);
         }
     }
 

@@ -2,3 +2,4 @@ Logs are now kept for 72 hours and show the date of each query.
 Search the log by time (e.g. 14:30 or 10-05) or pick a From/To range.
 Security: imported OpenVPN/WireGuard files are validated before they are read.
 Build tooling dependencies updated to patched versions.
+Works with other VPNs: warns before NetShield would disconnect v2rayNG, offers Local server mode, and saves proxy subscription URLs.
