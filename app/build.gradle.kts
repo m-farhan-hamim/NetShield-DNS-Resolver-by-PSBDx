@@ -48,6 +48,9 @@ android {
       // APK; see proguard-rules.pro.
       isMinifyEnabled = true
       isShrinkResources = true
+      // Reproducible builds (F-Droid): AGP would otherwise embed the Git remote/revision of the
+      // checkout in META-INF, which differs between our CI and F-Droid's build server.
+      vcsInfo.include = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       val releaseKeystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/release.keystore.jks"
       if (file(releaseKeystorePath).exists()) {
@@ -70,6 +73,16 @@ android {
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
+  }
+}
+
+// Reproducible builds (F-Droid): AGP merges the baseline profiles that AndroidX libraries ship into
+// assets/dexopt/baseline.prof, and R8 lays out classes*.dex using that profile. Both come out
+// different on different build machines, so F-Droid's rebuild would not match the published APK.
+// Dropping the profile only costs some first-launch startup speed.
+tasks.configureEach {
+  if (name.contains("ArtProfile")) {
+    enabled = false
   }
 }
 
