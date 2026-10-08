@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 /**
  * Checks the developer's own update-info endpoint for a newer version, and
@@ -28,6 +29,9 @@ import java.nio.charset.StandardCharsets;
  * feature is a no-op whenever the app was installed via F-Droid - see
  * {@link #isSelfUpdateAllowed(Context)}, which every entry point below
  * checks first. Only direct (non-F-Droid) installs ever see it.
+ *
+ * Test builds (versionName starting with BETA, ALPHA or NIGHTLY) never self-update either; see
+ * {@link #isTestBuildName(String)}.
  */
 public final class UpdateChecker {
     private static final String TAG = "UpdateChecker";
@@ -64,7 +68,21 @@ public final class UpdateChecker {
         void onError(Exception e);
     }
 
+    /**
+     * Test builds (versionName like "BETA-1.4.0", "ALPHA-..." or "NIGHTLY-...") never self-update:
+     * the update feed tracks stable releases, and such a name has no comparable number for
+     * {@link #isNewerVersion}, so the banner would otherwise offer an "update" forever.
+     */
+    public static boolean isTestBuildName(String versionName) {
+        if (versionName == null) return false;
+        String v = versionName.trim().toUpperCase(Locale.ROOT);
+        return v.startsWith("BETA") || v.startsWith("ALPHA") || v.startsWith("NIGHTLY");
+    }
+
     public static boolean isSelfUpdateAllowed(Context context) {
+        if (isTestBuildName(currentVersionName(context))) {
+            return false;
+        }
         String installer = getInstallerPackageName(context);
         return !FDROID_INSTALLER_PACKAGE.equals(installer);
     }
