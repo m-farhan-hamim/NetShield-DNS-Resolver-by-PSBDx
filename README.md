@@ -228,6 +228,17 @@ Licensed under the **GNU General Public License v3.0 or later**. See [`LICENSE`]
 
 This app was built by **PSBDx** ([M. Farhan Hamim](https://github.com/m-farhan-hamim)). Significant use of Google AI was made in its development.
 
+---
+
+<div align="center">
+
+### ⭐ Star this repository if you find it useful!
+
+[![GitHub Stars](https://img.shields.io/github/stars/m-farhan-hamim/PSBDx-SVN?style=social)](https://github.com/m-farhan-hamim/PSBDx-SVN)
+[![GitHub Forks](https://img.shields.io/github/forks/m-farhan-hamim/PSBDx-SVN?style=social)](https://github.com/m-farhan-hamim/PSBDx-SVN/fork)
+
+</div>
+
 <div align="center">
 
 <br>
