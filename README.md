@@ -13,8 +13,7 @@
 
 [![GitHub Stars](https://img.shields.io/github/stars/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx)
 [![GitHub Forks](https://img.shields.io/github/forks/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?label=Fork&style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/fork)
-
-
+[![GitHub Issues](https://img.shields.io/github/issues/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/issues)
 
 </div>
 
