@@ -25,11 +25,13 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.R;
 import com.example.dns.ConnectionVerifier;
 import com.example.dns.DnsResolverEngine;
 import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
+import com.example.util.VpnConflictDetector;
 
 /**
  * Single entry point for every "start" action (app button, widgets, Quick Settings tile).
@@ -45,6 +47,7 @@ public class ConnectionCheckActivity extends AppCompatActivity {
     private AlertDialog dialog;
     private volatile boolean cancelled = false;
     private boolean started = false;
+    private boolean conflictAcknowledged = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -217,6 +220,11 @@ public class ConnectionCheckActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, MODE_PRIVATE);
         String mode = prefs.getString("operation_mode", "VPN");
         if ("VPN".equalsIgnoreCase(mode)) {
+            // Android allows one VPN at a time: warn before this start disconnects another VPN app.
+            if (!conflictAcknowledged && VpnConflictDetector.isOtherVpnActive(this)) {
+                showVpnConflictDialog();
+                return;
+            }
             Intent vpnPrepare = VpnService.prepare(this);
             if (vpnPrepare != null) {
                 startActivityForResult(vpnPrepare, REQUEST_VPN);
@@ -227,6 +235,52 @@ public class ConnectionCheckActivity extends AppCompatActivity {
             launch(new Intent(this, DnsServerService.class), ServiceManager.STATE_SERVER);
         }
         finish();
+    }
+
+    /** Another VPN is active: let the user keep it by using Local server mode, or take over anyway. */
+    private void showVpnConflictDialog() {
+        dismissDialog();
+        dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.vpn_conflict_title)
+                .setMessage(R.string.vpn_conflict_message)
+                .setPositiveButton(R.string.vpn_conflict_use_server, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        getSharedPreferences(DnsResolverEngine.PREFS_NAME, MODE_PRIVATE).edit()
+                                .putString("operation_mode", "SERVER").apply();
+                        launch(new Intent(ConnectionCheckActivity.this, DnsServerService.class),
+                                ServiceManager.STATE_SERVER);
+                        finish();
+                    }
+                })
+                .setNegativeButton(R.string.vpn_conflict_start_anyway, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        conflictAcknowledged = true;
+                        startService();
+                    }
+                })
+                .setNeutralButton(R.string.vpn_conflict_howto, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        CoexistenceGuide.show(ConnectionCheckActivity.this, new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!isFinishing() && !started) {
+                                    showVpnConflictDialog();
+                                }
+                            }
+                        });
+                    }
+                })
+                .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface d) {
+                        finish();
+                    }
+                })
+                .create();
+        dialog.show();
     }
 
     private void launch(Intent intent, int state) {

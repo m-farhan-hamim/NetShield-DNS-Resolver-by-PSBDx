@@ -24,6 +24,35 @@
     <string name="vpn_profile_read_failed">Couldn\'t read that file</string>
     <string name="vpn_profile_set_active">%1$s set as active profile</string>
     <string name="vpn_profile_deleted">Profile deleted</string>
+    <string name="proxy_sub_title">Proxy subscriptions (Xeovo, v2rayNG…)</string>
+    <string name="proxy_sub_body">NetShield can\'t connect to proxy servers itself. Save your provider\'s subscription URL here and send it to v2rayNG in one tap. The URL stays on this device, is never fetched or logged by NetShield, is hidden in this list and is excluded from backups.</string>
+    <string name="proxy_sub_add">Add subscription URL</string>
+    <string name="proxy_sub_guide">Use with another VPN</string>
+    <string name="proxy_sub_empty">No subscriptions saved yet</string>
+    <string name="proxy_sub_add_title">Add subscription URL</string>
+    <string name="proxy_sub_name_hint">Name (optional)</string>
+    <string name="proxy_sub_url_hint">https://…</string>
+    <string name="proxy_sub_add_confirm">Save</string>
+    <string name="proxy_sub_invalid">Enter a full https:// subscription URL</string>
+    <string name="proxy_sub_duplicate">That subscription is already saved</string>
+    <string name="proxy_sub_saved">Saved: %1$s</string>
+    <string name="proxy_sub_deleted">Subscription deleted</string>
+    <string name="proxy_sub_delete">Delete subscription</string>
+    <string name="proxy_sub_open_v2rayng">Open in v2rayNG</string>
+    <string name="proxy_sub_copy">Copy URL</string>
+    <string name="proxy_sub_copied">URL copied</string>
+    <string name="proxy_sub_clip_label">Subscription URL</string>
+    <string name="proxy_sub_v2rayng_missing">v2rayNG isn\'t installed. Copy the URL and import it in your proxy app instead.</string>
+    <string name="coexist_guide_title">Use NetShield with another VPN</string>
+    <string name="coexist_guide_body">Android lets only one app hold the VPN at a time, so NetShield\'s VPN mode can\'t run together with another VPN or proxy app such as v2rayNG (for example with a Xeovo subscription).\n\nTo use both:\n1. In NetShield, choose Local server mode and start it. It answers DNS at %1$s.\n2. In your VPN or proxy app, set its DNS server to 127.0.0.1 on that port, and make sure DNS to 127.0.0.1 is sent directly, not through the proxy.\n\nSome apps only accept DNS on port 53, which Android does not let NetShield use, so they cannot point at it. The name and place of that setting differ between apps and versions, and this has not been tested with every client.</string>
+    <string name="coexist_guide_copy">Copy address</string>
+    <string name="coexist_guide_close">Close</string>
+    <string name="coexist_address_copied">Copied %1$s</string>
+    <string name="vpn_conflict_title">Another VPN is active</string>
+    <string name="vpn_conflict_message">Starting NetShield\'s VPN mode will disconnect it, because Android allows only one VPN at a time. To keep it connected, run NetShield in Local server mode instead.</string>
+    <string name="vpn_conflict_use_server">Use Local server mode</string>
+    <string name="vpn_conflict_start_anyway">Start anyway</string>
+    <string name="vpn_conflict_howto">How to set up</string>
     <string name="manage_vpn_servers">Manage VPN Servers</string>
 
     <!-- Hotspot tab -->
@@ -183,7 +212,10 @@
     <string name="config_imported">Configuration imported successfully</string>
 
     <string name="pref_category_about">About</string>
-    <string name="about_disclaimer">This app has been built by PSBDx (M. Farhan Hamim). Significant use of Google AI has been made.</string>
+    <string name="about_disclaimer">This app has been built by PSBDx (M. Farhan Hamim). Significant use of Google AI and Anthropic AI has been made.</string>
+    <string name="about_support">Need support</string>
+    <string name="about_donate">Donate</string>
+    <string name="about_link_error">No app can open this link</string>
     <string name="about_license">Free and open source software, licensed under the GNU General Public License v3.0 (GPL-3.0-or-later). The full source code is available for anyone to read, modify, and redistribute.</string>
     <string name="about_version_format">Version %1$s</string>
     <string name="offline_banner">You are currently offline. NetShield cannot be used without an internet connection.</string>

@@ -242,7 +242,7 @@ Licensed under the **GNU General Public License v3.0 or later**. See [`LICENSE`]
 
 ## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f44b/512.gif" alt="👋" width="32" height="32" align="absmiddle"> About / Disclaimer
 
-This app was built by **PSBDx** ([M. Farhan Hamim](https://github.com/m-farhan-hamim)). Significant use of Google AI was made in its development.
+This app was built by **PSBDx** ([M. Farhan Hamim](https://github.com/m-farhan-hamim)). Significant use of Google AI and Anthropic AI was made in its development.
 
 <div align="center">
 
