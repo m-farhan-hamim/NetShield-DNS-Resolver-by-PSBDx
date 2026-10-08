@@ -9,6 +9,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -663,6 +664,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ---- GitHub Releases self-update (no-op for F-Droid-sourced installs; see UpdateChecker) ----
+
+    private static final String DONATE_URL = "https://donate.psbdx.com";
+
+    /** Opens a link in the user's browser; a plain link only, no payment SDK or in-app flow. */
+    private void openExternalLink(String url) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.about_link_error, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void setupUpdateBanner() {
         bannerUpdateAvailable = findViewById(R.id.banner_update_available);
@@ -2160,6 +2172,25 @@ public class MainActivity extends AppCompatActivity {
         TextView tvAboutVersion = findViewById(R.id.tv_about_version);
         if (tvAboutVersion != null) {
             tvAboutVersion.setText(getString(R.string.about_version_format, BuildConfig.VERSION_NAME));
+        }
+
+        Button btnAboutSupport = findViewById(R.id.btn_about_support);
+        if (btnAboutSupport != null) {
+            btnAboutSupport.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openExternalLink(ConnectionCheckActivity.ISSUES_URL);
+                }
+            });
+        }
+        Button btnAboutDonate = findViewById(R.id.btn_about_donate);
+        if (btnAboutDonate != null) {
+            btnAboutDonate.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openExternalLink(DONATE_URL);
+                }
+            });
         }
 
         // Load Upstream
