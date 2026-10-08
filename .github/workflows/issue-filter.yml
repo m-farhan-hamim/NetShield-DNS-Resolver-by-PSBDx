@@ -814,7 +814,7 @@ jobs:
               return selectedChannel;
             }
 
-            const logVersion = (body.match(/NetShield\s+(?:(?:alpha|beta|nightly)[\s_:-]*)?v?(\d+\.\d+\.\d+)/i) || [])[1];
+            const logVersion = (body.match(/NetShield\s+v?(\d+\.\d+\.\d+)/i) || [])[1];
             const logHint = logVersion ? `Your diagnostic log mentions \`${logVersion}\`, which is usually the installed version.` : "";
 
             const HINT = {
@@ -920,8 +920,7 @@ jobs:
             const versionTag = accepted.channel === "stable" ? `v${accepted.ver}` : isTestBuild ? shown : `PRE-${accepted.ver}`;
 
             const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-            // Test builds (BETA-1.4.0, ...) have their own numbering; the cutoff only applies to stable releases.
-            if (!isTestBuild && cmp(accepted.nums, MIN_SUPPORTED) < 0) {
+            if (cmp(accepted.nums, MIN_SUPPORTED) < 0) {
               await closeWith("legacy", pick(LEGACY)({ u: REPORTER, v: shown }));
               return;
             }
