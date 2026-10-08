@@ -4,6 +4,7 @@
 
 # NetShield DNS Resolver
 
+[![Recent donators](https://donate.psbdx.com/widget.svg)](https://donate.psbdx.com/)
 
 ---
 
