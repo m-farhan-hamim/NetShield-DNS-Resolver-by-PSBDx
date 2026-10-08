@@ -44,7 +44,7 @@
     <string name="proxy_sub_clip_label">Subscription URL</string>
     <string name="proxy_sub_v2rayng_missing">v2rayNG isn\'t installed. Copy the URL and import it in your proxy app instead.</string>
     <string name="coexist_guide_title">Use NetShield with another VPN</string>
-    <string name="coexist_guide_body">Android lets only one app hold the VPN at a time, so NetShield\'s VPN mode can\'t run together with another VPN or proxy app such as v2rayNG (for example with a Xeovo subscription).\n\nTo use both:\n1. In NetShield, choose Local server mode and start it. It answers DNS at %1$s.\n2. In your VPN or proxy app, set its DNS server to 127.0.0.1 on that port, and make sure DNS to 127.0.0.1 is sent directly, not through the proxy.\n\nThe name and place of that DNS setting differ between apps and versions, and this has not been tested with every client.</string>
+    <string name="coexist_guide_body">Android lets only one app hold the VPN at a time, so NetShield\'s VPN mode can\'t run together with another VPN or proxy app such as v2rayNG (for example with a Xeovo subscription).\n\nTo use both:\n1. In NetShield, choose Local server mode and start it. It answers DNS at %1$s.\n2. In your VPN or proxy app, set its DNS server to 127.0.0.1 on that port, and make sure DNS to 127.0.0.1 is sent directly, not through the proxy.\n\nSome apps only accept DNS on port 53, which Android does not let NetShield use, so they cannot point at it. The name and place of that setting differ between apps and versions, and this has not been tested with every client.</string>
     <string name="coexist_guide_copy">Copy address</string>
     <string name="coexist_guide_close">Close</string>
     <string name="coexist_address_copied">Copied %1$s</string>
