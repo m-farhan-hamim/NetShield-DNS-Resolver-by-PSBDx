@@ -4,6 +4,22 @@
 
 # NetShield DNS Resolver
 
+
+---
+
+<div align="center">
+
+### ⭐ Star this repository if you find it useful!
+
+[![GitHub Stars](https://img.shields.io/github/stars/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx)
+[![GitHub Forks](https://img.shields.io/github/forks/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?label=Fork&style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/fork)
+[![GitHub Issues](https://img.shields.io/github/issues/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/issues)
+
+</div>
+
+
+---
+
 <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f4a5/512.gif" alt="💥" width="40" height="40">
 <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f30f/512.gif" alt="🌏" width="40" height="40">
 <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f512/512.gif" alt="🔒" width="40" height="40">

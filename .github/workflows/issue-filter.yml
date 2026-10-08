@@ -4,14 +4,15 @@ on:
   issues:
     types: [opened, edited]
   issue_comment:
-    types: [created] # the reporter's reply with their app version
+    types: [created]
+  release:
+    types: [published]
   schedule:
-    - cron: "0 3 * * *" # daily sweep for stale on-hold issues
+    - cron: "0 3 * * *"      # daily stale sweep (on-hold issues)
+    - cron: "*/15 * * * *"   # every 15 min — countdown checker
 
-# One run per issue at a time. Runs triggered by the bot's own comments get a separate
-# group (and are skipped below) so they can never cancel or replace a real run.
 concurrency:
-  group: issue-assistant-${{ github.event.issue.number || 'sweep' }}-${{ github.event.sender.type == 'Bot' && 'bot' || 'user' }}
+  group: issue-assistant-${{ github.event.issue.number || github.event.release.tag_name || 'sweep' }}-${{ github.event.sender.type == 'Bot' && 'bot' || 'user' }}
   cancel-in-progress: false
 
 permissions: {}
@@ -23,10 +24,8 @@ jobs:
       (github.event_name == 'issue_comment' && github.event.sender.type != 'Bot' && !github.event.issue.pull_request)
     runs-on: ubuntu-latest
     permissions:
-      contents: read # only used to clone the wiki for documentation lookup
+      contents: read
     steps:
-      # Mint a short-lived token for the GitHub App so comments/labels
-      # appear under the bot's own identity (e.g. "netshield-bot[bot]").
       - name: Generate bot token
         id: app-token
         uses: actions/create-github-app-token@v2
@@ -35,8 +34,6 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
-      # The wiki is a separate git repo (<repo>.wiki) that only exists once the
-      # first page is created. A failed clone is just a notice, not an error.
       - name: Fetch wiki (optional)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,8 +55,7 @@ jobs:
             // ---------- Guards ----------
             if (issue.pull_request) return;
             if (context.payload.sender?.type === "Bot") return;
-            if (issue.state === "closed") return; // don't resurrect/reprocess closed issues
-            // Set to false while testing with your own account, otherwise your own issues are skipped
+            if (issue.state === "closed") return;
             const SKIP_MAINTAINERS = false;
             const isMaintainer = ["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association);
             if (SKIP_MAINTAINERS && isMaintainer) {
@@ -67,30 +63,34 @@ jobs:
               return;
             }
 
-            // ---------- Conversation guards ----------
             const isComment = context.eventName === "issue_comment";
             const REPORTER = issue.user.login;
             const issueLabels = (issue.labels || []).map((l) => (typeof l === "string" ? l : l.name));
             if (isComment) {
-              // Only the reporter's replies matter, and only while we're waiting on them
               if (context.payload.comment.user.login !== REPORTER) return;
               if (!issueLabels.includes("on-hold")) return;
             } else if (action === "edited" && issueLabels.includes("handed-over-to-developer")) {
-              return; // already triaged: don't re-apply labels/assignee on every edit
+              return;
             }
 
             // ---------- Helpers ----------
             const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-            // Read a GitHub Issue Form field by its heading; treats "_No response_" as empty
             function field(header) {
               const re = new RegExp(`### ${esc(header)}\\s*\\n\\s*([\\s\\S]*?)(?=\\n### |$)`, "i");
               const m = body.match(re);
               const v = m ? m[1].trim() : "";
               return /^_?no response_?$/i.test(v) ? "" : v;
             }
+            function anyField(headers) {
+              for (const h of headers) {
+                const v = field(h);
+                if (v) return v;
+              }
+              return "";
+            }
 
-            // Make user-provided text safe to echo in a comment
             const safe = (s, max = 80) =>
               s.replace(/[`\r\n]/g, " ").replace(/@/g, "@\u200b").trim().slice(0, max);
 
@@ -100,6 +100,7 @@ jobs:
               "handed-over-to-developer": { color: "0e8a16", description: "Validated and queued for the developer" },
               "invalid-source": { color: "b60205", description: "Reported from an unofficial download source" },
               "duplicate-suspected": { color: "cfd3d7", description: "Bot found possibly related issues" },
+              "auto-close-pending": { color: "d4c5f9", description: "Bot is counting down to auto-close this issue" },
             };
 
             async function ensureLabel(name) {
@@ -112,13 +113,9 @@ jobs:
             }
 
             const DEVELOPER = "m-farhan-hamim";
-            // Versions below this are no longer supported (reports are closed with a friendly note)
             const MIN_SUPPORTED = [3, 0, 0];
-            // How the reported app version is tracked on bug reports: "milestone" | "label"
             const VERSION_MODE = "label";
 
-            // Replace only the bot's workflow-status labels; keep everything else (bug, donation, ...)
-            // Also keeps the developer assignment in sync with the status.
             const STATUS = ["on-hold", "handed-over-to-developer"];
             async function setStatus(target) {
               const { data } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
@@ -134,7 +131,6 @@ jobs:
                 if (target === "handed-over-to-developer" && !assigned) {
                   await github.rest.issues.addAssignees({ owner, repo, issue_number: issueNumber, assignees: [DEVELOPER] });
                 } else if (target === "on-hold" && assigned) {
-                  // info is missing again, so it's not the developer's turn yet
                   await github.rest.issues.removeAssignees({ owner, repo, issue_number: issueNumber, assignees: [DEVELOPER] });
                 }
               } catch (e) {
@@ -142,7 +138,6 @@ jobs:
               }
             }
 
-            // Track the app version the bug was reported on
             async function trackVersion(ver, tag = `v${ver}`) {
               const title = `v${ver}`;
               if (VERSION_MODE === "label") {
@@ -158,7 +153,6 @@ jobs:
                 await github.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels: next });
                 return;
               }
-              // Milestone mode: never overwrite a milestone a maintainer already chose
               if (issue.milestone) return;
               const all = await github.paginate(github.rest.issues.listMilestones, { owner, repo, state: "all", per_page: 100 });
               let m = all.find((x) => x.title.replace(/^v/i, "") === ver);
@@ -175,7 +169,6 @@ jobs:
               await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [name] });
             }
 
-            // Upsert: one bot comment per "key" per issue, edited in place instead of spamming
             async function findComment(key) {
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner, repo, issue_number: issueNumber, per_page: 100,
@@ -192,7 +185,10 @@ jobs:
                 await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: full });
               }
             }
-
+            async function sayOnce(key, text) {
+              if (await findComment(key)) return;
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: `${MARK(key)}\n${text}` });
+            }
             async function closeWith(key, text) {
               await say(key, text + `\n\n*This issue has been automatically closed.* 🤖`);
               await github.rest.issues.update({
@@ -206,21 +202,282 @@ jobs:
             const donationPlatform = field("Which platform did you choose?");
 
             if (donationPlatform) {
-              if (donationPlatform.includes("https://donate.psbdx.com")) {
-                await closeWith("donation",
-                  `🚧 **Self-Hosted Donation Site Under Construction** 💖\n\n` +
-                  `Thank you so much for your generosity and interest in supporting NetShield!\n\n` +
-                  `**https://donate.psbdx.com** is still under active development and cannot process payments yet, so transactions there are expected to fail.\n\n` +
-                  `🚀 **Alternative:** support us via **https://superchat.bd**, or check back once our self-hosted portal launches!`);
-                return;
-              }
               if (donationPlatform.includes("https://superchat.bd")) {
                 await setStatus("handed-over-to-developer");
-                await say("donation",
-                  `💖 **Thank You for Your Support!** 🚀\n\n` +
-                  `We really appreciate your willingness to back the NetShield project!\n\n` +
-                  `🛠️ **Status Update:** We're investigating the issue with **superchat.bd**. This report is tagged **\`handed-over-to-developer\`**.\n\n` +
-                  `*If you emailed screenshots to \`support@psbdx.com\`, we'll match them with this issue number (#${issueNumber}).* 📧`);
+                await say("donation", pick([
+                  `💖 **Thank you for your past support via superchat.bd!** 🙏\n\n` +
+                  `We want to be upfront: **we've discontinued donation support through superchat.bd**. ` +
+                  `It is no longer an active channel for NetShield, and we're no longer able to track or process contributions made there.\n\n` +
+                  `⚠️ **Important:** donations made via **superchat.bd** will **not** have your name prominently displayed in our supporters list — that recognition is reserved for our official portal.\n\n` +
+                  `🚀 **New official donation portal:** please use **https://donate.psbdx.com** for any future contributions. ` +
+                  `Your support is what keeps NetShield alive — thank you for being part of it! 💖`,
+
+                  `💖 **We really appreciate the intent to support us!** 🙏\n\n` +
+                  `Just so you know — **superchat.bd is no longer a supported donation channel** for NetShield. ` +
+                  `We've moved to our own portal and no longer process or track contributions from superchat.bd.\n\n` +
+                  `⚠️ **Heads-up:** if you donated via **superchat.bd**, your name **will not be prominently displayed** in our supporters list, because we can no longer verify those contributions.\n\n` +
+                  `✅ **Please use our new official portal:** **https://donate.psbdx.com** — that's where all future support and recognition happens. Thank you! 💖`,
+
+                  `💖 **Thanks for wanting to support NetShield!** 🙏\n\n` +
+                  `A quick update: **we've retired the superchat.bd donation option**. It's no longer linked to us, and we can't verify or acknowledge donations made there.\n\n` +
+                  `⚠️ **Note:** if you've used **superchat.bd** in the past, your name will **not** be featured in our supporters list going forward.\n\n` +
+                  `🚀 **The one to use now:** **https://donate.psbdx.com**. All active support, updates, and public recognition come from there. Thank you for backing the project! 💖`,
+
+                  `💖 **Really appreciate the thought, but there's been a change!** 🙏\n\n` +
+                  `We've **officially retired superchat.bd** as a donation channel — it's no longer connected to us in any way.\n\n` +
+                  `⚠️ **Fair warning:** any donation made via **superchat.bd** will **not** show your name prominently in our supporter credits, since we have no way to confirm it on our side.\n\n` +
+                  `✅ **Head over to https://donate.psbdx.com** — that's our one and only active portal now. Every future contribution, thank-you, and public shout-out happens there. Thanks for supporting NetShield! 💖`,
+
+                  `💖 **Big thanks for the intent to back NetShield!** 🙌\n\n` +
+                  `Quick heads-up: we've **discontinued donations through superchat.bd**. That channel is closed, and we can no longer verify or credit donations made there.\n\n` +
+                  `⚠️ **What this means for you:** if you ever donated via **superchat.bd**, your name **will not be displayed prominently** in our supporters list — we simply can't match those payments anymore.\n\n` +
+                  `🚀 **Use our new home for donations:** **https://donate.psbdx.com**. Everything (support, perks, recognition) now flows through there. Thank you! 💖`,
+                ]));
+                return;
+              }
+
+              if (donationPlatform.includes("https://donate.psbdx.com")) {
+                await setStatus("handed-over-to-developer");
+
+                const txId = anyField([
+                  "Transaction ID", "Transaction Reference", "Transaction Hash",
+                  "Payment Reference", "Reference ID", "Payment ID",
+                ]);
+                const amount = anyField([
+                  "Donation Amount", "Amount", "How much did you donate?",
+                  "Amount Donated",
+                ]);
+                const contextText = (
+                  anyField([
+                    "Describe the issue", "Describe your issue", "What happened?",
+                    "Additional Details", "Anything else?", "Details", "Message",
+                    "Describe the problem",
+                  ]) || body
+                ).toLowerCase();
+
+                const safeTx = txId ? `\`${safe(txId, 40)}\`` : "";
+                const safeAmt = amount ? `**${safe(amount, 24)}**` : "";
+                const tag = `**\`handed-over-to-developer\`**`;
+
+                const header = pick([
+                  `💖 **Thank you for supporting NetShield!** 🚀\n\n`,
+                  `💖 **Your support means the world to us — thank you!** 🙌\n\n`,
+                  `💖 **Huge thanks for backing NetShield!** 🚀\n\n`,
+                  `💖 **Really appreciate the generosity — thank you!** 🙏\n\n`,
+                  `💖 **So kind of you to support the project!** 🌟\n\n`,
+                ]);
+                const ack = pick([
+                  `We truly appreciate your generosity — it directly fuels continued development. 🙏\n\n`,
+                  `Contributions like yours are what keep this project alive and improving. 🙏\n\n`,
+                  `Your support genuinely helps us ship better releases. Thank you! 🙏\n\n`,
+                  `It's supporters like you who let us keep NetShield free and improving. 🌟\n\n`,
+                  `We don't take this for granted — your backing means a lot. 💖\n\n`,
+                ]);
+
+                const contexts = [
+                  {
+                    match: /(refund|money back|charged twice|double[- ]?(charged|charge|payment)|duplicate (payment|charge)|reversed|overcharged|extra charge)/,
+                    reply: () => pick([
+                      `${header}${ack}It sounds like you're asking about a **refund or possible duplicate charge**. 🧾\n\n` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}**, who personally handles payment issues with our provider.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      (safeAmt ? `**Amount:** ${safeAmt}\n\n` : "") +
+                      `We'll verify against the payment logs and reply here. Approved refunds typically land back on your card within **3–7 business days**. 💳`,
+
+                      `${header}${ack}Sorry you ran into a **double charge / refund concern** — let's get it sorted. 🙏\n\n` +
+                      `I've escalated this to **@${DEVELOPER}** with the ${tag} label.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `Please keep an eye on this thread — once we've confirmed with the payment provider, we'll let you know right here. Thanks for your patience! 💳`,
+
+                      `${header}${ack}Understood — you're reporting a **payment that may need reversing or refunding**. ✅\n\n` +
+                      `I've looped in **@${DEVELOPER}** (${tag}) so they can check the transaction on our end.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `We'll come back here with a clear answer, usually within 24–48 hours. Refund settlement itself can take 3–7 business days depending on your bank. 🙏`,
+
+                      `${header}${ack}Thanks for flagging a possible **refund / double-charge** situation. 💳\n\n` +
+                      `I've assigned **@${DEVELOPER}** (${tag}) to investigate and reconcile with the payment gateway.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      (safeAmt ? `**Amount in question:** ${safeAmt}\n\n` : "") +
+                      `Once verified, approved refunds typically settle in 3–7 business days. We'll confirm here. 🙏`,
+
+                      `${header}${ack}Got it — a **refund or duplicate payment** query. Let's untangle it together. 🧾\n\n` +
+                      `Tagged ${tag} and handed to **@${DEVELOPER}** who handles all payment-side verification.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `You'll hear back here shortly — usually within a day or two. Appreciate your patience! 💖`,
+                    ]),
+                  },
+                  {
+                    match: /(fail|declin|unsuccessful|rejected|didn'?t (go through|work|process)|not (processed|completed|successful)|error|transaction (couldn'?t|could not|didn'?t)|payment (failed|declined))/,
+                    reply: () => pick([
+                      `${header}${ack}It sounds like your **donation didn't go through**. No worries — **failed transactions are not charged**, so you shouldn't be out anything. 💳\n\n` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}** to check the payment gateway logs.\n\n` +
+                      (safeTx ? `**Attempted reference:** ${safeTx}\n\n` : "") +
+                      `In the meantime, retrying from a different browser, card, or network often helps. We'll reply here soon! 🙏`,
+
+                      `${header}${ack}Sorry your payment ran into trouble! 🙏 **Declined or failed transactions are typically not charged.**\n\n` +
+                      `I've passed this to **@${DEVELOPER}** (${tag}) so they can review what happened on the gateway side.\n\n` +
+                      (safeAmt ? `**Attempted amount:** ${safeAmt}\n\n` : "") +
+                      `Feel free to try again, or hang tight — we'll follow up here shortly. 🚀`,
+
+                      `${header}${ack}That payment didn't complete — you're not alone, and it's usually harmless. 🙏\n\n` +
+                      `I've flagged this ${tag} and routed it to **@${DEVELOPER}** to inspect the failed attempt.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll let you know whether anything needs retrying. Thanks for flagging it! 💖`,
+
+                      `${header}${ack}Sorry about that — looks like the **transaction failed to process**. 💳\n\n` +
+                      `Quick reassurance: **declined / failed payments don't reach us and aren't charged** on your end.\n\n` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}** to double-check the gateway.\n\n` +
+                      (safeAmt ? `**Amount attempted:** ${safeAmt}\n\n` : "") +
+                      `You can safely retry, or reply here and we'll investigate further. 🙏`,
+
+                      `${header}${ack}Hmm — sounds like the **payment was declined or errored out**. 🚫💳\n\n` +
+                      `Nothing to worry about financially: unsuccessful transactions don't debit your account.\n\n` +
+                      `I've looped in **@${DEVELOPER}** (${tag}) to confirm the gateway didn't record a partial charge.\n\n` +
+                      (safeTx ? `**Attempted reference:** ${safeTx}\n\n` : "") +
+                      `Try again whenever you're ready, or wait for our confirmation here. Thanks for your patience! 🙏`,
+                    ]),
+                  },
+                  {
+                    match: /(pending|processing|still waiting|not (yet )?(received|shown|appeared|credited|reflected|arrived)|no (confirmation|acknowledg|receipt) (yet|received)|hasn'?t (shown|appeared|arrived))/,
+                    reply: () => pick([
+                      `${header}${ack}Your donation may still be **pending confirmation** with the payment provider. This is normal and can take a few hours — occasionally up to 24h. ⏳\n\n` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}** so they can verify it on our end.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll reply here as soon as we've confirmed. Thanks for your patience! 🙏`,
+
+                      `${header}${ack}Ah, the donation hasn't shown up yet — we hear you. 🙏 Most pending transactions settle within a few hours.\n\n` +
+                      `I've escalated this to **@${DEVELOPER}** (${tag}) so they can double-check the transaction record.\n\n` +
+                      (safeAmt ? `**Amount:** ${safeAmt}\n\n` : "") +
+                      `Sit tight — we'll update you right here. 🚀`,
+
+                      `${header}${ack}Thanks for flagging this. If the payment is showing as **pending**, there's usually nothing to worry about yet — but we'll confirm for you. ✅\n\n` +
+                      `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `We'll come back here with a clear status shortly. 🙏`,
+
+                      `${header}${ack}Donations sometimes take a **few hours (occasionally up to 24)** to fully process and reflect. ⏳\n\n` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}** to verify on our side.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll confirm here as soon as it clears. Thanks for your support! 💖`,
+
+                      `${header}${ack}Got it — the donation hasn't appeared on your end yet. 🙏 Let's check it together.\n\n` +
+                      `I've flagged this ${tag} for **@${DEVELOPER}** to confirm whether it's still processing or already recorded.\n\n` +
+                      (safeAmt ? `**Amount:** ${safeAmt}\n\n` : "") +
+                      `We'll update you here very soon. 💳`,
+                    ]),
+                  },
+                  {
+                    match: /(name|display|credit|shown|recogni|mention|acknowledg|sponsor list|hall of fame|feature me|list me|supporters)/,
+                    reply: () => pick([
+                      `${header}${ack}Great question about **sponsor recognition**! 🌟\n\n` +
+                      `Donations made through **donate.psbdx.com** are eligible for our supporters list. ` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}** to add or update your entry.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `If you'd like a different display name (or to stay anonymous), just reply here and we'll honour it. 🙏`,
+
+                      `${header}${ack}Regarding **name display / recognition** — yes, supporters through donate.psbdx.com get credited! 🌟\n\n` +
+                      `I've handed this over to **@${DEVELOPER}** (${tag}) to update the supporters list.\n\n` +
+                      (safeAmt ? `**Amount noted:** ${safeAmt}\n\n` : "") +
+                      `Feel free to reply with the exact name you'd like shown. Thanks again for backing us! 💖`,
+
+                      `${header}${ack}Happy to help with the **recognition side**. 🌟\n\n` +
+                      `I've tagged this ${tag} and looped in **@${DEVELOPER}** to add your name to the supporters list from our official portal.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll confirm here once it's done. Thanks for your generosity! 🙏`,
+
+                      `${header}${ack}Nice — thanks for asking about your **supporter credit**! 🌟\n\n` +
+                      `I've handed this to **@${DEVELOPER}** (${tag}) to update the supporters list.\n\n` +
+                      (safeAmt ? `**Amount on file:** ${safeAmt}\n\n` : "") +
+                      `Want a specific name shown (or to stay anonymous)? Just reply here and we'll match it. 💖`,
+
+                      `${header}${ack}About the **name in our supporters list** — yes, donate.psbdx.com contributions qualify! 🌟\n\n` +
+                      `Tagged ${tag} and assigned **@${DEVELOPER}** to add you.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `We'll confirm here shortly. Appreciate you backing NetShield! 🙏`,
+                    ]),
+                  },
+                  {
+                    match: /(screenshot|proof|receipt|verif|confirm|attached|uploaded|sent|for your records|invoice)/,
+                    reply: () => pick([
+                      `${header}${ack}Thanks for sending the **proof of donation**! 🧾\n\n` +
+                      `I've tagged this ${tag} and assigned **@${DEVELOPER}** to verify and mark your contribution.\n\n` +
+                      (safeAmt ? `**Amount noted:** ${safeAmt}\n\n` : "") +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll reply here once verification is complete. Really appreciate you! 🙏`,
+
+                      `${header}${ack}Got the details — thanks for sharing the **verification info**! 🙏\n\n` +
+                      `This is now with **@${DEVELOPER}** (${tag}) for review.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `We'll come back with confirmation shortly. 🚀`,
+
+                      `${header}${ack}Received the receipt/invoice — thank you! 🧾\n\n` +
+                      `I've passed this along to **@${DEVELOPER}** (${tag}) so they can cross-check it with our records.\n\n` +
+                      `Expect a confirmation here soon. 💖`,
+
+                      `${header}${ack}Thanks for the **supporting evidence** — that helps a lot! 🧾\n\n` +
+                      `Tagged ${tag} and assigned **@${DEVELOPER}** to verify.\n\n` +
+                      (safeAmt ? `**Amount:** ${safeAmt}\n\n` : "") +
+                      `We'll reply here when it's confirmed. 🙏`,
+
+                      `${header}${ack}Appreciate you attaching the **payment proof**. 📎\n\n` +
+                      `I've flagged this ${tag} and handed it to **@${DEVELOPER}** for verification.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll confirm here shortly. Thank you! 💖`,
+                    ]),
+                  },
+                  {
+                    match: /^(?!.*\b(problem|issue|error|fail|refund|not work|didn'?t|can'?t|unable|help)\b).*(thank|appreciate|love (the|your|this)|great (work|project|app)|keep (it )?up|amazing|awesome|best app|fantastic|excellent)/,
+                    reply: () => pick([
+                      `${header}${ack}Messages like yours genuinely keep us going! 💖\n\n` +
+                      `I've tagged this ${tag} so **@${DEVELOPER}** can personally acknowledge your contribution.\n\n` +
+                      `Thanks again for backing NetShield — it means a lot. 🚀`,
+
+                      `${header}${ack}That's incredibly kind — thank you! 🙏 Contributions like yours let us keep improving NetShield.\n\n` +
+                      `I've looped in **@${DEVELOPER}** (${tag}) so they can say thanks properly.\n\n` +
+                      `We appreciate you! 💖`,
+
+                      `${header}${ack}This made our day. 💖 Thank you for supporting the project!\n\n` +
+                      `Tagged ${tag} and handed over to **@${DEVELOPER}** for a proper thank-you.\n\n` +
+                      `Your support keeps NetShield free and improving. 🚀`,
+
+                      `${header}${ack}Really warms our hearts — thank you! 🙏\n\n` +
+                      `I've passed this along to **@${DEVELOPER}** (${tag}) so they can thank you personally.\n\n` +
+                      `Your kindness fuels the project. 💖`,
+
+                      `${header}${ack}Aww, that's lovely to read. 💖 Thank you so much!\n\n` +
+                      `Tagged ${tag} and routed to **@${DEVELOPER}** to acknowledge.\n\n` +
+                      `Supporters like you make everything possible. 🚀`,
+                    ]),
+                  },
+                ];
+
+                const matched = contexts.find((c) => c.match.test(contextText));
+                const reply = matched
+                  ? matched.reply()
+                  : pick([
+                      `${header}${ack}Your donation report has been received and tagged ${tag} — it's now with **@${DEVELOPER}**.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      (safeAmt ? `**Amount:** ${safeAmt}\n\n` : "") +
+                      `We'll reply here shortly with an update. Thanks for helping support NetShield! 🚀`,
+
+                      `${header}${ack}We've noted your donation-related report and handed it over to **@${DEVELOPER}** (${tag}).\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `Expect a reply here soon. Your support really matters! 💖`,
+
+                      `${header}${ack}Thanks for reaching out about your donation. I've tagged this ${tag} and assigned **@${DEVELOPER}** to look into it.\n\n` +
+                      (safeAmt ? `**Amount:** ${safeAmt}\n\n` : "") +
+                      `We'll update you right here. 🙏`,
+
+                      `${header}${ack}Got it — your donation query is now with **@${DEVELOPER}** (${tag}) for review.\n\n` +
+                      (safeTx ? `**Reference:** ${safeTx}\n\n` : "") +
+                      `We'll be in touch here soon. Really appreciate the support! 💖`,
+
+                      `${header}${ack}We've received your donation-related report and tagged it ${tag}. **@${DEVELOPER}** has it in their queue.\n\n` +
+                      (safeTx ? `**Transaction:** ${safeTx}\n\n` : "") +
+                      `Expect a reply here shortly. Thanks for backing NetShield! 🙏`,
+                    ]);
+
+                await say("donation", reply);
                 return;
               }
             }
@@ -239,7 +496,286 @@ jobs:
                 `📋 **How to Fix:** please open a new issue with the [Bug Report / Feature Request form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic info is captured.`);
               return;
             }
-            if (isFeature) return;
+
+            // ==========================================
+            // 🆕 FEATURE REQUEST (contextual)
+            // ==========================================
+            if (isFeature) {
+              const category = anyField([
+                "Feature Category", "Category", "What kind of feature is this?",
+                "Type of Feature",
+              ]);
+              const featDesc = anyField([
+                "Describe the feature", "Describe your idea", "Feature Description",
+                "Describe the feature you'd like", "What would you like to see?",
+                "Detailed description", "Description",
+              ]);
+              const useCase = anyField([
+                "Use case", "Why do you need this?", "How would you use this?",
+                "Use Case / Motivation", "Motivation", "Why is this useful?",
+              ]);
+              const context = `${category}\n${featDesc}\n${useCase}\n${body}`.toLowerCase();
+
+              await setStatus("handed-over-to-developer");
+
+              const tag = `**\`handed-over-to-developer\`**`;
+              const header = pick([
+                `💡 **Thank you so much for the suggestion, @${REPORTER}!** 🚀\n\n`,
+                `🙌 **Really appreciate the idea, @${REPORTER}!**\n\n`,
+                `✨ **Thanks for sharing this idea, @${REPORTER}!**\n\n`,
+                `🎯 **Great suggestion, @${REPORTER} — thank you!**\n\n`,
+                `💬 **Love that you took the time to suggest this, @${REPORTER}!**\n\n`,
+                `🌟 **Awesome idea, @${REPORTER}!**\n\n`,
+              ]);
+              const ack = pick([
+                `Feature suggestions from our community are gold — they're what shape NetShield's future. 🙏\n\n`,
+                `We love hearing from our users, and ideas like yours really help us prioritise. 🙏\n\n`,
+                `User feedback is the fuel behind our roadmap — thanks for contributing! 💡\n\n`,
+                `Every good product is built on user ideas, and yours is a great one. 🙏\n\n`,
+                `We read every suggestion carefully — yours just went straight to the top of the review pile. 💡\n\n`,
+              ]);
+
+              const featureContexts = [
+                {
+                  match: /\b(ui|ux|interface|design|theme|dark mode|light mode|colou?r|layout|icon|font|animation|look and feel|visual|aesthetic|modern(ize)?|redesign|nav(igation)?|menu|sidebar|dashboard)\b/,
+                  reply: () => pick([
+                    `${header}${ack}Sounds like a **UI / design improvement** — I can see how that would make the app feel nicer to use. 🎨\n\n` +
+                    `I've tagged this ${tag} and assigned it to **@${DEVELOPER}** for review.\n\n` +
+                    `We'll follow up here if we need mock-ups, screenshots, or clarifications. Thanks for caring about the look and feel! 🙏`,
+                    `${header}${ack}That's a solid **interface / UX idea** — visual polish matters, and we hear you. 🎨\n\n` +
+                    `Tagged ${tag} and routed to **@${DEVELOPER}**.\n\n` +
+                    `If you have a rough mock-up or a reference app in mind, feel free to reply here — it'll help us visualise it faster. 🙏`,
+                    `${header}${ack}A **design / UX suggestion** — noted! 🎨 We pay close attention to how the app feels day-to-day.\n\n` +
+                    `I've handed this to **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `We'll reply here with questions or news. Thanks for the thoughtful idea! 💡`,
+                    `${header}${ack}Nice — a **UI/UX enhancement**. Those often have an outsized impact on daily use. 🎨\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}** to review.\n\n` +
+                    `Screenshots or mock-ups (even rough ones) are welcome in the replies. 🙏`,
+                    `${header}${ack}Thanks for the **design suggestion** — we do care a lot about how things look and feel. 🎨\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll follow up here with any questions. Appreciate the eye for detail! 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(performance|faster|speed|optimi[sz]e|battery|memory|ram|cpu|lag|latency|slow|efficien|power (usage|consumption)|responsiv)/,
+                  reply: () => pick([
+                    `${header}${ack}A **performance / efficiency** suggestion — always welcome! ⚡\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** for review.\n\n` +
+                    `If you have numbers (battery %, timings, device model), please drop them in the replies — it'll speed up evaluation. 🙏`,
+                    `${header}${ack}Optimisation ideas are super valuable — thanks! ⚡\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}** to assess feasibility.\n\n` +
+                    `We'll reply here if we need benchmarks or a device profile. 🚀`,
+                    `${header}${ack}A **performance-focused suggestion** — noted. ⚡ We're always looking to make NetShield lighter.\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for review.\n\n` +
+                    `Any concrete measurements you can share will help a lot. 🙏`,
+                    `${header}${ack}Great — a **speed / efficiency** idea. Those often ship quickly if they're low-risk. ⚡\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll update you here. Thanks for caring about performance! 🚀`,
+                    `${header}${ack}Thanks for the **performance / resource** suggestion! ⚡\n\n` +
+                    `I've handed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll follow up if we need details like device, version, or usage patterns. 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(integrat|connect|sync|api|webhook|import|export|compatib|works? with|support for|third[- ]party|plugin|extension|cloud|backup|restore|migrat|share|shareable)\b/,
+                  reply: () => pick([
+                    `${header}${ack}An **integration / interoperability** idea — nice one. 🔌\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to review scope and feasibility.\n\n` +
+                    `If you can name the specific service/format (e.g. Nextcloud, standard export, etc.), reply here — it'll help a lot. 🙏`,
+                    `${header}${ack}A **third-party integration** suggestion — those can be really powerful. 🔌\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here with questions or an update. Thanks for the idea! 💡`,
+                    `${header}${ack}Interesting **interop / integration** request — noted. 🔌\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `If there's a spec or API you'd like us to follow, please share it in the replies. 🙏`,
+                    `${header}${ack}Nice — an **integration idea**. These can open up great workflows. 🔌\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here if we need more detail about the target service. 🚀`,
+                    `${header}${ack}Thanks for suggesting an **integration / compatibility** feature! 🔌\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll respond here once we've scoped it. Appreciate the idea! 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(improve|enhance|better|extend|add (a )?(rule|filter|list|option|setting|toggle|button|shortcut)|custom|configuration|advanced|more (control|options|flexib)|tweak|refine|refactor|quality of life|qol)\b/,
+                  reply: () => pick([
+                    `${header}${ack}An **enhancement to existing functionality** — great instinct. 🛠️\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** for review.\n\n` +
+                    `If you can describe the current behaviour vs. what you'd like, please reply here — it'll help us design it right. 🙏`,
+                    `${header}${ack}A **quality-of-life / enhancement** idea — those are often the most impactful. 🛠️\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here if we need more detail. Thanks! 💡`,
+                    `${header}${ack}Nice — an **enhancement suggestion**. 🛠️ These usually fit well into ongoing work.\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) to evaluate.\n\n` +
+                    `Feel free to add screenshots or a before/after description in the replies. 🙏`,
+                    `${header}${ack}Thanks for the **extension / improvement** idea! 🛠️\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll be in touch here. Appreciate the thoughtful suggestion! 🚀`,
+                    `${header}${ack}Got it — an **enhancement** to an existing feature. 🛠️\n\n` +
+                    `I've handed this to **@${DEVELOPER}** (${tag}) for review.\n\n` +
+                    `Any extra context on edge cases you'd want handled is welcome. 🙏`,
+                  ]),
+                },
+                {
+                  match: /\b(new feature|brand new|add support|entirely new|whole new|would love to see|wish (there was|it had)|introduce a|implement a|build a|create a|new (tool|mode|screen|section|tab))\b/,
+                  reply: () => pick([
+                    `${header}${ack}A **brand-new feature** request — exciting! 🌟\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to evaluate scope and priority.\n\n` +
+                    `If you have a use case or an example from another app, please share it in the replies — it helps us design it properly. 🙏`,
+                    `${header}${ack}A **new capability** suggestion — love it. 🌟\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}** for scoping.\n\n` +
+                    `We'll follow up here if we need clarity. Thanks for pushing us forward! 💡`,
+                    `${header}${ack}Thanks for proposing a **new feature**! 🌟 Those take more design work, so we review them carefully.\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}).\n\n` +
+                    `Any mock-ups, screenshots, or reference apps are super welcome in the replies. 🙏`,
+                    `${header}${ack}A **net-new feature** — noted with interest. 🌟\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here once we've scoped it. Thanks for the vision! 🚀`,
+                    `${header}${ack}Interesting — a **whole new feature**. 🌟 Bigger ideas take a bit longer to review, but they're worth it.\n\n` +
+                    `I've handed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `Feel free to add more detail in the replies. 🙏`,
+                  ]),
+                },
+                {
+                  match: /\b(privacy|security|secure|encrypt|anonym|no[- ]log|gdpr|permission|sandbox|isolat|protect|firewall|leak|dnssec|doh|dot|encrypted dns)\b/,
+                  reply: () => pick([
+                    `${header}${ack}A **privacy / security** suggestion — that's very much our wheelhouse. 🔒\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to review.\n\n` +
+                    `If you have a threat model or reference spec in mind, please share it in the replies. 🙏`,
+                    `${header}${ack}Thanks for the **privacy/security** idea! 🔒 We hold those to a high bar.\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here with questions or an update. 💡`,
+                    `${header}${ack}A **security or privacy enhancement** — great instinct. 🔒\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `Any reference implementations or RFCs are welcome in the replies. 🙏`,
+                    `${header}${ack}Noted — a **privacy / security feature**. 🔒 Those get careful review.\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here. Thanks for caring about this! 🚀`,
+                    `${header}${ack}Thanks for suggesting a **privacy/security improvement**! 🔒\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll be in touch here once we've reviewed. Appreciate the idea! 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(translat|locali[sz]|language|multilingual|russian|arabic|spanish|french|german|hindi|bengali|japanese|chinese|korean|portuguese|rtl|locale)\b/,
+                  reply: () => pick([
+                    `${header}${ack}A **localisation / language** suggestion — great to hear! 🌍\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to review.\n\n` +
+                    `If you'd like to help translate (or know someone who would), reply here — community translations move fast! 🙏`,
+                    `${header}${ack}Thanks for the **language / localisation** idea! 🌍\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here with questions or an update. Cheers! 💡`,
+                    `${header}${ack}A **translation / locale** request — noted. 🌍 Community help on this is especially welcome.\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `Let us know if you'd like to contribute translations. 🙏`,
+                    `${header}${ack}Great to see a **localisation** suggestion! 🌍\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here soon. Thanks for thinking globally! 🚀`,
+                    `${header}${ack}Thanks for suggesting **translation / language support**! 🌍\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll reply here once we've scoped it. 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(accessib|a11y|screen reader|talkback|voiceover|high contrast|large (text|font)|dyslex|color ?blind|colour ?blind|motor|tap target|wcag)\b/,
+                  reply: () => pick([
+                    `${header}${ack}An **accessibility** suggestion — that's really important to us. ♿\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to review.\n\n` +
+                    `If you have a specific WCAG criterion or a device setup in mind, please share it in the replies. 🙏`,
+                    `${header}${ack}Thanks for the **a11y** idea! ♿ Everyone should be able to use NetShield comfortably.\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here with questions or an update. 💡`,
+                    `${header}${ack}A **accessibility enhancement** — appreciated. ♿\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `Any reference implementations or standard docs are welcome in the replies. 🙏`,
+                    `${header}${ack}Noted — an **accessibility feature**. ♿ Those get careful review.\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here. Thanks for flagging it! 🚀`,
+                    `${header}${ack}Thanks for suggesting an **accessibility improvement**! ♿\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll be in touch here once we've reviewed. Appreciate the idea! 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(document|docs|wiki|readme|tutorial|guide|faq|help (page|section)|changelog|example|explain|walkthrough|onboard)/,
+                  reply: () => pick([
+                    `${header}${ack}A **documentation** suggestion — genuinely valuable! 📚\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to review.\n\n` +
+                    `If you can point at the page that confused you or that should exist, reply here — it'll help a lot. 🙏`,
+                    `${header}${ack}Thanks for the **docs / wiki** idea! 📚 Good docs make everyone's life easier.\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here with questions or an update. 💡`,
+                    `${header}${ack}A **documentation enhancement** — appreciated. 📚\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `If you'd like to draft something yourself, PRs to the wiki are welcome too! 🙏`,
+                    `${header}${ack}Noted — a **docs / tutorial** suggestion. 📚\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here. Thanks for caring about clarity! 🚀`,
+                    `${header}${ack}Thanks for suggesting a **documentation improvement**! 📚\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll be in touch here once we've reviewed. Appreciate the idea! 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(advanced|power user|expert|pro mode|developer option|config file|cli|command[- ]line|script|automation|batch|regex|rule set|rule[- ]list|custom (dns|list|rule|server|upstream)|override)\b/,
+                  reply: () => pick([
+                    `${header}${ack}A **power-user / advanced** suggestion — that's the sort of thing we love. ⚙️\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to review.\n\n` +
+                    `If you have a concrete workflow or config example in mind, please share it in the replies. 🙏`,
+                    `${header}${ack}Thanks for the **advanced-user** idea! ⚙️ Those often end up benefiting everyone.\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `We'll reply here with questions or an update. 💡`,
+                    `${header}${ack}An **advanced / power-user feature** — noted. ⚙️\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `Concrete examples or scripts are welcome in the replies. 🙏`,
+                    `${header}${ack}Nice — a **power-user / automation** idea. ⚙️\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here. Thanks for pushing the edges! 🚀`,
+                    `${header}${ack}Thanks for suggesting an **advanced feature**! ⚙️\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll be in touch here once we've scoped it. Appreciate the idea! 💡`,
+                  ]),
+                },
+                {
+                  match: /\b(behaviou?r|should (instead|rather)|currently (it )?|right now it|how it works|change the way|flow|workflow|process|step|tap|long[- ]press|swipe|gesture)\b/,
+                  reply: () => pick([
+                    `${header}${ack}Sounds like a **workflow / behaviour change** — I can see where you're coming from. 🔄\n\n` +
+                    `I've tagged this ${tag} and assigned **@${DEVELOPER}** to evaluate the trade-offs.\n\n` +
+                    `If you can describe the exact steps and what you'd expect instead, please reply here. 🙏`,
+                    `${header}${ack}Thanks for the **flow / behaviour** suggestion! 🔄\n\n` +
+                    `Tagged ${tag} and handed to **@${DEVELOPER}**.\n\n` +
+                    `Concrete before/after steps in the replies would help us a lot. 💡`,
+                    `${header}${ack}A **UX / behaviour** tweak — noted. 🔄\n\n` +
+                    `I've looped in **@${DEVELOPER}** (${tag}) for evaluation.\n\n` +
+                    `We'll reply here with questions or an update. 🙏`,
+                    `${header}${ack}Nice — a **workflow improvement**. 🔄\n\n` +
+                    `Tagged ${tag} and assigned **@${DEVELOPER}**.\n\n` +
+                    `We'll follow up here. Thanks for thinking it through! 🚀`,
+                    `${header}${ack}Thanks for suggesting a **behaviour / flow** change! 🔄\n\n` +
+                    `I've routed this to **@${DEVELOPER}** (${tag}).\n\n` +
+                    `We'll be in touch here once we've reviewed. Appreciate the idea! 💡`,
+                  ]),
+                },
+              ];
+
+              const matched = featureContexts.find((c) => c.match.test(context));
+              if (matched) {
+                await say("feature", matched.reply());
+              } else {
+                const FEATURE_ACK = [
+                  ({ u }) => `${header}Your request has been tagged ${tag} and routed to **@${DEVELOPER}** for review. We'll follow up here if we need more details or once there's news. 🙏`,
+                  ({ u }) => `${header}Your feature request is now in **@${DEVELOPER}**'s queue with the ${tag} label.\n\nSit tight — we'll reply here with any updates. Thanks for helping shape NetShield! 🚀`,
+                  ({ u }) => `${header}We've logged your feature request and handed it over to **@${DEVELOPER}** for review (tagged ${tag}).\n\nWe really value user feedback — keep 'em coming! 💡`,
+                  ({ u }) => `${header}Your feature request has been tagged ${tag} and assigned to **@${DEVELOPER}**.\n\nWe review every request carefully and will update you here when there's progress. Cheers! 🍻`,
+                  ({ u }) => `${header}Your idea is now with **@${DEVELOPER}** (label: ${tag}). We'll reply here if we have questions or when we have news.\n\nThanks again for helping improve NetShield! 🙏`,
+                  ({ u }) => `${header}We've tagged this as ${tag} and assigned it to **@${DEVELOPER}** for review.\n\nUser ideas like yours genuinely shape our roadmap — thanks for sharing! 💡`,
+                  ({ u }) => `${header}Your feature request has been routed to **@${DEVELOPER}** with the ${tag} label.\n\nWe'll be in touch here — either with questions or with news. 🙏`,
+                  ({ u }) => `${header}Logged and tagged ${tag}, and assigned to **@${DEVELOPER}**.\n\nWe appreciate you taking the time — this is exactly the kind of feedback that helps us grow. 🚀`,
+                ];
+                await say("feature", pick(FEATURE_ACK)({ u: REPORTER }).trim());
+              }
+              return;
+            }
 
             // ==========================================
             // 🧠 PARSE BUG REPORT
@@ -253,9 +789,6 @@ jobs:
             const badSource = isPlayStore || isOtherThirdParty;
             const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
 
-            // ==========================================
-            // 🛑 STRICT FILTERS (AUTO-CLOSE)
-            // ==========================================
             if (badSource) {
               await addLabel("invalid-source").catch(() => {});
               await closeWith("policy",
@@ -268,31 +801,19 @@ jobs:
 
             // ==========================================
             // 💬 VERSION CONVERSATION
-            // The form doesn't ask for the app version. The bot asks in a comment and reads the reporter's reply.
             // ==========================================
-            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-            // Post a comment only once per key, so re-runs never double-post and the wording stays stable
-            async function sayOnce(key, text) {
-              if (await findComment(key)) return;
-              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: `${MARK(key)}\n${text}` });
-            }
-
-            // "3.1.1", "v3.1.1", "BETA-3.1.1", "beta 3.1.1", "I'm on nightly 3.1.1" -> { channel, nums, ver }
             function parseVersionReply(text) {
               const m = (text || "").slice(0, 500).match(/\b(?:(alpha|beta|nightly)[\s_:-]*)?v?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b/i);
               if (!m) return null;
               return { channel: m[1] ? m[1].toLowerCase() : null, nums: [+m[2], +m[3], +m[4]], ver: `${m[2]}.${m[3]}.${m[4]}` };
             }
 
-            // Does the reply agree with the Version Type picked in the form? Returns the channel, or null on a mismatch.
             function resolveChannel(p) {
               if (selectedChannel === "other") return p.channel || "prerelease";
               if (p.channel && p.channel !== selectedChannel) return null;
               return selectedChannel;
             }
 
-            // The app's diagnostic log usually starts with "NetShield 3.1.1 | Android ..."
             const logVersion = (body.match(/NetShield\s+(?:(?:alpha|beta|nightly)[\s_:-]*)?v?(\d+\.\d+\.\d+)/i) || [])[1];
             const logHint = logVersion ? `Your diagnostic log mentions \`${logVersion}\`, which is usually the installed version.` : "";
 
@@ -304,16 +825,19 @@ jobs:
               other: "The release number from GitHub is fine, e.g. `3.2.0`.",
             };
 
-            // Several phrasings for every message so the conversation doesn't read like a template
             const ASK = [
               ({ u, hint }) => `Hey @${u}, thanks for taking the time to report this! 🙏 One quick thing before I pass it along: which version of NetShield are you running? ${hint}`,
-              ({ u, hint }) => `Hi @${u}! Got your report. Could you tell me which version of the app you're on? ${hint} Just reply right here.`,
+              ({ u, hint }) => `Hi @${u}! Got your report — thanks! Could you tell me which version of the app you're on? ${hint} Just reply right here.`,
               ({ u, hint }) => `Thanks for the report, @${u}! There's just one thing I'm missing: your app version. ${hint}`,
               ({ u, hint }) => `Hello @${u} 👋 Appreciate you filing this. Which version of NetShield is installed on your phone? ${hint}`,
               ({ u, hint }) => `Hey @${u}, before the developer takes a look I need to know which version you're on. ${hint} A quick reply is all it takes!`,
               ({ u, hint }) => `Nice, thanks @${u}. Last piece of the puzzle: which app version are you using? ${hint} Just reply in this thread.`,
               ({ u, hint }) => `Hi @${u}, thanks for the detailed report! Mind telling me which version of the app this happened on? ${hint}`,
               ({ u, hint }) => `Hey @${u}, got it, thanks! Which version is this happening on? ${hint}`,
+              ({ u, hint }) => `Thanks a lot for the info, @${u}! 🙌 One tiny gap: which NetShield version are you on? ${hint}`,
+              ({ u, hint }) => `👋 Hi @${u}, we received your report! Could you confirm the app version? ${hint}`,
+              ({ u, hint }) => `@${u} thanks for filing this! Which version of the app are you using right now? ${hint}`,
+              ({ u, hint }) => `Appreciate the report, @${u}! Before I forward this to the developer, could you share your NetShield version? ${hint}`,
             ];
             const NUDGE = [
               ({ u }) => `Hmm, I couldn't spot a version number in that, @${u}. 🤔 Could you send it like \`3.1.1\`? ${logHint}`,
@@ -321,12 +845,16 @@ jobs:
               ({ u }) => `Almost there, @${u}! I just need the version number (three numbers, like \`3.1.1\`). ${logHint}`,
               () => `Sorry, I didn't catch a version in that. Mind sending it as \`x.y.z\`, e.g. \`3.1.1\`? ${logHint}`,
               ({ u }) => `No worries if it's hard to find, @${u}. ${logHint} Once you have it, just reply with the number (e.g. \`3.1.1\`).`,
+              ({ u }) => `Thanks @${u}! The version is still missing — could you paste it exactly as shown, like \`3.1.1\`? ${logHint}`,
+              ({ u }) => `Almost there, @${u} — I just need the version number. Format \`X.Y.Z\` please (e.g. \`3.1.1\`). ${logHint}`,
+              () => `I couldn't find a version in that reply. Could you send something like \`3.1.1\`? ${logHint}`,
             ];
             const MISMATCH = [
               ({ u, type, said }) => `Hmm, @${u}, you picked **${type}** in the form, but \`${said}\` looks like a different kind of build. 🤔 Could you double-check and send the version again? If the Version Type in the form was wrong, you can also just edit the issue and change it.`,
               ({ u, type, said }) => `Quick sanity check, @${u}: the form says **${type}**, but \`${said}\` doesn't look like that kind of build. Which one is right? Reply with the correct version, or edit the Version Type in the issue if that's what was off.`,
               ({ u, type, said }) => `Thanks! One thing doesn't add up though: you chose **${type}** but \`${said}\` is from a different channel. Mind confirming the version again, @${u}? (Or fix the Version Type by editing the issue.)`,
               ({ u, type, said }) => `Hey @${u}, I think something got mixed up: **${type}** and \`${said}\` don't match. Could you send the right version? You can also edit the issue to change the Version Type.`,
+              ({ u, type, said }) => `Hold on, @${u} — the form says **${type}** but \`${said}\` sounds like a different channel. Which is correct? Feel free to edit the issue if the Version Type was wrong.`,
             ];
             const ACK = [
               ({ u, v }) => `Perfect, thanks @${u}! 🙌 Noted **${v}**. I've passed this to the developer and they'll take a look as soon as they're free.`,
@@ -335,14 +863,18 @@ jobs:
               ({ v }) => `Awesome, thank you! **${v}** noted. This is now in the developer's queue.`,
               ({ v }) => `Great, that helps a lot. Logged **${v}** and sent it over to the developer. 🚀`,
               ({ u, v }) => `Thanks for the quick reply, @${u}! Version **${v}** is on record and the developer will pick this up soon.`,
+              ({ u, v }) => `All set, @${u} — **${v}** noted. 🙏 The developer has been looped in.`,
+              ({ u, v }) => `Perfect, @${u}! Logged **${v}**. You'll hear from us here when the developer gets to it. 🛠️`,
+              ({ v }) => `Thanks! **${v}** is now recorded and the issue is with the developer. Appreciate the quick reply! 🙌`,
+              ({ u, v }) => `Great, thanks @${u}. Marked **${v}** and moved this to the developer's queue. 🚀`,
             ];
             const LEGACY = [
               ({ u, v }) => `Thanks for letting me know, @${u}. 🙏 **${v}** is an older release that's no longer supported, so I can't take bug reports for it. Please update to the **latest stable release** from GitHub Releases, F-Droid, or APK Pure, and open a new issue if the problem is still there.`,
               ({ u, v }) => `Thanks, @${u}! Unfortunately **${v}** is past its support window. Could you update to the **latest stable release** (GitHub Releases, F-Droid, or APK Pure) and check if it still happens? If it does, please open a fresh issue.`,
               ({ u, v }) => `Appreciate the quick reply, @${u}. 📦 That version (**${v}**) has reached end of support, so I'll close this one. Updating to the **latest stable release** often fixes things, and a new issue is welcome if it doesn't.`,
+              ({ u, v }) => `Thanks for confirming, @${u}. **${v}** is no longer supported — could you update to the latest stable build (GitHub Releases / F-Droid / APK Pure) and re-check? If the issue persists, just open a new issue. 🙏`,
             ];
 
-            // Work out where the conversation stands from the thread itself, so any run can pick up where another stopped
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner, repo, issue_number: issueNumber, per_page: 100,
             });
@@ -363,7 +895,6 @@ jobs:
               }
             }
 
-            // ---- Still waiting for a usable version ----
             if (!accepted) {
               await setStatus("on-hold");
               const ctx = { u: REPORTER, type: safe(versionType), hint: HINT[selectedChannel] };
@@ -377,7 +908,6 @@ jobs:
                   const said = `${lastMismatch.p.channel ? lastMismatch.p.channel.toUpperCase() + "-" : ""}${lastMismatch.p.ver}`;
                   await sayOnce(`mismatch-${trigger.id}`, pick(MISMATCH)({ ...ctx, said }).trim());
                 } else if (!parseVersionReply(trigger.body)) {
-                  // Don't nag: at most 3 nudges per issue
                   const nudges = comments.filter((c) => c.user?.type === "Bot" && c.body?.includes("<!-- netshield-bot:nudge-")).length;
                   if (nudges < 3) await sayOnce(`nudge-${trigger.id}`, pick(NUDGE)(ctx).trim());
                 }
@@ -385,9 +915,8 @@ jobs:
               return;
             }
 
-            // ---- Got a usable version ----
             const isTestBuild = ["alpha", "beta", "nightly"].includes(accepted.channel);
-            const shown = isTestBuild ? `${accepted.channel.toUpperCase()}-${accepted.ver}` : accepted.ver; // 3.1.1 / BETA-3.1.1
+            const shown = isTestBuild ? `${accepted.channel.toUpperCase()}-${accepted.ver}` : accepted.ver;
             const versionTag = accepted.channel === "stable" ? `v${accepted.ver}` : isTestBuild ? shown : `PRE-${accepted.ver}`;
 
             const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
@@ -397,12 +926,8 @@ jobs:
               return;
             }
 
-            // ==========================================
-            // ✅ VERSION CONFIRMED -> HAND OVER
-            // ==========================================
             await setStatus("handed-over-to-developer");
 
-            // Label the version: 3.1.1 -> affects-v3.1.1, BETA-3.1.1 -> affects-BETA-3.1.1
             try {
               await trackVersion(accepted.ver, versionTag);
             } catch (e) {
@@ -414,7 +939,7 @@ jobs:
               (accepted.channel === "stable" ? "" : `\n\nThanks for testing our preview builds, it really helps! 🧪`));
 
             // ==========================================
-            // 💡 SMART FAQ (scored, de-duplicated, one editable comment)
+            // 💡 SMART FAQ
             // ==========================================
             const text = `${issue.title}\n${body}`.toLowerCase();
 
@@ -422,58 +947,89 @@ jobs:
               {
                 id: "battery",
                 match: /\b(battery|drain(ing|s|ed)?|power usage|wakelock)\b/,
-                tip: `🔋 **Regarding Battery Usage:**\nAndroid attributes all routed traffic to NetShield because it runs as a local \`VpnService\`, so the battery stats menu counts bandwidth passing through the local DNS proxy as CPU use. Actual consumption by NetShield itself is negligible (~1–2%).`,
+                tips: [
+                  `🔋 **Regarding Battery Usage:**\nAndroid attributes all routed traffic to NetShield because it runs as a local \`VpnService\`, so the battery stats menu counts bandwidth passing through the local DNS proxy as CPU use. Actual consumption by NetShield itself is negligible (~1–2%).`,
+                  `🔋 **Battery drain concern:**\nSince NetShield runs as a \`VpnService\`, Android lumps all DNS traffic it routes into NetShield's battery stats. The app itself barely uses any power (~1–2%); what you see in Settings is mostly passthrough traffic.`,
+                ],
               },
               {
                 id: "multi-vpn",
                 match: /\b(another vpn|wireguard|openvpn|dual vpn|expressvpn|nordvpn|proton ?vpn|mullvad|warp|always[- ]on vpn)\b/,
-                tip: `🔌 **Regarding Running Multiple VPNs:**\nAndroid allows only **one active \`VpnService\` at a time**. Running NetShield next to WireGuard, ExpressVPN or any other VPN app makes one of them disconnect automatically.`,
+                tips: [
+                  `🔌 **Regarding Running Multiple VPNs:**\nAndroid allows only **one active \`VpnService\` at a time**. Running NetShield next to WireGuard, ExpressVPN or any other VPN app makes one of them disconnect automatically.`,
+                  `🔌 **Two VPNs at once?**\nAndroid's \`VpnService\` only supports **one active connection**. If you launch NetShield while another VPN is running (WireGuard, ExpressVPN, etc.), one of them will drop. Pick one at a time for best results.`,
+                ],
               },
               {
                 id: "private-dns",
                 match: /\b(private dns|settings dns|dns[- ]over[- ]tls in settings)\b/,
-                tip: `⚙️ **Regarding Android "Private DNS":**\nIf **Private DNS** is ON in system settings (\`Settings → Network & Internet → Private DNS\`), it can block NetShield's local encrypted tunnel socket binding. Set it to **Off** or **Automatic** so DoT/DoH can resolve properly.`,
+                tips: [
+                  `⚙️ **Regarding Android "Private DNS":**\nIf **Private DNS** is ON in system settings (\`Settings → Network & Internet → Private DNS\`), it can block NetShield's local encrypted tunnel socket binding. Set it to **Off** or **Automatic** so DoT/DoH can resolve properly.`,
+                  `⚙️ **Android "Private DNS" conflict:**\nAndroid's built-in Private DNS setting can clash with NetShield's encrypted tunnel. Please set \`Settings → Network & Internet → Private DNS\` to **Off** or **Automatic** and try again.`,
+                ],
               },
               {
                 id: "host-resolution",
                 match: /(unknownhostexception|eai_nodata|unable to resolve host|sockettimeoutexception|ssl(handshake)?exception|connection (timed out|refused))/,
-                tip: `🌐 **Regarding Host Resolution / Connection Errors:**\nThe encrypted upstream DNS endpoint couldn't be reached over port 853 (DoT) or 443 (DoH).\n* Check whether your Wi-Fi or mobile ISP blocks outgoing TLS port 853.\n* Enable **Auto-Switch to UDP Fallback** in NetShield settings, or verify your Bootstrap DNS IP is intact.`,
+                tips: [
+                  `🌐 **Regarding Host Resolution / Connection Errors:**\nThe encrypted upstream DNS endpoint couldn't be reached over port 853 (DoT) or 443 (DoH).\n* Check whether your Wi-Fi or mobile ISP blocks outgoing TLS port 853.\n* Enable **Auto-Switch to UDP Fallback** in NetShield settings, or verify your Bootstrap DNS IP is intact.`,
+                  `🌐 **DNS resolution / connection error:**\nLooks like the encrypted upstream (DoT/DoH) is unreachable. Common causes:\n* ISP blocks outbound port 853.\n* Bootstrap DNS not reachable.\nFix: enable **Auto-Switch to UDP Fallback** in NetShield, or check whether your network blocks DoT.`,
+                ],
               },
               {
                 id: "killed-in-background",
                 match: /\b(stops? (working|running)|keeps? (stopping|closing|disconnecting)|killed|disconnects?|not (staying|running) in (the )?background|after (a )?(reboot|restart))\b/,
-                tip: `🛑 **Regarding the app stopping in the background:**\nAggressive OEM battery managers (MIUI, ColorOS, OneUI, etc.) often kill VPN services. Set NetShield's battery mode to **Unrestricted**, lock it in the recents screen, and enable auto-start if your device has that option. See https://dontkillmyapp.com for device-specific steps.`,
+                tips: [
+                  `🛑 **Regarding the app stopping in the background:**\nAggressive OEM battery managers (MIUI, ColorOS, OneUI, etc.) often kill VPN services. Set NetShield's battery mode to **Unrestricted**, lock it in the recents screen, and enable auto-start if your device has that option. See https://dontkillmyapp.com for device-specific steps.`,
+                  `🛑 **Background disconnects:**\nMany OEM ROMs (Xiaomi, Oppo, Samsung, etc.) aggressively kill VPN services. Try these:\n* Set battery mode → **Unrestricted**.\n* Lock NetShield in the recent-apps view.\n* Enable auto-start in your device's settings.\nMore device-specific tips: https://dontkillmyapp.com`,
+                ],
               },
               {
                 id: "slow",
                 match: /\b(slow(er)?|latency|lag(gy|ging)?|high ping|page(s)? (load|loading) (slow|forever))\b/,
-                tip: `🐢 **Regarding slow browsing:**\nA slow upstream resolver or blocked DoT port causes long DNS waits. Try a different upstream provider in NetShield, and enable UDP fallback if your network blocks port 853.`,
+                tips: [
+                  `🐢 **Regarding slow browsing:**\nA slow upstream resolver or blocked DoT port causes long DNS waits. Try a different upstream provider in NetShield, and enable UDP fallback if your network blocks port 853.`,
+                  `🐢 **Slow browsing:**\nUsually caused by a sluggish upstream resolver or a blocked DoT port. Try switching to a different upstream DNS in NetShield's settings, and enable the UDP fallback if your network blocks port 853.`,
+                ],
               },
               {
                 id: "site-broken",
                 match: /\b(website|site|app|page)s?\b.{0,40}\b(not (loading|working|opening)|broken|blocked|won'?t (load|open))\b|\bfalse positive\b/,
-                tip: `🚫 **Regarding a site or app that breaks:**\nA blocklist entry may be catching a legitimate domain. Check NetShield's query log for the blocked domain and add it to your **allowlist**. If it's a false positive in a default list, include the domain in this issue so we can report it upstream.`,
+                tips: [
+                  `🚫 **Regarding a site or app that breaks:**\nA blocklist entry may be catching a legitimate domain. Check NetShield's query log for the blocked domain and add it to your **allowlist**. If it's a false positive in a default list, include the domain in this issue so we can report it upstream.`,
+                  `🚫 **Site or app not loading:**\nThis is usually a blocklist false positive. Look in NetShield's query log for the blocked domain, then add it to your **allowlist**. If it's clearly a mistake in one of our default lists, drop the domain here and we'll report it upstream.`,
+                ],
               },
             ];
 
             const hits = FAQ.filter((f) => f.match.test(text));
             if (hits.length) {
+              const FAQ_INTROS = [
+                `🤖 **Automated Helper & Frequently Asked Questions** 💡\n\nBased on your report, these might help right away:`,
+                `🤖 **Quick helper — these tips may match your report:** 💡`,
+                `💡 **Automated suggestions based on your report:**`,
+                `🤖 **Bot here — I spotted a few things that might help:** 💡`,
+              ];
+              const FAQ_OUTROS = [
+                `\n\n---\n✨ **Did this solve your problem?**\n* **Yes:** please click **"Close issue"** below. 😊\n* **No:** reply with extra context and the developer will take a look. 🚀`,
+                `\n\n---\n✨ **Did that help?**\n* **Yes →** close the issue below. 😊\n* **No →** reply here and the developer will jump in. 🚀`,
+                `\n\n---\n✨ **Did this fix it?**\n* **Yes:** feel free to close the issue. 😊\n* **No:** reply with more details and we'll take it from there. 🚀`,
+              ];
               await say("faq",
-                `🤖 **Automated Helper & Frequently Asked Questions** 💡\n\n` +
-                `Based on your report, these might help right away:\n\n` +
-                hits.map((h) => h.tip).join("\n\n---\n\n") +
-                `\n\n---\n✨ **Did this solve your problem?**\n` +
-                `* **Yes:** please click **"Close issue"** below. 😊\n` +
-                `* **No:** reply with extra context and the developer will take a look. 🚀`);
+                pick(FAQ_INTROS) + `\n\n` +
+                hits.map((h) => pick(h.tips)).join("\n\n---\n\n") +
+                pick(FAQ_OUTROS));
             }
 
             // ==========================================
-            // 📚 WIKI DISCOVERY (keyword-scored against wiki pages)
+            // 📚 WIKI DISCOVERY
             // ==========================================
             try {
               const fs = require("fs");
               const nodePath = require("path");
               const wikiDir = nodePath.join(process.env.GITHUB_WORKSPACE, "wiki");
+
+              const diagnosticLog = field("Diagnostic Log") || field("Logcat") || field("Log") || "";
 
               if (fs.existsSync(wikiDir)) {
                 const STOP = new Set(("the and for with not you your this that have has had was were are but can cant dont " +
@@ -484,7 +1040,6 @@ jobs:
                 const tok = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ")
                   .split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
 
-                // Query: title words count triple, body words once (form headings stripped)
                 const query = new Map();
                 for (const w of tok(issue.title)) query.set(w, (query.get(w) || 0) + 3);
                 for (const w of tok(body.replace(/^###.*$/gm, ""))) query.set(w, (query.get(w) || 0) + 1);
@@ -509,6 +1064,26 @@ jobs:
                     if (counts.has(w)) s += q * Math.min(counts.get(w), 3) * 0.5;
                     if (s > 0) { score += s; matched.push(w); }
                   }
+
+                  if (diagnosticLog) {
+                    const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
+                    for (const block of codeBlocks) {
+                      const cleanBlock = block.replace(/```\w*\n?/, "").replace(/```$/, "").trim();
+                      if (!cleanBlock) continue;
+                      const blockToks = new Set(tok(cleanBlock));
+                      if (blockToks.size === 0) continue;
+                      let overlap = 0;
+                      for (const bt of blockToks) {
+                        if (diagnosticLog.toLowerCase().includes(bt)) overlap++;
+                      }
+                      const ratio = overlap / blockToks.size;
+                      if (ratio >= 0.4) {
+                        score += 15;
+                        matched.push("code-block");
+                      }
+                    }
+                  }
+
                   if (matched.length >= 2 && score >= 8) {
                     scored.push({ base, score, matched: matched.slice(0, 4) });
                   }
@@ -517,12 +1092,23 @@ jobs:
                 scored.sort((a, b) => b.score - a.score);
                 const top = scored.slice(0, 2);
                 if (top.length) {
+                  const WIKI_INTROS = [
+                    `📚 **I found some wiki docs that might help:**\n\n`,
+                    `📚 **Wiki suggestions — these pages may cover your problem:**\n\n`,
+                    `📖 **Documentation match — check these out:**\n\n`,
+                    `📚 **I think the wiki has something for you:**\n\n`,
+                  ];
+                  const WIKI_OUTROS = [
+                    `\n\nThis is an automatic keyword match, so it may not be exact. If it doesn't help, just reply here and the developer will take a look. 🚀`,
+                    `\n\n(Auto-matched by keywords, so it may be off — reply here if it doesn't help and the developer will dive in. 🚀)`,
+                    `\n\nIt's a best-effort match. If it doesn't solve your issue, just reply and we'll take it from there. 🚀`,
+                  ];
                   await say("wiki",
-                    `📚 **I think this GitHub Wiki documentation might fix your problem:**\n\n` +
+                    pick(WIKI_INTROS) +
                     top.map((p) =>
                       `* [${p.base.replace(/-/g, " ")}](https://github.com/${owner}/${repo}/wiki/${encodeURIComponent(p.base)})` +
                       ` _(matched: ${p.matched.join(", ")})_`).join("\n") +
-                    `\n\nThis is an automatic keyword match, so it may not be exact. If it doesn't help, just reply here and the developer will take a look. 🚀`);
+                    pick(WIKI_OUTROS));
                 }
               }
             } catch (e) {
@@ -530,9 +1116,9 @@ jobs:
             }
 
             // ==========================================
-            // 🔍 POSSIBLE DUPLICATES (only suggests, never closes)
+            // 🔍 POSSIBLE DUPLICATES
             // ==========================================
-            { // runs once, when the version reply moves the issue to the developer's queue
+            {
               try {
                 const stop = new Set(["the","and","for","with","not","app","netshield","issue","bug","when","after","but","this","that","does","doesn't","cannot","can't","working","error"]);
                 const words = issue.title.toLowerCase().replace(/[^a-z0-9\s]/g, " ")
@@ -543,10 +1129,20 @@ jobs:
                   const related = data.items.filter((i) => i.number !== issueNumber).slice(0, 3);
                   if (related.length) {
                     await addLabel("duplicate-suspected").catch(() => {});
+                    const DUP_INTROS = [
+                      `🔍 **Possibly related open issues:**\n\n`,
+                      `🔍 **These open issues look related:**\n\n`,
+                      `🔍 **Heads up — these might be duplicates:**\n\n`,
+                    ];
+                    const DUP_OUTROS = [
+                      `\n\nIf one of these matches your problem, please add your details there. A maintainer will confirm whether this is a duplicate.`,
+                      `\n\nIf any of these match what you're seeing, feel free to add your info there. A maintainer will confirm whether this is a duplicate.`,
+                      `\n\nIf one of these describes the same issue, please drop your details in that thread. A maintainer will verify.`,
+                    ];
                     await say("related",
-                      `🔍 **Possibly related open issues:**\n\n` +
+                      pick(DUP_INTROS) +
                       related.map((i) => `* #${i.number}: ${safe(i.title, 100)}`).join("\n") +
-                      `\n\nIf one of these matches your problem, please add your details there. A maintainer will confirm whether this is a duplicate.`);
+                      pick(DUP_OUTROS));
                   }
                 }
               } catch (e) {
@@ -554,8 +1150,534 @@ jobs:
               }
             }
 
+  # ==========================================
+  # ⏳ COUNTDOWN MANAGER (start / cancel from comments)
+  # ==========================================
+  countdown-manager:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.sender.type != 'Bot' &&
+      !github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - name: Handle countdown
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+            const issueNumber = issue.number;
+            const comment = context.payload.comment;
+            const body = comment.body || "";
+
+            if (issue.state === "closed") return;
+
+            const REPORTER = issue.user.login;
+            const commenter = comment.user.login;
+            const isMaintainer = ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.author_association);
+
+            const CD_LABEL = "auto-close-pending";
+            const MARKER_RE = /<!--\s*netshield-bot:countdown\s+deadline="([^"]+)"\s+maintainer="([^"]+)"\s*-->/;
+
+            // Find existing countdown comment
+            async function findCountdownComment() {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: issueNumber, per_page: 100,
+              });
+              return comments.find((c) => c.user?.type === "Bot" && /netshield-bot:countdown/.test(c.body || ""));
+            }
+
+            // Parse a maintainer's comment for a countdown directive
+            function parseCountdown(text) {
+              if (!text) return null;
+              // Negation guard: skip "won't close", "will not close", etc.
+              if (/\b(?:won'?t|will\s+not|never|no)\s+(?:be\s+)?(?:auto[- ]?|automatically\s+)?clos/i.test(text)) return null;
+
+              const m = text.match(/\bclos(?:e[sd]?|ing)\b[\s\S]{0,100}?\b(?:in|after)\s+(\d+)\s*(minutes?|mins?|m|hours?|hrs?|h|days?|d)\b/i);
+              if (!m) return null;
+              const n = parseInt(m[1], 10);
+              if (!n || n <= 0 || n > 10000) return null;
+              const unit = m[2].toLowerCase();
+              let ms;
+              let human;
+              if (unit === "m" || /^min/.test(unit)) { ms = n * 60 * 1000; human = `${n} minute${n === 1 ? "" : "s"}`; }
+              else if (unit === "h" || /^h/.test(unit)) { ms = n * 60 * 60 * 1000; human = `${n} hour${n === 1 ? "" : "s"}`; }
+              else if (unit === "d" || /^d/.test(unit)) { ms = n * 24 * 60 * 60 * 1000; human = `${n} day${n === 1 ? "" : "s"}`; }
+              else return null;
+              return { ms, human };
+            }
+
+            function formatDeadline(date) {
+              return date.toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
+            }
+
+            // ---------- Path 1: maintainer triggers a countdown ----------
+            if (isMaintainer) {
+              const parsed = parseCountdown(body);
+              if (!parsed) return;
+
+              const deadline = new Date(Date.now() + parsed.ms);
+              const deadlineIso = deadline.toISOString();
+              const marker = `<!-- netshield-bot:countdown deadline="${deadlineIso}" maintainer="${commenter}" -->`;
+
+              // Ensure label exists
+              try { await github.rest.issues.getLabel({ owner, repo, name: CD_LABEL }); }
+              catch (e) {
+                if (e.status !== 404) throw e;
+                await github.rest.issues.createLabel({
+                  owner, repo, name: CD_LABEL, color: "d4c5f9",
+                  description: "Bot is counting down to auto-close this issue",
+                });
+              }
+
+              const visibleBody =
+                `${marker}\n` +
+                `⏳ **Auto-close countdown started** — based on @${commenter}'s note, this issue will be **automatically closed in ${parsed.human}** (on **${formatDeadline(deadline)}**) unless you reply first.\n\n` +
+                `**@${REPORTER}**, if you have anything to add or the issue is still relevant, please reply in this thread before the deadline. Any reply from you will **cancel the countdown** and re-engage the maintainers.\n\n` +
+                `_If nothing is needed, no action is required — the bot will close this issue to keep the tracker tidy._ 🤖`;
+
+              const existingCd = await findCountdownComment();
+              if (existingCd) {
+                await github.rest.issues.updateComment({
+                  owner, repo, comment_id: existingCd.id, body: visibleBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issueNumber, body: visibleBody,
+                });
+              }
+
+              // Ensure the label is present
+              const { data: freshIssue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              const curLabels = (freshIssue.labels || []).map((l) => (typeof l === "string" ? l : l.name));
+              if (!curLabels.includes(CD_LABEL)) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [CD_LABEL] });
+              }
+
+              // Remove the maintainer as assignee, assign the bot
+              let botLogin = null;
+              try {
+                const { data: me } = await github.rest.users.getAuthenticated();
+                botLogin = me.login;
+              } catch (e) {
+                core.warning(`Could not fetch bot identity: ${e.message}`);
+              }
+
+              const curAssignees = (freshIssue.assignees || []).map((a) => a.login);
+              // Remove the maintainer if they were assigned
+              if (curAssignees.includes(commenter)) {
+                try {
+                  await github.rest.issues.removeAssignees({
+                    owner, repo, issue_number: issueNumber, assignees: [commenter],
+                  });
+                } catch (e) {
+                  core.warning(`Could not remove assignee ${commenter}: ${e.message}`);
+                }
+              }
+              // Assign the bot itself
+              if (botLogin && !curAssignees.includes(botLogin)) {
+                try {
+                  await github.rest.issues.addAssignees({
+                    owner, repo, issue_number: issueNumber, assignees: [botLogin],
+                  });
+                } catch (e) {
+                  core.warning(`Could not assign bot: ${e.message}`);
+                }
+              }
+
+              core.info(`Countdown started for issue #${issueNumber} — deadline ${deadlineIso}`);
+              return;
+            }
+
+            // ---------- Path 2: reporter replies → cancel countdown ----------
+            if (commenter === REPORTER) {
+              const cd = await findCountdownComment();
+              if (!cd) return;
+
+              const m = (cd.body || "").match(MARKER_RE);
+              const maintainer = m ? m[2] : null;
+
+              // Remove label
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo, issue_number: issueNumber, name: CD_LABEL,
+                });
+              } catch (e) {
+                if (e.status !== 404) core.warning(`Could not remove label: ${e.message}`);
+              }
+
+              // Update the countdown comment to say "cancelled"
+              const cancelledBody =
+                `${cd.body.split("\n")[0]}\n` +
+                `✅ **Countdown cancelled** — @${REPORTER} replied, so this issue **won't be auto-closed**.\n\n` +
+                (maintainer ? `Re-engaging **@${maintainer}** — please continue the conversation as needed. 🙏\n\n` : ``) +
+                `_The bot has stopped the close countdown for this issue._ 🤖`;
+
+              try {
+                await github.rest.issues.updateComment({
+                  owner, repo, comment_id: cd.id, body: cancelledBody,
+                });
+              } catch (e) {
+                core.warning(`Could not update countdown comment: ${e.message}`);
+              }
+
+              // Reassign to maintainer, remove the bot
+              let botLogin = null;
+              try {
+                const { data: me } = await github.rest.users.getAuthenticated();
+                botLogin = me.login;
+              } catch (e) {
+                core.warning(`Could not fetch bot identity: ${e.message}`);
+              }
+
+              const { data: freshIssue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              const curAssignees = (freshIssue.assignees || []).map((a) => a.login);
+
+              if (botLogin && curAssignees.includes(botLogin)) {
+                try {
+                  await github.rest.issues.removeAssignees({
+                    owner, repo, issue_number: issueNumber, assignees: [botLogin],
+                  });
+                } catch (e) {
+                  core.warning(`Could not remove bot assignee: ${e.message}`);
+                }
+              }
+              if (maintainer && !curAssignees.includes(maintainer)) {
+                try {
+                  await github.rest.issues.addAssignees({
+                    owner, repo, issue_number: issueNumber, assignees: [maintainer],
+                  });
+                } catch (e) {
+                  core.warning(`Could not re-add maintainer ${maintainer}: ${e.message}`);
+                }
+              }
+
+              core.info(`Countdown cancelled for issue #${issueNumber} (reporter replied).`);
+            }
+
+  # ==========================================
+  # ⏳ COUNTDOWN SWEEP (every 15 min)
+  # ==========================================
+  countdown-sweep:
+    if: github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - name: Close expired countdowns
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const CD_LABEL = "auto-close-pending";
+            const MARKER_RE = /<!--\s*netshield-bot:countdown\s+deadline="([^"]+)"\s+maintainer="([^"]+)"\s*-->/;
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: "open", labels: CD_LABEL, per_page: 100,
+            });
+
+            if (issues.length === 0) {
+              core.info("No countdown issues to process.");
+              return;
+            }
+
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            for (const i of issues) {
+              if (i.pull_request) continue;
+
+              try {
+                // Find the countdown marker comment
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner, repo, issue_number: i.number, per_page: 100,
+                });
+                const cd = comments.find((c) => c.user?.type === "Bot" && /netshield-bot:countdown/.test(c.body || ""));
+                if (!cd) {
+                  // Label is stale — remove it
+                  try {
+                    await github.rest.issues.removeLabel({ owner, repo, issue_number: i.number, name: CD_LABEL });
+                  } catch (_) {}
+                  continue;
+                }
+
+                const m = (cd.body || "").match(MARKER_RE);
+                if (!m) {
+                  try { await github.rest.issues.removeLabel({ owner, repo, issue_number: i.number, name: CD_LABEL }); } catch (_) {}
+                  continue;
+                }
+                const deadline = new Date(m[1]);
+                const maintainer = m[2];
+                const reporter = i.user.login;
+
+                // Safety: check for a reporter reply after the countdown started
+                const cdCreated = new Date(cd.created_at).getTime();
+                const reporterReplied = comments.some((c) =>
+                  c.user?.login === reporter && new Date(c.created_at).getTime() > cdCreated
+                );
+
+                if (reporterReplied) {
+                  // Cancel the countdown instead of closing
+                  const cancelledBody =
+                    `${(cd.body || "").split("\n")[0]}\n` +
+                    `✅ **Countdown cancelled** — @${reporter} replied, so this issue won't be auto-closed.\n\n` +
+                    (maintainer ? `Re-engaging **@${maintainer}**. 🙏\n\n` : ``) +
+                    `_The bot has stopped the close countdown for this issue._ 🤖`;
+
+                  try {
+                    await github.rest.issues.updateComment({ owner, repo, comment_id: cd.id, body: cancelledBody });
+                  } catch (_) {}
+                  try {
+                    await github.rest.issues.removeLabel({ owner, repo, issue_number: i.number, name: CD_LABEL });
+                  } catch (_) {}
+
+                  // Reassign to maintainer
+                  let botLogin = null;
+                  try {
+                    const { data: me } = await github.rest.users.getAuthenticated();
+                    botLogin = me.login;
+                  } catch (_) {}
+
+                  const curAssignees = (i.assignees || []).map((a) => a.login);
+                  if (botLogin && curAssignees.includes(botLogin)) {
+                    try {
+                      await github.rest.issues.removeAssignees({ owner, repo, issue_number: i.number, assignees: [botLogin] });
+                    } catch (_) {}
+                  }
+                  if (maintainer && !curAssignees.includes(maintainer)) {
+                    try {
+                      await github.rest.issues.addAssignees({ owner, repo, issue_number: i.number, assignees: [maintainer] });
+                    } catch (_) {}
+                  }
+                  core.info(`Countdown cancelled for #${i.number} (reporter reply detected).`);
+                  continue;
+                }
+
+                if (Date.now() < deadline.getTime()) {
+                  core.info(`#${i.number} countdown still active until ${deadline.toISOString()}.`);
+                  continue;
+                }
+
+                // Deadline expired — close with a message
+                const CLOSE_MSGS = [
+                  `⏳ **Auto-closing — the countdown has expired.**\n\n` +
+                  `@${maintainer} set an auto-close timer on this issue and no reply was received. If you'd still like help, please **open a fresh issue** with the relevant details. 🙏\n\n` +
+                  `*This issue has been automatically closed.* 🤖`,
+
+                  `⏳ **Countdown expired — closing this issue.**\n\n` +
+                  `The auto-close timer set by @${maintainer} has elapsed without a response. If the problem is still relevant, feel free to **open a new issue** and we'll take a look. 🙏\n\n` +
+                  `*This issue has been automatically closed.* 🤖`,
+
+                  `⏳ **Auto-close timer elapsed — closing.**\n\n` +
+                  `@${maintainer}'s countdown finished without a follow-up. Please **open a fresh issue** if you'd like us to revisit this. Thanks for understanding! 🙏\n\n` +
+                  `*This issue has been automatically closed.* 🤖`,
+                ];
+
+                try {
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: i.number, body: pick(CLOSE_MSGS),
+                  });
+                } catch (_) {}
+
+                await github.rest.issues.update({
+                  owner, repo, issue_number: i.number, state: "closed", state_reason: "not_planned",
+                });
+
+                try {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: i.number, name: CD_LABEL });
+                } catch (_) {}
+
+                core.info(`Auto-closed #${i.number} (countdown expired).`);
+              } catch (e) {
+                core.warning(`Could not process countdown for #${i.number}: ${e.message}`);
+              }
+            }
+
+  # ==========================================
+  # 🎉 AUTO-CLOSE ISSUES MENTIONED IN A RELEASE
+  # ==========================================
+  close-issues-on-release:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - name: Close referenced open issues
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const release = context.payload.release;
+            const body = release.body || "";
+            const tag = release.tag_name;
+            const releaseUrl = release.html_url;
+
+            const nums = new Set();
+            for (const m of body.matchAll(/(?<![\w/-])#(\d+)\b/g)) nums.add(Number(m[1]));
+            const urlRe = new RegExp(`https://github\\.com/${owner}/${repo}/issues/(\\d+)\\b`, "g");
+            for (const m of body.matchAll(urlRe)) nums.add(Number(m[1]));
+
+            if (nums.size === 0) {
+              core.info("No issue references found in the release notes.");
+              return;
+            }
+
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            const HEADLINES_FEATURE = [
+              ({ u }) => `🎉 **Great news, @${u} — your feature request has shipped!** 🚀`,
+              ({ u }) => `🎉 **@${u}, your feature request just landed!** 🚀`,
+              ({ u }) => `✨ **Good news, @${u} — the feature you requested is now live!** 🎉`,
+              ({ u }) => `🚀 **@${u}, we shipped your feature request!** 🎉`,
+              ({ u }) => `🎉 **Feature delivered, @${u}!** Thanks for the great idea. 🚀`,
+              ({ u }) => `🌟 **@${u}, your suggestion is now part of NetShield!** 🎉`,
+            ];
+            const HEADLINES_BUG = [
+              ({ u }) => `🎉 **Great news, @${u} — this has been fixed!** ✅`,
+              ({ u }) => `✅ **@${u}, this bug is now resolved!** 🎉`,
+              ({ u }) => `🎉 **Fixed and shipped, @${u}!** ✅`,
+              ({ u }) => `✅ **Good news, @${u} — the issue is resolved!** 🎉`,
+              ({ u }) => `🎉 **@${u}, your report has been fixed!** Thanks for flagging it. ✅`,
+              ({ u }) => `🛠️ **All patched up, @${u}!** The fix is live. ✅`,
+            ];
+
+            const BODY_FEATURE = [
+              ({ tag, releaseUrl }) => `Our developers have implemented the feature you asked for and it's now available in **[\`${tag}\`](${releaseUrl})**.`,
+              ({ tag, releaseUrl }) => `The feature you suggested is now live in **[\`${tag}\`](${releaseUrl})**. Thanks for helping shape NetShield!`,
+              ({ tag, releaseUrl }) => `We've built and shipped your requested feature in **[\`${tag}\`](${releaseUrl})**. 🎉`,
+              ({ tag, releaseUrl }) => `Your idea made it into **[\`${tag}\`](${releaseUrl})** — enjoy! 🎉`,
+            ];
+            const BODY_BUG = [
+              ({ tag, releaseUrl }) => `Our developers have resolved this issue and the fix is now available in **[\`${tag}\`](${releaseUrl})**.`,
+              ({ tag, releaseUrl }) => `The fix for this landed in **[\`${tag}\`](${releaseUrl})**. Thanks for reporting it!`,
+              ({ tag, releaseUrl }) => `We've fixed this and shipped the update in **[\`${tag}\`](${releaseUrl})**. ✅`,
+              ({ tag, releaseUrl }) => `The bug is gone as of **[\`${tag}\`](${releaseUrl})**. Thanks for helping us catch it!`,
+            ];
+
+            const HOWTO = [
+              `### 📦 How to get the update\n\n` +
+              `**🟢 Using F-Droid?**\n` +
+              `Please **wait 1–2 days**. The new version will appear on F-Droid as soon as the F-Droid maintainers review and accept our merge request. ` +
+              `We'd **not recommend** downloading the GitHub release version if you're an F-Droid user — the F-Droid build is signed with a different key, and mixing the two can cause install conflicts or data loss.\n\n` +
+              `**🔵 Using GitHub Releases / APK Pure?**\n` +
+              `You can update right away.`,
+
+              `### 📦 Getting the update\n\n` +
+              `**🟢 On F-Droid?**\n` +
+              `Hang tight for **1–2 days** — the new build will appear on F-Droid once the F-Droid maintainers merge our submission. ` +
+              `Please **don't install the GitHub release on top of an F-Droid install** — the signing keys differ, which can cause install conflicts or data loss.\n\n` +
+              `**🔵 On GitHub Releases / APK Pure?**\n` +
+              `You can update immediately.`,
+
+              `### 📦 How to update\n\n` +
+              `**🟢 F-Droid users:** please wait **1–2 days** for the F-Droid maintainers to accept our merge request. ` +
+              `We **strongly advise against** installing the GitHub release version on top of an F-Droid install — different signing keys can break the app or wipe your data.\n\n` +
+              `**🔵 GitHub / APK Pure users:** update whenever you like.`,
+
+              `### 📦 Update instructions\n\n` +
+              `**🟢 F-Droid:** the new version should appear **in 1–2 days** once the F-Droid maintainers accept the merge request. ` +
+              `**Do not** install the GitHub release over an F-Droid install — different signing keys mean install conflicts or potential data loss.\n\n` +
+              `**🔵 GitHub Releases / APK Pure:** update immediately.`,
+            ];
+
+            const WHY = [
+              `### 🤖 Why was this closed automatically?\n` +
+              `This issue was mentioned in the release notes for \`${tag}\`, which means our developers have finished working on it. ` +
+              `The bot closed it automatically to keep the tracker tidy — no action is needed from you.\n\n` +
+              `If the problem persists on \`${tag}\`, or if the new feature doesn't behave as expected, just **open a fresh issue** and we'll take another look. 🙏`,
+
+              `### 🤖 Why the auto-close?\n` +
+              `Because this issue was referenced in the \`${tag}\` release notes, our bot assumed it's been handled and closed it to keep things clean.\n\n` +
+              `If you still see the problem on \`${tag}\` — or the new feature isn't quite right — please **open a new issue** and we'll dig in. 🙏`,
+
+              `### 🤖 About this auto-close\n` +
+              `This issue appeared in the \`${tag}\` release notes, so the bot closed it automatically. Nothing you need to do.\n\n` +
+              `If anything's still off on \`${tag}\`, just **open a fresh issue** — we'd rather hear about it than miss it. 🙏`,
+
+              `### 🤖 Why did the bot close this?\n` +
+              `Because the \`${tag}\` release notes referenced this issue, our bot treated it as resolved and closed it. No action needed from you.\n\n` +
+              `If the problem (or the new feature) isn't quite right on \`${tag}\`, **just open a fresh issue** — we'll pick it up quickly. 🙏`,
+            ];
+
+            for (const n of nums) {
+              try {
+                const { data: iss } = await github.rest.issues.get({
+                  owner, repo, issue_number: n,
+                });
+
+                if (iss.pull_request) {
+                  core.info(`#${n} is a PR; skipping.`);
+                  continue;
+                }
+                if (iss.state === "closed") {
+                  core.info(`#${n} is already closed; skipping.`);
+                  continue;
+                }
+
+                const labels = (iss.labels || []).map((l) => (typeof l === "string" ? l : l.name));
+                const labelNames = labels.join(" ").toLowerCase();
+                const bodyLower = (iss.body || "").toLowerCase();
+                const looksLikeFeature =
+                  labelNames.includes("feature") ||
+                  labelNames.includes("enhancement") ||
+                  bodyLower.includes("feature category");
+
+                const headline = pick(looksLikeFeature ? HEADLINES_FEATURE : HEADLINES_BUG)({ u: iss.user.login });
+                const intro = pick(looksLikeFeature ? BODY_FEATURE : BODY_BUG)({ tag, releaseUrl });
+
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: n,
+                  body:
+                    `${headline}\n\n` +
+                    `${intro}\n\n` +
+                    `---\n\n` +
+                    `${pick(HOWTO)}\n\n` +
+                    `---\n\n` +
+                    `${pick(WHY)}`,
+                });
+
+                await github.rest.issues.update({
+                  owner, repo, issue_number: n,
+                  state: "closed", state_reason: "completed",
+                });
+
+                core.info(`Closed #${n}.`);
+              } catch (e) {
+                core.warning(`Could not close #${n}: ${e.message}`);
+              }
+            }
+
   stale-sweep:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' && github.event.schedule == '0 3 * * *'
     runs-on: ubuntu-latest
     steps:
       - name: Generate bot token
@@ -578,16 +1700,95 @@ jobs:
               owner, repo, state: "open", labels: "on-hold", per_page: 100,
             });
 
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            const MSGS = [
+              `⏳ **Closing due to inactivity.** This issue stayed **On Hold** for 7 days without the required information.\n\nFeel free to open a new issue with the complete details. 🤖`,
+              `⏳ **Auto-closing — no response for 7 days.** The issue was waiting on additional information.\n\nIf you'd still like help, just open a fresh issue with the missing details. 🤖`,
+              `⏳ **Closing this one — it's been idle for 7 days while On Hold.** No worries at all; open a new issue any time with the details and we'll pick it up. 🤖`,
+            ];
+
             for (const i of issues) {
               if (i.pull_request) continue;
               if (new Date(i.updated_at).getTime() > cutoff) continue;
 
               await github.rest.issues.createComment({
                 owner, repo, issue_number: i.number,
-                body: `⏳ **Closing due to inactivity.** This issue stayed **On Hold** for 7 days without the required information.\n\n` +
-                      `Feel free to open a new issue with the complete details. 🤖`,
+                body: pick(MSGS),
               });
               await github.rest.issues.update({
                 owner, repo, issue_number: i.number, state: "closed", state_reason: "not_planned",
               });
             }
+
+  # ==========================================
+  # 🆕 AUTO-MILESTONE FROM MAINTAINER COMMENTS
+  # ==========================================
+  auto-milestone:
+    if: github.event_name == 'issue_comment' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - name: Assign milestone from maintainer comment
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const issueNumber = context.payload.issue.number;
+            const comment = context.payload.comment;
+            const body = comment.body || "";
+
+            const MAINTAINER_ROLES = ["OWNER", "MEMBER", "COLLABORATOR"];
+            if (!MAINTAINER_ROLES.includes(comment.author_association)) return;
+            if (context.payload.issue.state !== "open") return;
+
+            const labels = (context.payload.issue.labels || []).map((l) => (typeof l === "string" ? l : l.name));
+            const labelNames = labels.join(" ").toLowerCase();
+            const issueBody = (context.payload.issue.body || "").toLowerCase();
+            const isFeatureRequest =
+              labelNames.includes("feature") ||
+              labelNames.includes("enhancement") ||
+              issueBody.includes("feature category");
+
+            if (!isFeatureRequest) {
+              core.info(`Issue #${issueNumber} is not a feature request; skipping milestone.`);
+              return;
+            }
+
+            const match = body.match(/\bv?(\d+\.\d+\.\d+)\b/i);
+            if (!match) return;
+            const version = match[1];
+            const title = `v${version}`;
+
+            const { data: issue } = await github.rest.issues.get({
+              owner, repo, issue_number: issueNumber,
+            });
+            if (issue.milestone) {
+              core.info(`Issue #${issueNumber} already has milestone: ${issue.milestone.title}`);
+              return;
+            }
+
+            const milestones = await github.paginate(github.rest.issues.listMilestones, {
+              owner, repo, state: "all", per_page: 100,
+            });
+            let milestone = milestones.find((m) => m.title === title);
+            if (!milestone) {
+              core.info(`Creating new milestone: ${title}`);
+              milestone = (await github.rest.issues.createMilestone({
+                owner, repo, title,
+                description: `Targeted for release ${title}`,
+              })).data;
+            }
+
+            await github.rest.issues.update({
+              owner, repo, issue_number: issueNumber, milestone: milestone.number,
+            });
+
+            core.info(`Milestone "${title}" assigned to issue #${issueNumber}.`);
