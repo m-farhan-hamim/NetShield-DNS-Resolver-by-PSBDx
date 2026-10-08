@@ -234,8 +234,8 @@ This app was built by **PSBDx** ([M. Farhan Hamim](https://github.com/m-farhan-h
 
 ### ⭐ Star this repository if you find it useful!
 
-[![GitHub Stars](https://img.shields.io/github/stars/m-farhan-hamim/PSBDx-SVN?style=social)](https://github.com/m-farhan-hamim/PSBDx-SVN)
-[![GitHub Forks](https://img.shields.io/github/forks/m-farhan-hamim/PSBDx-SVN?style=social)](https://github.com/m-farhan-hamim/PSBDx-SVN/fork)
+[![GitHub Stars](https://img.shields.io/github/stars/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx)
+[![GitHub Forks](https://img.shields.io/github/forks/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=social)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/fork)
 
 </div>
 
