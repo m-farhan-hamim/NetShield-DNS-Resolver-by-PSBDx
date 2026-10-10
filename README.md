@@ -4,6 +4,7 @@
 
 # NetShield DNS Resolver
 
+[![Recent donators](https://donate.psbdx.com/widget.svg?style=goal)](https://donate.psbdx.com/)
 [![Recent donators](https://donate.psbdx.com/widget.svg)](https://donate.psbdx.com/)
 
 ---
@@ -42,6 +43,7 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 [![Available on F-Droid](https://img.shields.io/badge/F--Droid-available-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org/packages/com.netshield.dns.psbdx/)
 [![Get it on APKPure](https://img.shields.io/badge/APKPure-download-00B5A5?style=for-the-badge)](https://apkpure.com/p/com.netshield.dns.psbdx)
 [![GitHub Release](https://img.shields.io/github/v/release/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx?style=for-the-badge&logo=github&label=GitHub)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/latest)
+[![Recent donators](https://donate.psbdx.com/widget.svg?style=badge)](https://donate.psbdx.com/)
 
 <br>
 
