@@ -12,19 +12,19 @@ public final class DnsNameCache {
     private static final int MAX_ENTRIES = 4096;
     private static final long TTL_MS = 10L * 60_000L;
 
-    private static final class Entry {
+    private static final class NameEntry {
         final String name;
         final long expiresAt;
 
-        Entry(String name, long expiresAt) {
+        NameEntry(String name, long expiresAt) {
             this.name = name;
             this.expiresAt = expiresAt;
         }
     }
 
-    private final Map<Integer, Entry> map = new LinkedHashMap<Integer, Entry>(256, 0.75f, true) {
+    private final Map<Integer, NameEntry> map = new LinkedHashMap<Integer, NameEntry>(256, 0.75f, true) {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<Integer, Entry> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<Integer, NameEntry> eldest) {
             return size() > MAX_ENTRIES;
         }
     };
@@ -36,14 +36,14 @@ public final class DnsNameCache {
         long expires = System.currentTimeMillis() + TTL_MS;
         for (Integer ip : ips) {
             if (ip != 0) {
-                map.put(ip, new Entry(name, expires));
+                map.put(ip, new NameEntry(name, expires));
             }
         }
     }
 
     /** The name last asked for that resolved to this IP, or null. */
     public synchronized String lookup(int ip) {
-        Entry e = map.get(ip);
+        NameEntry e = map.get(ip);
         if (e == null) {
             return null;
         }
