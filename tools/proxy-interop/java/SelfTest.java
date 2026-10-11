@@ -67,10 +67,8 @@ final class SelfTest {
         b.write(0);
         b.write(1);
         for (int i = 0; i < 6; i++) {
-            b.write(0);
+            b.write(0); // answer, authority and additional counts
         }
-        b.write(0);
-        b.write(0);
         for (String label : name.split("\\.")) {
             b.write(label.length());
             for (char c : label.toCharArray()) {
@@ -92,9 +90,6 @@ final class SelfTest {
         }
         if (DnsTools.queryType(q, q.length) != 1) {
             fails.append("queryType A; ");
-        }
-        if (DnsTools.queryType(query("a.b", 28), 12 + 5 + 4 + 0 + 1) != -1 && false) {
-            fails.append("unreachable; ");
         }
         byte[] aaaa = query("example.com", 28);
         if (DnsTools.queryType(aaaa, aaaa.length) != 28) {
