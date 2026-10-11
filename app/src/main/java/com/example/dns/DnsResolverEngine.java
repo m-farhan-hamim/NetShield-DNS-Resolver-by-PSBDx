@@ -52,6 +52,13 @@ public class DnsResolverEngine {
     }
 
     /** Local Server Mode call site - no per-app attribution possible (the client is a whole separate device). */
+    /** Plain DNS: over UDP normally, over TCP (so it can go through the proxy) while a proxy is in use. */
+    private static byte[] plainQuery(String primary, String secondary, byte[] query, int length) {
+        return UpstreamNet.isProxyActive()
+                ? DnsTcpClient.query(primary, secondary, query, length)
+                : DnsUdpClient.query(primary, secondary, query, length);
+    }
+
     public byte[] resolve(byte[] queryPacket, int length, String clientIp) {
         return resolve(queryPacket, length, clientIp, -1, null, -1);
     }
@@ -145,7 +152,7 @@ public class DnsResolverEngine {
             String primaryDns = prefs.getString("upstream_primary", "1.1.1.1");
             String secondaryDns = prefs.getString("upstream_secondary", "8.8.8.8");
             upstreamDesc = "UDP (" + primaryDns + ")";
-            upstreamResponse = DnsUdpClient.query(primaryDns, secondaryDns, queryPacket, length);
+            upstreamResponse = plainQuery(primaryDns, secondaryDns, queryPacket, length);
         } else {
             // Default: DNS-over-HTTPS (DoH)
             String dohUrl = prefs.getString("doh_url", "https://cloudflare-dns.com/dns-query");
@@ -168,7 +175,7 @@ public class DnsResolverEngine {
             // unless the user explicitly opted in (pref "allow_plain_udp_fallback", default off).
             if (!"UDP".equalsIgnoreCase(upstreamMode)
                     && prefs.getBoolean("allow_plain_udp_fallback", false)) {
-                upstreamResponse = DnsUdpClient.query("1.1.1.1", "8.8.8.8", queryPacket, length);
+                upstreamResponse = plainQuery("1.1.1.1", "8.8.8.8", queryPacket, length);
                 if (upstreamResponse != null) {
                     recordLog(domain, typeName, "ALLOWED", latency, "Fallback UDP (1.1.1.1)", clientIp);
                     return upstreamResponse;

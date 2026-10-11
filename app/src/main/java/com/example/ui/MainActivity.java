@@ -59,6 +59,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.BuildConfig;
 import com.example.R;
+import com.example.proxy.KnownProxyApps;
+import com.example.proxy.ProxySettings;
 import com.example.db.BlocklistSource;
 import com.example.db.CustomRule;
 import com.example.db.DatabaseHelper;
@@ -341,6 +343,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         syncOperationModeFromPrefs();
+        refreshProxySummary();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ServiceManager.ACTION_STATE_CHANGED);
         filter.addAction(DnsResolverEngine.ACTION_LOG_UPDATED);
@@ -356,6 +359,21 @@ public class MainActivity extends AppCompatActivity {
         startConnectivityMonitor();
         if (blocklistManager != null && blocklistManager.isPaused()) {
             mainHandler.post(pauseTickRunnable);
+        }
+    }
+
+    private void refreshProxySummary() {
+        TextView tv = findViewById(R.id.tv_proxy_summary);
+        if (tv == null) {
+            return;
+        }
+        ProxySettings s = ProxySettings.load(this);
+        if (s.enabled) {
+            KnownProxyApps.App app = KnownProxyApps.byPackage(s.packageName);
+            String name = app != null ? app.label : s.host + ":" + s.port;
+            tv.setText(getString(R.string.proxy_card_on, name));
+        } else {
+            tv.setText(R.string.proxy_card_off);
         }
     }
 
@@ -2149,6 +2167,15 @@ public class MainActivity extends AppCompatActivity {
         btnExportBackup = findViewById(R.id.btn_export_backup);
         btnImportBackup = findViewById(R.id.btn_import_backup);
 
+        Button btnManageProxy = findViewById(R.id.btn_manage_proxy);
+        if (btnManageProxy != null) {
+            btnManageProxy.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(MainActivity.this, ProxySetupActivity.class));
+                }
+            });
+        }
         Button btnManageVpnServers = findViewById(R.id.btn_manage_vpn_servers);
         if (btnManageVpnServers != null) {
             btnManageVpnServers.setOnClickListener(new View.OnClickListener() {

@@ -31,6 +31,11 @@ import com.example.dns.DnsResolverEngine;
 import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
+import com.example.dns.UpstreamNet;
+import com.example.proxy.KnownProxyApps;
+import com.example.proxy.ProxyMessages;
+import com.example.proxy.ProxySettings;
+import com.example.proxy.core.ProxyTester;
 import com.example.util.VpnConflictDetector;
 
 /**
@@ -71,7 +76,34 @@ public class ConnectionCheckActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final ConnectionVerifier.Result result = ConnectionVerifier.verifySelected(appContext);
+                final ProxySettings proxy = ProxySettings.load(appContext);
+                final boolean viaProxy = proxy.isUsable() && "VPN".equalsIgnoreCase(appContext
+                        .getSharedPreferences(DnsResolverEngine.PREFS_NAME, MODE_PRIVATE).getString("operation_mode", "VPN"));
+                if (viaProxy) {
+                    // Before taking over the VPN, make sure the proxy really works end to end.
+                    final ProxyTester.Result proxyResult = ProxyTester.test(proxy.endpoint(), 8000);
+                    if (proxyResult != ProxyTester.Result.OK) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (cancelled || isFinishing() || isDestroyed()) return;
+                                dismissDialog();
+                                showProxyProblemDialog(proxyResult, proxy);
+                            }
+                        });
+                        return;
+                    }
+                    UpstreamNet.init(appContext);
+                    UpstreamNet.setProxy(proxy.endpoint()); // verify the DNS upstream through the proxy
+                }
+                final ConnectionVerifier.Result result;
+                try {
+                    result = ConnectionVerifier.verifySelected(appContext);
+                } finally {
+                    if (viaProxy) {
+                        UpstreamNet.setProxy(null);
+                    }
+                }
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -86,6 +118,48 @@ public class ConnectionCheckActivity extends AppCompatActivity {
                 });
             }
         }, "netshield-verify").start();
+    }
+
+    /** The proxy is switched on but not working: say why, in plain words, and offer a way out. */
+    private void showProxyProblemDialog(ProxyTester.Result result, final ProxySettings proxy) {
+        dismissDialog();
+        KnownProxyApps.App app = KnownProxyApps.byPackage(proxy.packageName);
+        String label = app != null ? app.label : getString(R.string.proxy_app_custom_short);
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+                .setTitle(R.string.proxy_problem_title)
+                .setMessage(getString(ProxyMessages.messageRes(result), label))
+                .setPositiveButton(R.string.proxy_problem_try_again, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        beginVerification();
+                    }
+                })
+                .setNegativeButton(R.string.proxy_problem_turn_off, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        proxy.withEnabled(false).save(ConnectionCheckActivity.this);
+                        beginVerification();
+                    }
+                })
+                .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface d) {
+                        finish();
+                    }
+                });
+        String pkg = app != null ? KnownProxyApps.installedPackage(this, app) : proxy.packageName;
+        final Intent launch = pkg == null ? null : getPackageManager().getLaunchIntentForPackage(pkg);
+        if (launch != null) {
+            b.setNeutralButton(R.string.proxy_problem_open_app, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int which) {
+                    startActivity(launch);
+                    finish();
+                }
+            });
+        }
+        dialog = b.create();
+        dialog.show();
     }
 
     private void showVerifyingDialog() {
