@@ -5,10 +5,16 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 
+import com.example.proxy.core.ProxyEndpoint;
+import com.example.proxy.core.Socks5Client;
+
 import java.io.IOException;
+import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
@@ -26,6 +32,36 @@ import java.util.List;
  */
 public final class UpstreamNet {
     private static volatile Context appContext;
+    private static volatile ProxyEndpoint proxy;
+
+    /**
+     * While NetShield sends traffic through a SOCKS5 proxy, the encrypted upstreams (DoH/DoT) and
+     * plain-DNS-over-TCP go through it too, so the sites you look up stay hidden from your provider.
+     * Pass null to go back to direct, VPN-bypassing connections.
+     */
+    public static void setProxy(ProxyEndpoint endpoint) {
+        proxy = endpoint;
+        if (endpoint != null && endpoint.hasCredentials()) {
+            final String user = endpoint.username;
+            final String pass = endpoint.password == null ? "" : endpoint.password;
+            Authenticator.setDefault(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    String protocol = getRequestingProtocol();
+                    if (protocol != null && protocol.toUpperCase(java.util.Locale.ROOT).startsWith("SOCKS")) {
+                        return new PasswordAuthentication(user, pass.toCharArray());
+                    }
+                    return null;
+                }
+            });
+        } else {
+            Authenticator.setDefault(null);
+        }
+    }
+
+    public static boolean isProxyActive() {
+        return proxy != null;
+    }
 
     private UpstreamNet() {
     }
@@ -66,6 +102,12 @@ public final class UpstreamNet {
 
     /** Opens an HTTPS connection bound to the underlying network (DNS lookup included). */
     public static HttpURLConnection openHttps(URL url) throws IOException {
+        ProxyEndpoint p = proxy;
+        if (p != null) {
+            // The host name goes to the proxy unresolved, so it is looked up on the proxy's side.
+            return (HttpURLConnection) url.openConnection(
+                    new Proxy(Proxy.Type.SOCKS, new InetSocketAddress(p.host, p.port)));
+        }
         Network n = underlying();
         URLConnection c = (n != null) ? n.openConnection(url) : url.openConnection();
         return (HttpURLConnection) c;
@@ -73,6 +115,12 @@ public final class UpstreamNet {
 
     /** Connected plain TCP socket to host:port over the underlying network. */
     public static Socket connect(String host, int port, int timeoutMs) throws IOException {
+        ProxyEndpoint p = proxy;
+        if (p != null) {
+            Socket viaProxy = Socks5Client.connect(p, host, port, timeoutMs);
+            viaProxy.setSoTimeout(timeoutMs);
+            return viaProxy;
+        }
         Network n = underlying();
         InetAddress[] addrs = (n != null) ? n.getAllByName(host) : InetAddress.getAllByName(host);
         IOException last = null;

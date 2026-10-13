@@ -54,6 +54,12 @@
             android:theme="@style/Theme.MyApplication" />
 
         <activity
+            android:name=".ui.ProxySetupActivity"
+            android:exported="false"
+            android:label="@string/proxy_title"
+            android:theme="@style/Theme.MyApplication" />
+
+        <activity
             android:name=".ui.TrustedListActivity"
             android:exported="false"
             android:label="@string/trusted_list_title"

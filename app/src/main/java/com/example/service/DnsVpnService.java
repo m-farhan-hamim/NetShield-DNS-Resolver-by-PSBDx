@@ -2,17 +2,29 @@ package com.example.service;
 
 import android.content.Context;
 import android.content.Intent;
+import android.app.NotificationManager;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.VpnService;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
 import com.example.R;
 import com.example.dns.DnsResolverEngine;
 import com.example.dns.IpPacketUtils;
+import com.example.dns.UpstreamNet;
+import com.example.proxy.ProxySettings;
+import com.example.proxy.ProxyStatus;
+import com.example.proxy.core.ProxyEndpoint;
+import com.example.proxy.core.ProxyTunEngine;
+import com.example.proxy.core.RouteMath;
+import com.example.proxy.core.Socks5Exception;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,6 +38,8 @@ public class DnsVpnService extends VpnService {
     private ExecutorService workerPool;
     private DnsResolverEngine engine;
     private FileOutputStream outStream;
+    private volatile ProxyTunEngine proxyEngine;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate() {
@@ -67,6 +81,27 @@ public class DnsVpnService extends VpnService {
             builder.addDnsServer("10.0.0.1");
             builder.addRoute("10.0.0.1", 32);
 
+            // Proxy mode: carry ALL traffic so it can be handed to the user's proxy app.
+            final ProxySettings proxy = ProxySettings.load(this);
+            final boolean proxyMode = proxy.isUsable();
+            if (proxyMode) {
+                // Everything except the local network (router, printers, casting) goes into the tunnel.
+                for (RouteMath.Route r : RouteMath.allExcept(RouteMath.localNetworks())) {
+                    builder.addRoute(r.addressString(), r.prefix);
+                }
+                // IPv6 is not carried: capture it and drop it so it cannot leak around the proxy.
+                builder.addAddress("fd00:10::2", 128);
+                builder.addRoute("::", 0);
+                // The proxy app's own connections must stay outside the tunnel, or they would loop back in.
+                if (proxy.packageName != null) {
+                    try {
+                        builder.addDisallowedApplication(proxy.packageName);
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                        // not installed: nothing to exclude
+                    }
+                }
+            }
+
             // Apply Per-App Split Tunneling (Disallowed Applications)
             SharedPreferences prefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
             Set<String> excludedApps = prefs.getStringSet("split_tunnel_apps", null);
@@ -88,6 +123,10 @@ public class DnsVpnService extends VpnService {
             final FileInputStream inStream = new FileInputStream(vpnInterface.getFileDescriptor());
             outStream = new FileOutputStream(vpnInterface.getFileDescriptor());
 
+            if (proxyMode) {
+                startProxyEngine(proxy);
+            }
+
             vpnThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -96,6 +135,12 @@ public class DnsVpnService extends VpnService {
                         try {
                             int length = inStream.read(packet);
                             if (length <= 0) continue;
+
+                            ProxyTunEngine pe = proxyEngine;
+                            if (pe != null) {
+                                pe.onPacket(packet, length);
+                                continue;
+                            }
 
                             final byte[] packetCopy = new byte[length];
                             System.arraycopy(packet, 0, packetCopy, 0, length);
@@ -145,6 +190,67 @@ public class DnsVpnService extends VpnService {
         }
     }
 
+    /** Proxy mode: hand the tunnel's traffic to the engine, which relays it through the user's proxy. */
+    private void startProxyEngine(final ProxySettings proxy) {
+        final ProxyEndpoint endpoint = proxy.endpoint();
+        UpstreamNet.init(this);
+        UpstreamNet.setProxy(endpoint); // DNS lookups travel through the proxy too
+        ProxyStatus.set(this, false);
+        proxyEngine = new ProxyTunEngine(endpoint,
+                new ProxyTunEngine.PacketSink() {
+                    @Override
+                    public void write(byte[] packet, int offset, int length) throws IOException {
+                        FileOutputStream out = outStream;
+                        if (out == null) {
+                            throw new IOException("tunnel closed");
+                        }
+                        synchronized (out) {
+                            out.write(packet, offset, length);
+                        }
+                    }
+                },
+                new ProxyTunEngine.DnsHook() {
+                    @Override
+                    public byte[] resolve(byte[] query, int length, String clientIp, int sourcePort,
+                                          String destIp, int destPort) {
+                        return engine.resolve(query, length, clientIp, sourcePort, destIp, destPort);
+                    }
+                },
+                new ProxyTunEngine.Listener() {
+                    @Override
+                    public void onProxyDown(Socks5Exception.Kind kind) {
+                        postProxyStatus(true);
+                    }
+
+                    @Override
+                    public void onProxyUp() {
+                        postProxyStatus(false);
+                    }
+                }, true);
+        showStatus(getString(R.string.status_vpn_proxy_running));
+    }
+
+    private void postProxyStatus(final boolean down) {
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (!isRunning) {
+                    return;
+                }
+                ProxyStatus.set(DnsVpnService.this, down);
+                showStatus(getString(down ? R.string.status_vpn_proxy_down : R.string.status_vpn_proxy_running));
+            }
+        });
+    }
+
+    private void showStatus(String text) {
+        ServiceManager.startLiveNotificationUpdates(this, text);
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.notify(ServiceManager.NOTIFICATION_ID, ServiceManager.buildForegroundNotification(this, text));
+        }
+    }
+
     /**
      * Called by the system if VPN permission is revoked externally (e.g. the
      * user disables it from system VPN settings, or another VPN app takes
@@ -185,6 +291,13 @@ public class DnsVpnService extends VpnService {
         isRunning = false;
         ServiceManager.stopLiveNotificationUpdates();
 
+        ProxyTunEngine pe = proxyEngine;
+        proxyEngine = null;
+        if (pe != null) {
+            pe.close();
+        }
+        UpstreamNet.setProxy(null);
+        ProxyStatus.set(this, false);
         if (vpnThread != null) {
             vpnThread.interrupt();
         }
