@@ -226,7 +226,7 @@ The `SHA-256 digest` line in the output should match the fingerprint above. If i
 
 ## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f91d/512.gif" alt="🤝" width="32" height="32" align="absmiddle"> Contributing
 
-Contributions are welcome.
+Contributions are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first (what the project stands for, how to build, and what the pull request bot checks), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and see [`ACCESSIBILITY.md`](ACCESSIBILITY.md) for user-interface changes.
 
 1. Fork the repo and create a branch: `git checkout -b feature/my-change`
 2. Make your changes and test with `./gradlew :app:assembleDebug`
