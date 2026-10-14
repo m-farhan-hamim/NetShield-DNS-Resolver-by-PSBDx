@@ -312,7 +312,44 @@ public class ConnectionCheckActivity extends AppCompatActivity {
     }
 
     /** Another VPN is active: let the user keep it by using Local server mode, or take over anyway. */
+    /** The proxy is on and another VPN is running: almost always the proxy app in its own VPN mode. */
+    private void showProxyVpnConflictDialog(ProxySettings proxy) {
+        dismissDialog();
+        KnownProxyApps.App app = KnownProxyApps.byPackage(proxy.packageName);
+        String label = app != null ? app.label : getString(R.string.proxy_app_custom_short);
+        dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.vpn_conflict_title)
+                .setMessage(getString(R.string.vpn_conflict_message_proxy, label))
+                .setPositiveButton(R.string.vpn_conflict_proxy_setup, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        startActivity(new Intent(ConnectionCheckActivity.this, ProxySetupActivity.class));
+                        finish();
+                    }
+                })
+                .setNegativeButton(R.string.vpn_conflict_start_anyway, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        conflictAcknowledged = true;
+                        startService();
+                    }
+                })
+                .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface d) {
+                        finish();
+                    }
+                })
+                .create();
+        dialog.show();
+    }
+
     private void showVpnConflictDialog() {
+        ProxySettings proxy = ProxySettings.load(this);
+        if (proxy.isUsable()) {
+            showProxyVpnConflictDialog(proxy);
+            return;
+        }
         dismissDialog();
         dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.vpn_conflict_title)

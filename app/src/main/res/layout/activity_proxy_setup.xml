@@ -95,6 +95,15 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tv_proxy_why"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/proxy_why"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <TextView
                     android:id="@+id/tv_proxy_hint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -118,6 +127,34 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:text="@string/proxy_manage_subscriptions"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+
+            <!-- A VPN is still running -->
+            <LinearLayout
+                android:id="@+id/ll_vpn_warning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_warning"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_vpn_warning"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btn_vpn_settings"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/proxy_vpn_settings"
                     android:textAllCaps="false" />
             </LinearLayout>
 

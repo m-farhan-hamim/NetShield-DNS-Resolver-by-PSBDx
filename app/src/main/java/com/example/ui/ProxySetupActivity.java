@@ -1,11 +1,13 @@
 package com.example.ui;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -29,6 +31,7 @@ import com.example.proxy.ProxySettings;
 import com.example.proxy.core.ProxyEndpoint;
 import com.example.proxy.core.ProxyTester;
 import com.example.service.ServiceManager;
+import com.example.util.VpnConflictDetector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +62,8 @@ public class ProxySetupActivity extends AppCompatActivity {
     private Button btnTest;
     private Button btnRestart;
     private ProgressBar pbTest;
+    private View llVpnWarning;
+    private TextView tvVpnWarning;
     private SwitchCompat swEnabled;
     private EditText etHost;
     private EditText etPort;
@@ -87,6 +92,14 @@ public class ProxySetupActivity extends AppCompatActivity {
         btnTest = findViewById(R.id.btn_test_proxy);
         btnRestart = findViewById(R.id.btn_restart_now);
         pbTest = findViewById(R.id.pb_test);
+        llVpnWarning = findViewById(R.id.ll_vpn_warning);
+        tvVpnWarning = findViewById(R.id.tv_vpn_warning);
+        findViewById(R.id.btn_vpn_settings).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openVpnSettings();
+            }
+        });
         swEnabled = findViewById(R.id.sw_proxy_enabled);
         etHost = findViewById(R.id.et_proxy_host);
         etPort = findViewById(R.id.et_proxy_port);
@@ -140,6 +153,7 @@ public class ProxySetupActivity extends AppCompatActivity {
                     suppress = false;
                 }
                 refreshHint();
+                refreshVpnWarning();
                 markUntested();
             }
         });
@@ -191,6 +205,7 @@ public class ProxySetupActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshHint(); // the user may have just installed the proxy app
+        refreshVpnWarning(); // ... or just come back from starting it
         updateState();
     }
 
@@ -280,6 +295,28 @@ public class ProxySetupActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Most proxy apps start in their own VPN mode, which blocks NetShield (Android allows one VPN).
+     * The connection test still passes in that case, so check for a running VPN separately and say so.
+     */
+    private void refreshVpnWarning() {
+        boolean active = VpnConflictDetector.isOtherVpnActive(this);
+        llVpnWarning.setVisibility(active ? View.VISIBLE : View.GONE);
+        if (active) {
+            Choice c = selectedChoice();
+            String label = c != null && c.app != null ? c.app.label : getString(R.string.proxy_app_custom_short);
+            tvVpnWarning.setText(getString(R.string.proxy_vpn_warning, label));
+        }
+    }
+
+    private void openVpnSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_VPN_SETTINGS));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.proxy_vpn_settings_failed, Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void openProxyApp() {
         Choice c = selectedChoice();
         String pkg = c != null && c.app != null ? KnownProxyApps.installedPackage(this, c.app) : null;
@@ -349,6 +386,7 @@ public class ProxySetupActivity extends AppCompatActivity {
                         String text = getString(ProxyMessages.messageRes(result), label);
                         tvTestResult.setText((testedOk ? "✓ " : "✗ ") + text);
                         tvTestResult.setTextColor(Color.parseColor(testedOk ? "#2ECC71" : "#FF6B6B"));
+                        refreshVpnWarning();
                     }
                 });
             }
