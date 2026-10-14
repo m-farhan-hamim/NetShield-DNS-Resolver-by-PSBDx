@@ -388,6 +388,29 @@ async function isMaintainerLogin(reader, owner, repo, login, association, core) 
   }
 }
 
+/**
+ * A client for posting comments and labels. Uses the bot's own token when one was created, so the
+ * comment comes from the bot; otherwise the default token. github-script does not hand us a
+ * getOctokit helper in every version, so try the ways of making a client in turn.
+ */
+function makeWriter(github, token, getOctokit, core) {
+  if (!token) return github;
+  const attempts = [
+    () => getOctokit(token),
+    () => new github.constructor({ auth: token }),
+  ];
+  for (const make of attempts) {
+    try {
+      const client = make();
+      if (client && client.rest) return client;
+    } catch (e) {
+      core.info('Writer client attempt failed: ' + e.message);
+    }
+  }
+  core.warning('Could not create a client for the bot token; using the default token.');
+  return github;
+}
+
 async function run({ github, context, core, getOctokit, env = process.env }) {
   const { owner, repo } = context.repo;
   const dry = String(env.DRY_RUN || '').toLowerCase() === 'true';
@@ -398,7 +421,7 @@ async function run({ github, context, core, getOctokit, env = process.env }) {
     pr = (await github.rest.pulls.get({ owner, repo, pull_number: number })).data;
   }
   const number = pr.number;
-  const writer = env.BOT_TOKEN && getOctokit ? getOctokit(env.BOT_TOKEN) : github;
+  const writer = makeWriter(github, env.BOT_TOKEN, getOctokit, core);
 
   const isMaintainer = await isMaintainerLogin(github, owner, repo, pr.user.login, pr.author_association, core);
   const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: number, per_page: 100 });
@@ -409,7 +432,17 @@ async function run({ github, context, core, getOctokit, env = process.env }) {
   core.info('Files: ' + files.length + ', findings: ' + result.findings.length
     + ', failures: ' + result.failures.length + ', warnings: ' + result.warnings.length);
   core.info(comment);
-  if (dry) { core.info('Dry run: nothing was posted.'); return result; }
+  if (dry) {
+    try {
+      const rl = await writer.rest.rate_limit.get();
+      core.info('Write client works (' + (writer === github ? 'default token' : 'bot token') + ', rate limit '
+        + rl.data.rate.limit + ').');
+    } catch (e) {
+      core.warning('Write client check failed: ' + e.message);
+    }
+    core.info('Dry run: nothing was posted.');
+    return result;
+  }
 
   // labels
   for (const [name, def] of Object.entries(LABELS)) {

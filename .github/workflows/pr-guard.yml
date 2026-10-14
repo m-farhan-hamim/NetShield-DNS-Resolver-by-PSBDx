@@ -58,4 +58,6 @@ jobs:
           script: |
             const path = require('path');
             const guard = require(path.join(process.env.GITHUB_WORKSPACE, '.github/scripts/pr-guard.js'));
-            await guard.run({ github, context, core, getOctokit });
+            let makeClient;
+            try { makeClient = require('@actions/github').getOctokit; } catch (e) { core.info('No getOctokit helper: ' + e.message); }
+            await guard.run({ github, context, core, getOctokit: makeClient });
