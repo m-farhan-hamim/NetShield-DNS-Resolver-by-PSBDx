@@ -1,0 +1,63 @@
+name: Pull request bot
+
+# Checks every pull request for: protected files (maintainers only), a tripwire for risky code, and a
+# filled-in pull request form.
+#
+# SAFETY: this runs on `pull_request_target`, i.e. from the BASE branch, so a pull request cannot
+# change the code that checks it. It never checks out or runs the pull request's code and only reads
+# its diff through the API. Do not add steps that check out github.event.pull_request.head.*.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to check'
+        required: true
+      dry_run:
+        description: 'Only print the result, post nothing'
+        required: false
+        default: 'true'
+
+permissions: {}
+
+concurrency:
+  group: pr-guard-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write   # only used if the GitHub App token is unavailable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      # Same bot identity as the issue bot. If it is unavailable the default token is used.
+      - id: app-token
+        uses: actions/create-github-app-token@v2
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - uses: actions/github-script@v7
+        env:
+          BOT_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        with:
+          script: |
+            const path = require('path');
+            const guard = require(path.join(process.env.GITHUB_WORKSPACE, '.github/scripts/pr-guard.js'));
+            let makeClient;
+            try { makeClient = require('@actions/github').getOctokit; } catch (e) { core.info('No getOctokit helper: ' + e.message); }
+            await guard.run({ github, context, core, getOctokit: makeClient });
