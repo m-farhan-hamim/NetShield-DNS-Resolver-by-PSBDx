@@ -434,7 +434,7 @@ async function run({ github, context, core, getOctokit, env = process.env }) {
   core.info(comment);
   if (dry) {
     try {
-      const rl = await writer.rest.rate_limit.get();
+      const rl = await writer.rest.rateLimit.get();
       core.info('Write client works (' + (writer === github ? 'default token' : 'bot token') + ', rate limit '
         + rl.data.rate.limit + ').');
     } catch (e) {
