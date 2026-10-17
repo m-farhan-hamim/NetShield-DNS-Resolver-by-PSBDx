@@ -1,9 +1,9 @@
 package com.example.ui;
 
+import androidx.core.content.ContextCompat;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -385,7 +385,7 @@ public class ProxySetupActivity extends AppCompatActivity {
                         testedOk = result == ProxyTester.Result.OK;
                         String text = getString(ProxyMessages.messageRes(result), label);
                         tvTestResult.setText((testedOk ? "✓ " : "✗ ") + text);
-                        tvTestResult.setTextColor(Color.parseColor(testedOk ? "#2ECC71" : "#FF6B6B"));
+                        tvTestResult.setTextColor(ContextCompat.getColor(ProxySetupActivity.this, testedOk ? R.color.colorAllowed : R.color.colorBlocked));
                         refreshVpnWarning();
                     }
                 });

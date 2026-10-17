@@ -1,29 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#00D2FF</color>
-    <color name="colorPrimaryDark">#0A0F1D</color>
-    <color name="colorAccent">#00E676</color>
-    <color name="colorBlocked">#FF3366</color>
-    <color name="colorAllowed">#00E676</color>
-    <color name="colorCached">#00B4D8</color>
-    <color name="colorLocal">#B388FF</color>
-    <color name="colorWarning">#FFB74D</color>
-    <color name="colorPurple">#A855F7</color>
-    <color name="colorOrange">#FB923C</color>
-    <color name="colorGrayBar">#334155</color>
-
-    <color name="bg_dark">#0A0F1D</color>
-    <color name="bg_surface">#111827</color>
-    <color name="bg_card">#162032</color>
-    <color name="surface_dark">#111827</color>
-    <color name="surface_card">#162032</color>
-    <color name="surface_variant">#1E293B</color>
-    <color name="surface_stroke">#2B3954</color>
-
-    <color name="text_primary">#F8FAFC</color>
-    <color name="text_secondary">#94A3B8</color>
-    <color name="text_muted">#64748B</color>
-
+    <!-- LIGHT palette (default). Token names are historical (bg_dark is the page background in BOTH themes); values follow the theme. -->
+    <color name="colorPrimary">#0369A1</color>
+    <color name="colorPrimaryDark">#075985</color>
+    <color name="colorAccent">#047857</color>
+    <color name="colorBlocked">#BE123C</color>
+    <color name="colorAllowed">#047857</color>
+    <color name="colorCached">#0E7490</color>
+    <color name="colorLocal">#6D28D9</color>
+    <color name="colorWarning">#AA4F09</color>
+    <color name="colorPurple">#7E22CE</color>
+    <color name="colorOrange">#C2410C</color>
+    <color name="colorGrayBar">#CBD5E1</color>
+    <color name="bg_dark">#F3F6FA</color>
+    <color name="bg_surface">#FFFFFF</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="surface_dark">#FFFFFF</color>
+    <color name="surface_card">#FFFFFF</color>
+    <color name="surface_variant">#E6ECF4</color>
+    <color name="surface_stroke">#CBD5E1</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#475569</color>
+    <color name="text_muted">#586579</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_gradient">#031024</color>
+    <color name="warning_bg">#1FBE123C</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="transparent">#00000000</color>

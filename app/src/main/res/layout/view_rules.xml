@@ -28,7 +28,7 @@
                 android:paddingEnd="14dp"
                 android:paddingBottom="8dp"
                 android:text="@string/subtab_blocked"
-                android:textColor="#031024"
+                android:textColor="@color/on_primary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -113,7 +113,7 @@
             android:layout_height="38dp"
             android:backgroundTint="@color/colorPrimary"
             android:text="@string/btn_add_rule"
-            android:textColor="#031024"
+            android:textColor="@color/on_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
     </LinearLayout>

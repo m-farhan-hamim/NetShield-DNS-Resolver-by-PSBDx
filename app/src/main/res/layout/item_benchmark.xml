@@ -43,7 +43,7 @@
                 android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
                 android:text="FASTEST"
-                android:textColor="#031024"
+                android:textColor="@color/on_primary"
                 android:textSize="9sp"
                 android:textStyle="bold"
                 android:visibility="gone" />

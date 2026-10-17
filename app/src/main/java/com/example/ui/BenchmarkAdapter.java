@@ -1,6 +1,5 @@
 package com.example.ui;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -79,7 +78,7 @@ public class BenchmarkAdapter extends RecyclerView.Adapter<BenchmarkAdapter.View
             holder.btnApply.setEnabled(true);
         } else {
             holder.tvLatency.setText("Timeout");
-            holder.tvLatency.setTextColor(Color.parseColor("#94A3B8"));
+            holder.tvLatency.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
             holder.btnApply.setEnabled(false);
         }
 

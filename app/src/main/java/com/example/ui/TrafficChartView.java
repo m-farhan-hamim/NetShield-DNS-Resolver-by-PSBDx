@@ -1,8 +1,9 @@
 package com.example.ui;
 
+import com.example.R;
+import androidx.core.content.ContextCompat;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
@@ -40,22 +41,22 @@ public class TrafficChartView extends View {
 
     private void init() {
         gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        gridPaint.setColor(Color.parseColor("#1E293B"));
+        gridPaint.setColor(ContextCompat.getColor(getContext(), R.color.surface_stroke));
         gridPaint.setStrokeWidth(2f);
 
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(Color.parseColor("#94A3B8"));
+        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
         textPaint.setTextSize(spToPx(10));
         textPaint.setTextAlign(Paint.Align.CENTER);
 
         allowedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        allowedPaint.setColor(Color.parseColor("#00E676"));
+        allowedPaint.setColor(ContextCompat.getColor(getContext(), R.color.colorAllowed));
 
         blockedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        blockedPaint.setColor(Color.parseColor("#FF3366"));
+        blockedPaint.setColor(ContextCompat.getColor(getContext(), R.color.colorBlocked));
 
         bgBarPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bgBarPaint.setColor(Color.parseColor("#15233A"));
+        bgBarPaint.setColor(ContextCompat.getColor(getContext(), R.color.surface_variant));
     }
 
     private float spToPx(float sp) {
@@ -90,7 +91,7 @@ public class TrafficChartView extends View {
 
         if (buckets.isEmpty()) {
             Paint emptyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            emptyPaint.setColor(Color.parseColor("#64748B"));
+            emptyPaint.setColor(ContextCompat.getColor(getContext(), R.color.text_muted));
             emptyPaint.setTextSize(spToPx(12));
             emptyPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("No traffic activity recorded yet", width / 2f, chartBottom - chartHeight / 2f, emptyPaint);
