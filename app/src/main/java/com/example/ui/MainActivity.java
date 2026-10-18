@@ -390,7 +390,15 @@ public class MainActivity extends AppCompatActivity {
         settingsHome = findViewById(R.id.settings_home);
         settingsHeader = findViewById(R.id.settings_section_header);
         tvSettingsSectionTitle = findViewById(R.id.tv_settings_section_title);
-        scrollSettings = findViewById(R.id.scroll_settings);
+        // The settings layout is added with an <include> that has its own id, which replaces the root's id,
+        // so find the scroll view as the tile menu's ancestor instead of by id.
+        scrollSettings = null;
+        for (android.view.ViewParent p = settingsHome.getParent(); p != null; p = p.getParent()) {
+            if (p instanceof NestedScrollView) {
+                scrollSettings = (NestedScrollView) p;
+                break;
+            }
+        }
         if (settingsHome == null || settingsHeader == null) {
             return;
         }
@@ -469,6 +477,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void scrollSettingsToTop() {
+        if (scrollSettings != null) {
+            scrollSettings.scrollTo(0, 0);
+        }
+    }
+
     private void openSettingsSection(int sectionId, int titleRes) {
         View section = findViewById(sectionId);
         if (section == null) {
@@ -481,7 +495,7 @@ public class MainActivity extends AppCompatActivity {
         openSectionId = sectionId;
         openSectionTitle = titleRes;
         settingsBackCallback.setEnabled(true);
-        scrollSettings.scrollTo(0, 0);
+        scrollSettingsToTop();
     }
 
     private void closeSettingsSection() {
@@ -497,7 +511,7 @@ public class MainActivity extends AppCompatActivity {
         openSectionId = 0;
         openSectionTitle = 0;
         settingsBackCallback.setEnabled(false);
-        scrollSettings.scrollTo(0, 0);
+        scrollSettingsToTop();
     }
 
     private void setupThemeChoice() {
