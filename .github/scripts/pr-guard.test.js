@@ -207,9 +207,10 @@ test('the comment is safe to post', () => {
 
 // ------------------------------------------------------------------ the GitHub glue
 
-function fakeGithub({ files, comments = [], permission, labels = [] }) {
+function fakeGithub({ files, comments = [], permission, labels = [], denyWrites = false }) {
   const calls = { comments: [], updates: [], added: [], removed: [], created: [] };
-  const github = {
+  const deny = () => { const e = new Error('Resource not accessible by integration'); e.status = 403; throw e; };
+    const github = {
     paginate: async (fn) => (fn === 'listFiles' ? files : comments),
     rest: {
       repos: { getCollaboratorPermissionLevel: async () => { if (!permission) { const e = new Error('nf'); e.status = 404; throw e; } return { data: { permission } }; } },
@@ -217,11 +218,11 @@ function fakeGithub({ files, comments = [], permission, labels = [] }) {
       issues: {
         listComments: 'listComments',
         getLabel: async () => { const e = new Error('nf'); e.status = 404; throw e; },
-        createLabel: async ({ name }) => { calls.created.push(name); },
-        addLabels: async ({ labels: l }) => { calls.added.push(...l); },
-        removeLabel: async ({ name }) => { calls.removed.push(name); },
-        createComment: async ({ body }) => { calls.comments.push(body); },
-        updateComment: async ({ body }) => { calls.updates.push(body); },
+        createLabel: async ({ name }) => { if (denyWrites) deny(); calls.created.push(name); },
+        addLabels: async ({ labels: l }) => { if (denyWrites) deny(); calls.added.push(...l); },
+        removeLabel: async ({ name }) => { if (denyWrites) deny(); calls.removed.push(name); },
+        createComment: async ({ body }) => { if (denyWrites) deny(); calls.comments.push(body); },
+        updateComment: async ({ body }) => { if (denyWrites) deny(); calls.updates.push(body); },
       },
     },
   };
@@ -231,7 +232,7 @@ const ctx = (user, association, body, labels = []) => ({
   repo: { owner: 'o', repo: 'r' },
   payload: { pull_request: { number: 7, user: { login: user }, author_association: association, body, labels, state: 'open' } },
 });
-const core = () => { const c = { failed: null, infos: [] }; c.info = (m) => c.infos.push(m); c.warning = () => {}; c.setFailed = (m) => { c.failed = m; }; return c; };
+const core = () => { const c = { failed: null, infos: [], warnings: [] }; c.info = (m) => c.infos.push(m); c.warning = (m) => c.warnings.push(m); c.setFailed = (m) => { c.failed = m; }; return c; };
 
 test('run(): outsider editing a protected file is failed, labelled and told why', async () => {
   const { github, calls } = fakeGithub({ files: [added('README.md', 'hello')] });
@@ -278,6 +279,32 @@ test('run(): dry run posts nothing', async () => {
   await guard.run({ github, context: ctx('stranger', 'NONE', ''), core: c, env: { DRY_RUN: 'true' } });
   assert.equal(c.failed, null);
   assert.equal(calls.comments.length + calls.added.length + calls.created.length, 0);
+});
+
+test('run(): if the bot token is refused (403) the workflow token is used instead', async () => {
+  const bot = fakeGithub({ files: [], denyWrites: true }).github;     // the GitHub App token: every write refused
+  const { github, calls } = fakeGithub({ files: [added('README.md', 'hello')] }); // the workflow's own token works
+  const c = core();
+  await guard.run({ github, context: ctx('stranger', 'NONE', filledTemplate()), core: c, getOctokit: () => bot, env: { BOT_TOKEN: 'app-token' } });
+  assert.ok(c.failed, 'the verdict still fails the protected-file edit');
+  assert.ok(calls.added.includes('protected-files'), 'labels were added through the fallback token');
+  assert.equal(calls.comments.length, 1, 'the comment was posted through the fallback token');
+  assert.ok(c.warnings.some((w) => w.includes('bot token was refused')));
+});
+
+test('run(): a clean pull request does not fail just because posting is impossible', async () => {
+  const { github } = fakeGithub({ files: [added('app/build.gradle.kts', 'implementation("a:b:1")')], denyWrites: true });
+  const c = core();
+  await guard.run({ github, context: ctx('m-farhan-hamim', 'OWNER', ''), core: c, env: {} });
+  assert.equal(c.failed, null, 'only notes were found, so the check must pass');
+  assert.ok(c.warnings.length > 0, 'the posting problem is reported as a warning');
+});
+
+test('run(): a blocked pull request still fails when posting is impossible', async () => {
+  const { github } = fakeGithub({ files: [added('README.md', 'hello')], denyWrites: true });
+  const c = core();
+  await guard.run({ github, context: ctx('stranger', 'NONE', filledTemplate()), core: c, env: {} });
+  assert.ok(c.failed, 'the verdict is independent of whether the comment could be posted');
 });
 
 // ------------------------------------------------------------------ the real codebase
