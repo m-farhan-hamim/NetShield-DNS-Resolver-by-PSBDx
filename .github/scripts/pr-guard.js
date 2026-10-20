@@ -411,6 +411,29 @@ function makeWriter(github, token, getOctokit, core) {
   return github;
 }
 
+/**
+ * Runs one write call with the bot client. If the bot token is refused (a GitHub App without the right
+ * permission, for example), retry once with the workflow's own token. Posting is best effort: it never
+ * throws, because a permission problem must not turn into a failed check of its own.
+ */
+async function write(writer, fallback, call, core, what) {
+  try {
+    return await call(writer);
+  } catch (e) {
+    if ((e.status === 401 || e.status === 403) && writer !== fallback) {
+      core.warning(what + ': the bot token was refused (' + e.status + '), retrying with the workflow token.');
+      try {
+        return await call(fallback);
+      } catch (e2) {
+        core.warning(what + ' failed: ' + e2.message);
+        return undefined;
+      }
+    }
+    core.warning(what + ' failed: ' + e.message);
+    return undefined;
+  }
+}
+
 async function run({ github, context, core, getOctokit, env = process.env }) {
   const { owner, repo } = context.repo;
   const dry = String(env.DRY_RUN || '').toLowerCase() === 'true';
@@ -444,32 +467,39 @@ async function run({ github, context, core, getOctokit, env = process.env }) {
     return result;
   }
 
-  // labels
+  // Everything below is best effort; only the verdict (failures) decides whether the check fails.
+  const post = (what, call) => write(writer, github, call, core, what);
   for (const [name, def] of Object.entries(LABELS)) {
-    try { await writer.rest.issues.getLabel({ owner, repo, name }); }
-    catch (e) { if (e.status === 404) { try { await writer.rest.issues.createLabel({ owner, repo, name, ...def }); } catch (_) { /* raced */ } } }
+    let exists = true;
+    try { await writer.rest.issues.getLabel({ owner, repo, name }); } catch (e) { exists = e.status !== 404; }
+    if (!exists) await post('Creating label ' + name, (c) => c.rest.issues.createLabel({ owner, repo, name, ...def }));
   }
   const current = (pr.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
   for (const name of Object.keys(LABELS)) {
     if (!result.labels.includes(name) && current.includes(name)) {
-      try { await writer.rest.issues.removeLabel({ owner, repo, issue_number: number, name }); } catch (_) { /* already gone */ }
+      await post('Removing label ' + name, (c) => c.rest.issues.removeLabel({ owner, repo, issue_number: number, name }));
     }
   }
   const toAdd = result.labels.filter((n) => !current.includes(n));
-  if (toAdd.length) await writer.rest.issues.addLabels({ owner, repo, issue_number: number, labels: toAdd });
+  if (toAdd.length) await post('Adding labels', (c) => c.rest.issues.addLabels({ owner, repo, issue_number: number, labels: toAdd }));
 
   // one comment, updated in place (nothing to say for a clean maintainer pull request)
-  const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: number, per_page: 100 });
+  let comments = [];
+  try {
+    comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: number, per_page: 100 });
+  } catch (e) {
+    core.warning('Could not read the existing comments: ' + e.message);
+  }
   const mine = comments.find((c) => c.body && c.body.includes(MARKER));
   const quiet = isMaintainer && !result.failures.length && !result.warnings.length;
   if (mine) {
-    if (mine.body !== comment) await writer.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body: comment });
+    if (mine.body !== comment) await post('Updating the comment', (c) => c.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body: comment }));
   } else if (!quiet) {
-    await writer.rest.issues.createComment({ owner, repo, issue_number: number, body: comment });
+    await post('Posting the comment', (c) => c.rest.issues.createComment({ owner, repo, issue_number: number, body: comment }));
   }
 
   if (CLOSE_ON_PROTECTED_EDIT && result.protectedHits.length && !isMaintainer && pr.state === 'open') {
-    await writer.rest.pulls.update({ owner, repo, pull_number: number, state: 'closed' });
+    await post('Closing the pull request', (c) => c.rest.pulls.update({ owner, repo, pull_number: number, state: 'closed' }));
   }
   if (result.failures.length) core.setFailed(result.failures.length + ' problem(s) found. See the pull request comment.');
   return result;
