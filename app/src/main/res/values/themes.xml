@@ -3,15 +3,17 @@
     <style name="Theme.MyApplication" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryVariant">@color/colorPrimaryDark</item>
-        <item name="colorOnPrimary">#031024</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
         <item name="colorSecondary">@color/colorAccent</item>
         <item name="colorSecondaryVariant">@color/colorAccent</item>
-        <item name="colorOnSecondary">#031024</item>
+        <item name="colorOnSecondary">@color/on_primary</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:navigationBarColor">@color/bg_dark</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/light_system_bars</item>
     </style>
 
     <style name="Theme.MyApplication.Transparent" parent="Theme.MyApplication">

@@ -104,7 +104,7 @@
             android:paddingEnd="14dp"
             android:paddingBottom="6dp"
             android:text="@string/filter_all"
-            android:textColor="#031024"
+            android:textColor="@color/on_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
 

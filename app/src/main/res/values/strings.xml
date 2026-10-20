@@ -111,6 +111,28 @@
     <string name="proxy_problem_try_again">Try again</string>
     <string name="proxy_problem_turn_off">Turn off proxy</string>
     <string name="proxy_problem_open_app">Open app</string>
+    <string name="settings_back">Back to settings</string>
+    <string name="settings_tile_dns">DNS provider</string>
+    <string name="settings_tile_dns_summary">Where your lookups go and how</string>
+    <string name="settings_tile_blocking">Blocking &amp; cache</string>
+    <string name="settings_tile_blocking_summary">How blocked sites answer, cache</string>
+    <string name="settings_tile_apps">Apps &amp; routing</string>
+    <string name="settings_tile_apps_summary">Trusted lists and split tunnel</string>
+    <string name="settings_tile_proxy">Proxy &amp; VPN servers</string>
+    <string name="settings_tile_proxy_summary">v2rayNG, Orbot, saved servers</string>
+    <string name="settings_tile_system">Startup &amp; network</string>
+    <string name="settings_tile_system_summary">Auto start, port, sharing</string>
+    <string name="settings_tile_appearance">Appearance</string>
+    <string name="settings_tile_appearance_summary">Light, dark or follow phone</string>
+    <string name="settings_tile_backup">Backup &amp; restore</string>
+    <string name="settings_tile_backup_summary">Export or import settings</string>
+    <string name="settings_tile_about">About &amp; support</string>
+    <string name="settings_tile_about_summary">Version, help, donate</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_body">Choose how NetShield looks. \"Follow phone\" switches between light and dark together with your phone\'s setting.</string>
+    <string name="theme_system">Follow phone (recommended)</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
     <string name="manage_vpn_servers">Manage VPN Servers</string>
 
     <!-- Hotspot tab -->

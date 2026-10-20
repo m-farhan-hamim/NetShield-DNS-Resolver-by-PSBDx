@@ -8,16 +8,16 @@ dexterity.
 
 **NetShield has not been audited by an accessibility specialist and has not been formally tested with
 assistive technology.** The notes below come from checking the app's layouts and colors in the source
-code (last reviewed 2026-10-14). They show what we found, not a certified result.
+code (last reviewed 2026-10-17). They show what we found, not a certified result.
 
 ### What works
 
 - **Icon-only images have labels.** All 22 images and icon buttons in the layouts have a
   `contentDescription`, so a screen reader can announce them.
 - **Text follows the system font size.** All text sizes use `sp`, so large-text settings apply.
-- **Main text has strong contrast.** On the app's dark backgrounds, the primary text color measures
-  14:1 to 18:1, the secondary text color 5.7:1 to 7.5:1, and the accent color 8:1 to 10.6:1. The common
-  guideline (WCAG 2.2 AA) asks for 4.5:1 for normal text.
+- **Light and dark themes.** NetShield follows your phone's light/dark setting by default, and you can choose Light or Dark yourself under Settings, Appearance.
+- **Strong contrast in both themes.** Measured against every background the app uses, text stays above the common guideline (WCAG 2.2 AA asks for 4.5:1 for normal text). Light theme: primary text 15.0:1 to 17.9:1, secondary text 6.4:1 to 7.6:1, muted text 5.0:1 to 5.9:1, accent color 5.0:1 to 5.9:1. Dark theme: primary text 14.0:1 to 18.3:1, secondary text 5.7:1 to 7.5:1, muted text 5.0:1 to 6.5:1, accent color 8.1:1 to 10.6:1.
+- **Settings are grouped into labelled tiles.** Each tile is at least 124dp tall, reads as one item with a title and a short description, and the back button at the top of a section is a full 48dp target.
 - **Standard Android controls.** Screens are built from standard AndroidX and Material widgets, which
   bring TalkBack, keyboard and switch-access support by default.
 
@@ -28,11 +28,8 @@ We would rather tell you than hide them:
 - **Small touch targets.** 16 icon-style controls are drawn smaller than the recommended 48dp x 48dp
   (for example the back arrow at 32dp and some list icons at 36dp to 40dp). They can be hard to hit
   for people with limited dexterity.
-- **Low-contrast hint text.** The muted text color (`text_muted`) measures only 3.1:1 to 4.0:1 on the
-  app's dark backgrounds, below the 4.5:1 guideline. It is used for secondary notes and hints.
 - **Labels cannot be translated.** 16 content descriptions are written directly in the layouts instead
   of in `strings.xml`, so they are English only.
-- **Dark theme only.** There is no light or high-contrast theme.
 - **Not yet checked:** focus order and keyboard navigation, the traffic charts and dashboard for a
   text alternative, home-screen widgets, the quick-settings tile, notification wording, landscape and
   tablet layouts, right-to-left languages, and behavior at the largest font and display sizes.
@@ -48,9 +45,9 @@ Any user-interface change must follow these. Reviewers will check them.
    `android:minWidth` and `android:minHeight` rather than shrinking the tap area.
 3. **Use `sp` for text** and let it wrap or scroll. Do not set fixed heights that cut text off at large
    font sizes.
-4. **Keep contrast up.** Use `text_primary` or `text_secondary` for text that matters. Use
-   `text_muted` only for large or non-essential text until it is fixed. Check any new color pair is at
-   least 4.5:1 for normal text and 3:1 for large text and icons.
+4. **Use color tokens, never hex codes.** Colors come from `res/values/colors.xml` (light) and
+   `res/values-night/colors.xml` (dark), so both themes work. Check any new color pair is at least 4.5:1 for
+   normal text and 3:1 for large text and icons in **both** themes, and test your screen in both.
 5. **Never rely on color alone.** Show state with text or an icon as well (for example "On", "Error"),
    not only a red or green color.
 6. **Give inputs a label or hint,** and show errors as text near the field.

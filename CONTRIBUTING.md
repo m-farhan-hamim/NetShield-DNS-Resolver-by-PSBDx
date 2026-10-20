@@ -85,6 +85,7 @@ describe what you did in the pull request.
 - Match the style of the code around your change (4-space indentation, braces on the same line).
 - Comments explain *why*, not *what*.
 - User-visible text goes in `res/values/strings.xml`, never hard-coded in Java or layouts.
+- Colors come from the tokens in `res/values/colors.xml` and `res/values-night/colors.xml`, never hard-coded hex values, so light and dark mode both work.
 - Sizes for text are in `sp`, for everything else in `dp`.
 - Target: `minSdk 24`, `targetSdk 36`, Java 11 language level.
 - Keep Android-independent logic free of Android classes so it can be tested on a normal JVM.

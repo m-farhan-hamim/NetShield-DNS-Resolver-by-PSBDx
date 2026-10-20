@@ -1,5 +1,9 @@
 package com.example.ui;
 
+import com.example.util.ThemeManager;
+import androidx.core.widget.NestedScrollView;
+import androidx.core.view.ViewCompat;
+import androidx.activity.OnBackPressedCallback;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -305,6 +309,7 @@ public class MainActivity extends AppCompatActivity {
         setupRules();
         setupHotspotTab();
         setupSettings();
+        setupSettingsTiles(savedInstanceState);
 
         updateServiceStatusUI();
         refreshStats();
@@ -360,6 +365,181 @@ public class MainActivity extends AppCompatActivity {
         if (blocklistManager != null && blocklistManager.isPaused()) {
             mainHandler.post(pauseTickRunnable);
         }
+    }
+
+    // ==================== SETTINGS TILES ====================
+    private LinearLayout settingsHome;
+    private View settingsHeader;
+    private TextView tvSettingsSectionTitle;
+    private NestedScrollView scrollSettings;
+    private int openSectionId;
+    private int openSectionTitle;
+    private final OnBackPressedCallback settingsBackCallback = new OnBackPressedCallback(false) {
+        @Override
+        public void handleOnBackPressed() {
+            closeSettingsSection();
+        }
+    };
+
+    private int settingsDp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    /** The Settings tab opens on a menu of tiles; each tile opens its group of settings in place. */
+    private void setupSettingsTiles(final Bundle saved) {
+        settingsHome = findViewById(R.id.settings_home);
+        settingsHeader = findViewById(R.id.settings_section_header);
+        tvSettingsSectionTitle = findViewById(R.id.tv_settings_section_title);
+        // The settings layout is added with an <include> that has its own id, which replaces the root's id,
+        // so find the scroll view as the tile menu's ancestor instead of by id.
+        scrollSettings = null;
+        for (android.view.ViewParent p = settingsHome.getParent(); p != null; p = p.getParent()) {
+            if (p instanceof NestedScrollView) {
+                scrollSettings = (NestedScrollView) p;
+                break;
+            }
+        }
+        if (settingsHome == null || settingsHeader == null) {
+            return;
+        }
+        ViewCompat.setAccessibilityHeading(tvSettingsSectionTitle, true);
+        getOnBackPressedDispatcher().addCallback(this, settingsBackCallback);
+        findViewById(R.id.btn_settings_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeSettingsSection();
+            }
+        });
+
+        final int[][] tiles = {
+                {R.id.section_dns, R.string.settings_tile_dns, R.string.settings_tile_dns_summary, R.drawable.ic_tile_dns},
+                {R.id.section_blocking, R.string.settings_tile_blocking, R.string.settings_tile_blocking_summary, R.drawable.ic_shield},
+                {R.id.section_apps, R.string.settings_tile_apps, R.string.settings_tile_apps_summary, R.drawable.ic_tile_apps},
+                {R.id.section_proxy, R.string.settings_tile_proxy, R.string.settings_tile_proxy_summary, R.drawable.ic_tile_proxy},
+                {R.id.section_system, R.string.settings_tile_system, R.string.settings_tile_system_summary, R.drawable.ic_power},
+                {R.id.section_appearance, R.string.settings_tile_appearance, R.string.settings_tile_appearance_summary, R.drawable.ic_tile_appearance},
+                {R.id.section_backup, R.string.settings_tile_backup, R.string.settings_tile_backup_summary, R.drawable.ic_tile_backup},
+                {R.id.section_about, R.string.settings_tile_about, R.string.settings_tile_about_summary, R.drawable.ic_tile_about},
+        };
+        LayoutInflater inflater = LayoutInflater.from(this);
+        LinearLayout row = null;
+        for (int i = 0; i < tiles.length; i++) {
+            if (i % 2 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                rowParams.bottomMargin = settingsDp(12);
+                settingsHome.addView(row, rowParams);
+            }
+            final int[] def = tiles[i];
+            View tile = inflater.inflate(R.layout.item_settings_tile, row, false);
+            ((ImageView) tile.findViewById(R.id.tile_icon)).setImageResource(def[3]);
+            ((TextView) tile.findViewById(R.id.tile_title)).setText(def[1]);
+            ((TextView) tile.findViewById(R.id.tile_summary)).setText(def[2]);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tile.getLayoutParams();
+            lp.width = 0;
+            lp.weight = 1;
+            if (i % 2 == 0) {
+                lp.setMarginEnd(settingsDp(6));
+            } else {
+                lp.setMarginStart(settingsDp(6));
+            }
+            tile.setLayoutParams(lp);
+            tile.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openSettingsSection(def[0], def[1]);
+                }
+            });
+            row.addView(tile);
+        }
+
+        setupThemeChoice();
+
+        if (saved != null) {
+            // A theme change recreates the screen: come back to the same tab and section.
+            if (saved.getInt("settings_section", 0) != 0) {
+                openSettingsSection(saved.getInt("settings_section"), saved.getInt("settings_section_title"));
+            }
+            final int tabPosition = saved.getInt("selected_tab", 0);
+            if (tabPosition != 0) {
+                getWindow().getDecorView().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        TabLayout.Tab tab = ((TabLayout) findViewById(R.id.tab_layout)).getTabAt(tabPosition);
+                        if (tab != null) {
+                            tab.select();
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private void scrollSettingsToTop() {
+        if (scrollSettings != null) {
+            scrollSettings.scrollTo(0, 0);
+        }
+    }
+
+    private void openSettingsSection(int sectionId, int titleRes) {
+        View section = findViewById(sectionId);
+        if (section == null) {
+            return;
+        }
+        settingsHome.setVisibility(View.GONE);
+        settingsHeader.setVisibility(View.VISIBLE);
+        tvSettingsSectionTitle.setText(titleRes);
+        section.setVisibility(View.VISIBLE);
+        openSectionId = sectionId;
+        openSectionTitle = titleRes;
+        settingsBackCallback.setEnabled(true);
+        scrollSettingsToTop();
+    }
+
+    private void closeSettingsSection() {
+        if (openSectionId == 0) {
+            return;
+        }
+        View section = findViewById(openSectionId);
+        if (section != null) {
+            section.setVisibility(View.GONE);
+        }
+        settingsHeader.setVisibility(View.GONE);
+        settingsHome.setVisibility(View.VISIBLE);
+        openSectionId = 0;
+        openSectionTitle = 0;
+        settingsBackCallback.setEnabled(false);
+        scrollSettingsToTop();
+    }
+
+    private void setupThemeChoice() {
+        RadioGroup group = findViewById(R.id.rg_theme);
+        if (group == null) {
+            return;
+        }
+        String current = ThemeManager.get(this);
+        group.check(ThemeManager.LIGHT.equals(current) ? R.id.rb_theme_light
+                : ThemeManager.DARK.equals(current) ? R.id.rb_theme_dark : R.id.rb_theme_system);
+        group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup g, int checkedId) {
+                String mode = checkedId == R.id.rb_theme_light ? ThemeManager.LIGHT
+                        : checkedId == R.id.rb_theme_dark ? ThemeManager.DARK : ThemeManager.SYSTEM;
+                if (!mode.equals(ThemeManager.get(MainActivity.this))) {
+                    ThemeManager.set(MainActivity.this, mode);
+                }
+            }
+        });
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("settings_section", openSectionId);
+        outState.putInt("settings_section_title", openSectionTitle);
+        outState.putInt("selected_tab", ((TabLayout) findViewById(R.id.tab_layout)).getSelectedTabPosition());
     }
 
     private void refreshProxySummary() {
@@ -423,7 +603,11 @@ public class MainActivity extends AppCompatActivity {
             public void onTabUnselected(TabLayout.Tab tab) {}
 
             @Override
-            public void onTabReselected(TabLayout.Tab tab) {}
+            public void onTabReselected(TabLayout.Tab tab) {
+                if (tab.getPosition() == 5) {
+                    closeSettingsSection(); // tapping Settings again goes back to the tile menu
+                }
+            }
         });
     }
 
@@ -926,7 +1110,7 @@ public class MainActivity extends AppCompatActivity {
                     : getString(R.string.status_waiting_internet));
             btnToggleService.setText(R.string.btn_start);
             btnToggleService.setBackgroundResource(R.drawable.bg_button_start);
-            btnToggleService.setTextColor(Color.parseColor("#031024"));
+            btnToggleService.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.on_gradient));
             ivStatusIcon.setImageResource(R.drawable.ic_power);
             ivStatusIcon.setColorFilter(ContextCompat.getColor(this, R.color.text_secondary));
         }
@@ -1471,7 +1655,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateLogRangeChips() {
         boolean hasFrom = logRangeFrom > 0;
         boolean hasTo = logRangeTo > 0;
-        int selectedText = Color.parseColor("#031024");
+        int selectedText = ContextCompat.getColor(MainActivity.this, R.color.on_primary);
         int idleText = ContextCompat.getColor(this, R.color.text_secondary);
 
         chipLogFrom.setText(hasFrom
@@ -1492,13 +1676,13 @@ public class MainActivity extends AppCompatActivity {
     private void setLogFilter(String filter) {
         currentLogFilter = filter;
         chipFilterAll.setBackgroundResource("ALL".equals(filter) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipFilterAll.setTextColor("ALL".equals(filter) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipFilterAll.setTextColor("ALL".equals(filter) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         chipFilterBlocked.setBackgroundResource("BLOCKED".equals(filter) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipFilterBlocked.setTextColor("BLOCKED".equals(filter) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipFilterBlocked.setTextColor("BLOCKED".equals(filter) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         chipFilterAllowed.setBackgroundResource("ALLOWED".equals(filter) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipFilterAllowed.setTextColor("ALLOWED".equals(filter) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipFilterAllowed.setTextColor("ALLOWED".equals(filter) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         refreshLogs();
     }
@@ -1693,16 +1877,16 @@ public class MainActivity extends AppCompatActivity {
         currentRuleSubtab = subtab;
 
         chipSubtabBlocked.setBackgroundResource("BLOCKED".equals(subtab) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipSubtabBlocked.setTextColor("BLOCKED".equals(subtab) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipSubtabBlocked.setTextColor("BLOCKED".equals(subtab) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         chipSubtabWhitelist.setBackgroundResource("WHITELIST".equals(subtab) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipSubtabWhitelist.setTextColor("WHITELIST".equals(subtab) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipSubtabWhitelist.setTextColor("WHITELIST".equals(subtab) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         chipSubtabMappings.setBackgroundResource("MAPPINGS".equals(subtab) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipSubtabMappings.setTextColor("MAPPINGS".equals(subtab) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipSubtabMappings.setTextColor("MAPPINGS".equals(subtab) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         chipSubtabRemote.setBackgroundResource("REMOTE".equals(subtab) ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-        chipSubtabRemote.setTextColor("REMOTE".equals(subtab) ? Color.parseColor("#031024") : ContextCompat.getColor(this, R.color.text_secondary));
+        chipSubtabRemote.setTextColor("REMOTE".equals(subtab) ? ContextCompat.getColor(MainActivity.this, R.color.on_primary) : ContextCompat.getColor(this, R.color.text_secondary));
 
         if ("REMOTE".equals(subtab)) {
             btnAddRuleAction.setText(R.string.btn_add_source);
