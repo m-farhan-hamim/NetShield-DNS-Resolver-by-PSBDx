@@ -33,7 +33,7 @@ concurrency:
 # Placeholders:  {user} = the reporter's @name   {developer} = your @name
 # ==========================================================================
 env:
-  CUSTOM_MESSAGE_ENABLED: "false"
+  CUSTOM_MESSAGE_ENABLED: "true"
   CUSTOM_MESSAGE: |
     Hello @{user}! 👋
 
