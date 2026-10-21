@@ -28,6 +28,24 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: donation-amount
+    attributes:
+      label: "Donation Amount"
+      description: "Optional. The amount you tried to donate, with currency."
+      placeholder: "e.g. 500 BDT"
+    validations:
+      required: false
+
+  - type: input
+    id: donation-transaction
+    attributes:
+      label: "Transaction ID"
+      description: "Optional. The transaction or reference ID, if you have one. Never share card numbers or PINs."
+      placeholder: "e.g. TXN123456789"
+    validations:
+      required: false
+
   - type: textarea
     id: donation-screenshot
     attributes:

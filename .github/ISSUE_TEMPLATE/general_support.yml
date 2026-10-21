@@ -1,0 +1,84 @@
+name: "General Question / Support"
+description: "Ask a question or get help with setup or usage (not a bug or a feature idea)"
+title: "[QUESTION]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🙋 NetShield Help & General Questions
+        Use this form for questions, setup help, or anything that is **not** a bug report or a feature request.
+
+        📖 The [Wiki](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/wiki) has quick guides and answers to common questions, so it is worth checking first.
+
+        > 🔒 **Is this a security problem?** Issues are public, so please **do not** post vulnerabilities here. Use our [security policy](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/security/policy) to report it privately.
+
+  - type: dropdown
+    id: help-topic
+    attributes:
+      label: "Help Topic"
+      description: "What is your question mainly about?"
+      options:
+        - "Setup & Configuration"
+        - "How do I use a feature?"
+        - "Filter Lists & Blocklists"
+        - "DNS Providers & Protocols (DoT / DoH / DoQ / UDP)"
+        - "Compatibility (Device / ROM / Other VPNs)"
+        - "Privacy & Security Questions"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: "Your Question"
+      description: "Ask as clearly as you can. The more detail you give, the better the answer."
+      placeholder: "How do I...?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: already-tried
+    attributes:
+      label: "What have you already tried?"
+      description: "Optional. Tell us what you checked or tried so we do not repeat it."
+      placeholder: "I read the Wiki page about... and I tried changing..."
+    validations:
+      required: false
+
+  - type: input
+    id: app-version
+    attributes:
+      label: "App Version"
+      description: "Optional. Found in the app's About screen."
+      placeholder: "e.g. 3.2.0"
+    validations:
+      required: false
+
+  - type: input
+    id: device-info
+    attributes:
+      label: "Android Version & Device"
+      description: "Optional, but useful for compatibility questions."
+      placeholder: "e.g. Android 14, Xiaomi Poco F3"
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra-context
+    attributes:
+      label: "Screenshots / Extra Context"
+      description: "Optional. Drag and drop screenshots here. Please hide anything private."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: general-checks
+    attributes:
+      label: "Before you submit"
+      options:
+        - label: "I looked through the Wiki and existing issues and could not find an answer."
+          required: true
+        - label: "This is a question or support request. I will use the Bug Report form for bugs."
+          required: true

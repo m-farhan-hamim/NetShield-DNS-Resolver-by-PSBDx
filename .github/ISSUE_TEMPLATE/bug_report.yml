@@ -5,7 +5,13 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: "### 🛡️ NetShield Bug Report System\n**App Package:** `com.netshield.dns.psbdx` *(Non-editable)*"
+      value: |
+        ### 🛡️ NetShield Bug Report System
+        **App Package:** `com.netshield.dns.psbdx` *(Non-editable)*
+
+        📖 Many problems are already covered in the [Wiki](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/wiki), so it is worth a quick look first.
+
+        > 🔒 **Found a security vulnerability or a DNS leak?** Issues are public, so please **do not** post it here. Report it privately through our [security policy](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/security/policy).
 
   - type: dropdown
     id: version-type
@@ -51,20 +57,60 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: operating-mode
+    attributes:
+      label: "Operating Mode"
+      description: "Which mode were you using when the problem happened?"
+      options:
+        - "Local VPN Mode"
+        - "DNS Server Mode"
+        - "Not sure / Not applicable"
+    validations:
+      required: false
+
   - type: textarea
     id: bug-description
     attributes:
       label: "Bug Description"
-      placeholder: "Describe what went wrong and steps to reproduce the issue..."
+      description: "What went wrong? Tell us what you saw and how it differs from what you expected."
+      placeholder: "Describe what went wrong..."
     validations:
       required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Optional, but a short list of steps makes a bug much easier to fix."
+      placeholder: "1. Open NetShield\n2. Go to Settings and pick ...\n3. Tap Start\n4. See the error"
+    validations:
+      required: false
 
   - type: textarea
     id: app-log
     attributes:
       label: "Diagnostic Log (Copied from App)"
-      description: "Copy and paste the diagnostic log directly from NetShield."
+      description: "Optional, but it often speeds up a fix. Copy the diagnostic log from NetShield and paste it here. Logs can contain domain names and device details, so remove anything private first."
       placeholder: "NetShield 3.1.1 | Android 16 (API 36) | realme RMX3933\nUpstream mode: DOT\n\n[DoT (dns.adguard-dns.com:853)]\njava.net.UnknownHostException: Unable to resolve host \"dns.adguard-dns.com\": No address associated with hostname"
       render: shell
     validations:
-      required: true
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "Screenshots / Screen Recording"
+      description: "Optional. Drag and drop images or a short recording here. Please hide anything private."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: bug-checks
+    attributes:
+      label: "Before you submit"
+      options:
+        - label: "I searched the existing issues and did not find this problem already reported."
+          required: true
+        - label: "I removed private information (browsing history, personal domains, IP addresses) from anything I pasted or attached."
+          required: true

@@ -18,6 +18,25 @@ concurrency:
   group: issue-assistant-${{ github.event.issue.number || github.event.release.tag_name || 'sweep' }}-${{ github.event.sender.type == 'Bot' && 'bot' || 'user' }}-${{ github.event_name }}-${{ github.event.comment.id || 'na' }}
   cancel-in-progress: false
 
+# ==========================================================================
+# ✉️  CUSTOM MESSAGE  (edit the two values below, nothing else is needed)
+#
+#   CUSTOM_MESSAGE_ENABLED  "true"  -> post CUSTOM_MESSAGE as an extra comment
+#                           "false" -> normal behavior, nothing extra is posted
+#
+# The message is only posted AFTER the issue has passed every normal check
+# (valid form, official download source, supported version, version confirmed)
+# and has been handed over to the developer. If any check fails, the bot does
+# what it always did (close the issue, ask for info, or put it on hold) and
+# the custom message is NOT sent.
+#
+# Placeholders:  {user} = the reporter's @name   {developer} = your @name
+# ==========================================================================
+env:
+  CUSTOM_MESSAGE_ENABLED: "false"
+  CUSTOM_MESSAGE: |
+    📢 **Maintainer note:** Thanks for the report, {user}! Replies may take a little longer than usual right now. {developer} reads every issue personally, so please sit tight. 🙏
+
 permissions: {}
 
 jobs:
@@ -194,6 +213,26 @@ jobs:
             }
 
             // ==========================================
+            // ✉️ CUSTOM MESSAGE (settings are at the top of this file)
+            // Called only at "all checks passed" exits. Failed checks (invalid
+            // template, unofficial source, unsupported version, waiting for
+            // info) return earlier and never reach this.
+            // ==========================================
+            const CUSTOM_MESSAGE_ENABLED = String(process.env.CUSTOM_MESSAGE_ENABLED || "").trim().toLowerCase() === "true";
+            const CUSTOM_MESSAGE = (process.env.CUSTOM_MESSAGE || "").trim();
+            async function sendCustomMessage() {
+              if (!CUSTOM_MESSAGE_ENABLED) return;
+              if (!CUSTOM_MESSAGE) {
+                core.warning("CUSTOM_MESSAGE_ENABLED is true but CUSTOM_MESSAGE is empty. Nothing was sent.");
+                return;
+              }
+              const msg = CUSTOM_MESSAGE
+                .replace(/\{user\}/gi, `@${REPORTER}`)
+                .replace(/\{developer\}/gi, `@${DEVELOPER}`);
+              await sayOnce("custom", msg);
+            }
+
+            // ==========================================
             // 💖 DONATION
             // ==========================================
             const donationPlatform = field("Which platform did you choose?");
@@ -316,6 +355,7 @@ jobs:
                 ]);
 
                 await say("donation", reply);
+                await sendCustomMessage();
                 return;
               }
             }
@@ -323,14 +363,16 @@ jobs:
             // ==========================================
             // 📋 TEMPLATE DETECTION
             // ==========================================
-            const isFeature = body.includes("Feature Category");
+            const helpTopic = field("Help Topic");
+            const isGeneral = !!helpTopic;
+            const isFeature = !isGeneral && body.includes("Feature Category");
             const versionType = field("Version Type");
             const downloadSource = field("Where did you download the app from?");
 
-            if (!versionType && !downloadSource && !donationPlatform && !isFeature) {
+            if (!versionType && !downloadSource && !donationPlatform && !isFeature && !isGeneral) {
               await closeWith("template",
                 `🛑 **Invalid Issue Format** 🛑\n\nThis report doesn't use one of our official **Issue Templates**.\n\n` +
-                `📋 **How to Fix:** please open a new issue with the [Bug Report / Feature Request form](https://github.com/${owner}/${repo}/issues/new/choose) so all diagnostic info is captured.`);
+                `📋 **How to Fix:** please open a new issue with one of our [issue forms](https://github.com/${owner}/${repo}/issues/new/choose) (bug report, feature request, question, or donation) so we get all the info we need.`);
               return;
             }
 
@@ -469,161 +511,182 @@ jobs:
                 ];
                 await say("feature", pick(FEATURE_ACK)({ u: REPORTER }).trim());
               }
+              await sendCustomMessage();
               return;
             }
 
             // ==========================================
             // 🧠 BUG REPORT
             // ==========================================
-            const vt = versionType.toLowerCase();
-            const selectedChannel = ["nightly", "alpha", "beta", "stable"].find((c) => vt.includes(c)) || "other";
-            const src = downloadSource.toLowerCase();
-            const isPlayStore = src.includes("play store");
-            const isOtherThirdParty = src.includes("other 3rd party");
-            const badSource = isPlayStore || isOtherThirdParty;
-            const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
+            if (isGeneral) {
+              // Questions skip the bug checks (version, source, support window),
+              // go straight to the developer, then get the shared FAQ / wiki /
+              // duplicate help below.
+              await setStatus("handed-over-to-developer");
+              const topic = safe(helpTopic, 60);
+              const topicLine = topic ? ` (topic: **${topic}**)` : "";
+              const gtag = `**\`handed-over-to-developer\`**`;
+              const wikiUrl = `https://github.com/${owner}/${repo}/wiki`;
+              const GENERAL_ACK = [
+                ({ u }) => `Hi @${u}, thanks for reaching out! 🙋 Your question${topicLine} is tagged ${gtag} and assigned to **@${DEVELOPER}**. While you wait, the [Wiki](${wikiUrl}) may already have your answer.`,
+                ({ u }) => `Thanks for asking, @${u}! 🙌 I've passed your question${topicLine} to **@${DEVELOPER}** (${gtag}). You'll get a reply here as soon as they're free. The [Wiki](${wikiUrl}) is worth a quick look in the meantime.`,
+                ({ u }) => `Hey @${u}, got your question${topicLine}. 👋 It's now in **@${DEVELOPER}**'s queue with the ${gtag} label. We'll answer here as soon as we can. 🙏`,
+                ({ u }) => `Hello @${u}! 😊 Thanks for the question${topicLine}. I've tagged it ${gtag} and looped in **@${DEVELOPER}**. For quick answers you can also browse the [Wiki](${wikiUrl}).`,
+              ];
+              await sayOnce("ack", pick(GENERAL_ACK)({ u: REPORTER }));
+              await sendCustomMessage();
+            } else {
+              const vt = versionType.toLowerCase();
+              const selectedChannel = ["nightly", "alpha", "beta", "stable"].find((c) => vt.includes(c)) || "other";
+              const src = downloadSource.toLowerCase();
+              const isPlayStore = src.includes("play store");
+              const isOtherThirdParty = src.includes("other 3rd party");
+              const badSource = isPlayStore || isOtherThirdParty;
+              const sourceLabel = isPlayStore ? "the Google Play Store" : "an unofficial 3rd-party platform";
 
-            if (badSource) {
-              await addLabel("invalid-source").catch(() => {});
-              await closeWith("policy",
-                `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n**NetShield DNS Resolver is NOT published on ${sourceLabel}.**\n\n` +
-                `If you installed an app with this name from there, it is an **unofficial or modified build** not maintained by this project.\n\n` +
-                `🔒 **Security Recommendation:** uninstall it and get official releases from **GitHub Releases**, **F-Droid**, or **APK Pure**.`);
-              return;
-            }
-
-            function parseVersionReply(text) {
-              const m = (text || "").slice(0, 500).match(/\b(?:(alpha|beta|nightly)[\s_:-]*)?v?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b/i);
-              if (!m) return null;
-              return { channel: m[1] ? m[1].toLowerCase() : null, nums: [+m[2], +m[3], +m[4]], ver: `${m[2]}.${m[3]}.${m[4]}` };
-            }
-            function resolveChannel(p) {
-              if (selectedChannel === "other") return p.channel || "prerelease";
-              if (p.channel && p.channel !== selectedChannel) return null;
-              return selectedChannel;
-            }
-
-            const logVersion = (body.match(/NetShield\s+v?(\d+\.\d+\.\d+)/i) || [])[1];
-            const logHint = logVersion ? `Your diagnostic log mentions \`${logVersion}\`, which is usually the installed version.` : "";
-
-            const HINT = {
-              stable: "Just the number is fine, e.g. `3.1.1`.",
-              beta: "Since you picked **Beta Build**, something like `BETA-3.1.1` works.",
-              alpha: "Since you picked **Alpha Build**, something like `ALPHA-3.1.1` works.",
-              nightly: "Since you picked **Nightly Build**, something like `NIGHTLY-3.1.1` works.",
-              other: "The release number from GitHub is fine, e.g. `3.2.0`.",
-            };
-
-            const ASK = [
-              ({ u, hint }) => `Hey @${u}, thanks for taking the time to report this! 🙏 One quick thing before I pass it along: which version of NetShield are you running? ${hint}`,
-              ({ u, hint }) => `Hi @${u}! Got your report — thanks! Could you tell me which version of the app you're on? ${hint} Just reply right here.`,
-              ({ u, hint }) => `Thanks for the report, @${u}! There's just one thing I'm missing: your app version. ${hint}`,
-              ({ u, hint }) => `Hello @${u} 👋 Appreciate you filing this. Which version of NetShield is installed on your phone? ${hint}`,
-              ({ u, hint }) => `Hey @${u}, before the developer takes a look I need to know which version you're on. ${hint} A quick reply is all it takes!`,
-              ({ u, hint }) => `Nice, thanks @${u}. Last piece of the puzzle: which app version are you using? ${hint} Just reply in this thread.`,
-              ({ u, hint }) => `Hi @${u}, thanks for the detailed report! Mind telling me which version of the app this happened on? ${hint}`,
-              ({ u, hint }) => `Hey @${u}, got it, thanks! Which version is this happening on? ${hint}`,
-              ({ u, hint }) => `Thanks a lot for the info, @${u}! 🙌 One tiny gap: which NetShield version are you on? ${hint}`,
-              ({ u, hint }) => `👋 Hi @${u}, we received your report! Could you confirm the app version? ${hint}`,
-              ({ u, hint }) => `@${u} thanks for filing this! Which version of the app are you using right now? ${hint}`,
-              ({ u, hint }) => `Appreciate the report, @${u}! Before I forward this to the developer, could you share your NetShield version? ${hint}`,
-            ];
-            const NUDGE = [
-              ({ u }) => `Hmm, I couldn't spot a version number in that, @${u}. 🤔 Could you send it like \`3.1.1\`? ${logHint}`,
-              () => `Thanks for replying! I'm still missing the version though. Something like \`3.1.1\` would do it. ${logHint}`,
-              ({ u }) => `Almost there, @${u}! I just need the version number (three numbers, like \`3.1.1\`). ${logHint}`,
-              () => `Sorry, I didn't catch a version in that. Mind sending it as \`x.y.z\`, e.g. \`3.1.1\`? ${logHint}`,
-              ({ u }) => `No worries if it's hard to find, @${u}. ${logHint} Once you have it, just reply with the number (e.g. \`3.1.1\`).`,
-              ({ u }) => `Thanks @${u}! The version is still missing — could you paste it exactly as shown, like \`3.1.1\`? ${logHint}`,
-              ({ u }) => `Almost there, @${u} — I just need the version number. Format \`X.Y.Z\` please (e.g. \`3.1.1\`). ${logHint}`,
-              () => `I couldn't find a version in that reply. Could you send something like \`3.1.1\`? ${logHint}`,
-            ];
-            const MISMATCH = [
-              ({ u, type, said }) => `Hmm, @${u}, you picked **${type}** in the form, but \`${said}\` looks like a different kind of build. 🤔 Could you double-check and send the version again? If the Version Type in the form was wrong, you can also just edit the issue and change it.`,
-              ({ u, type, said }) => `Quick sanity check, @${u}: the form says **${type}**, but \`${said}\` doesn't look like that kind of build. Which one is right? Reply with the correct version, or edit the Version Type in the issue if that's what was off.`,
-              ({ u, type, said }) => `Thanks! One thing doesn't add up though: you chose **${type}** but \`${said}\` is from a different channel. Mind confirming the version again, @${u}? (Or fix the Version Type by editing the issue.)`,
-              ({ u, type, said }) => `Hey @${u}, I think something got mixed up: **${type}** and \`${said}\` don't match. Could you send the right version? You can also edit the issue to change the Version Type.`,
-              ({ u, type, said }) => `Hold on, @${u} — the form says **${type}** but \`${said}\` sounds like a different channel. Which is correct? Feel free to edit the issue if the Version Type was wrong.`,
-            ];
-            const ACK = [
-              ({ u, v }) => `Perfect, thanks @${u}! 🙌 Noted **${v}**. I've passed this to the developer and they'll take a look as soon as they're free.`,
-              ({ v }) => `Got it, **${v}**. Thanks for confirming! The developer has been notified and will look into it when they get a chance.`,
-              ({ u, v }) => `Thanks @${u}, that's everything I needed. 👍 Marked as **${v}** and handed over to the developer.`,
-              ({ v }) => `Awesome, thank you! **${v}** noted. This is now in the developer's queue.`,
-              ({ v }) => `Great, that helps a lot. Logged **${v}** and sent it over to the developer. 🚀`,
-              ({ u, v }) => `Thanks for the quick reply, @${u}! Version **${v}** is on record and the developer will pick this up soon.`,
-              ({ u, v }) => `All set, @${u} — **${v}** noted. 🙏 The developer has been looped in.`,
-              ({ u, v }) => `Perfect, @${u}! Logged **${v}**. You'll hear from us here when the developer gets to it. 🛠️`,
-              ({ v }) => `Thanks! **${v}** is now recorded and the issue is with the developer. Appreciate the quick reply! 🙌`,
-              ({ u, v }) => `Great, thanks @${u}. Marked **${v}** and moved this to the developer's queue. 🚀`,
-            ];
-            const LEGACY = [
-              ({ u, v }) => `Thanks for letting me know, @${u}. 🙏 **${v}** is an older release that's no longer supported, so I can't take bug reports for it. Please update to the **latest stable release** from GitHub Releases, F-Droid, or APK Pure, and open a new issue if the problem is still there.`,
-              ({ u, v }) => `Thanks, @${u}! Unfortunately **${v}** is past its support window. Could you update to the **latest stable release** (GitHub Releases, F-Droid, or APK Pure) and check if it still happens? If it does, please open a fresh issue.`,
-              ({ u, v }) => `Appreciate the quick reply, @${u}. 📦 That version (**${v}**) has reached end of support, so I'll close this one. Updating to the **latest stable release** often fixes things, and a new issue is welcome if it doesn't.`,
-              ({ u, v }) => `Thanks for confirming, @${u}. **${v}** is no longer supported — could you update to the latest stable build (GitHub Releases / F-Droid / APK Pure) and re-check? If the issue persists, just open a new issue. 🙏`,
-            ];
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner, repo, issue_number: issueNumber, per_page: 100,
-            });
-            const trigger = isComment ? context.payload.comment : null;
-            const thread = trigger && !comments.some((c) => c.id === trigger.id) ? [...comments, trigger] : comments;
-
-            const askComment = thread.find((c) => c.user?.type === "Bot" && c.body?.includes(MARK("ask-version")));
-            let accepted = null;
-            let lastMismatch = null;
-            if (askComment) {
-              const replies = thread.filter((c) => c.user?.login === REPORTER && c.id > askComment.id);
-              for (const r of replies) {
-                const p = parseVersionReply(r.body);
-                if (!p) continue;
-                const channel = resolveChannel(p);
-                if (channel) { accepted = { ...p, channel }; break; }
-                lastMismatch = { p, id: r.id };
-              }
-            }
-
-            if (!accepted) {
-              await setStatus("on-hold");
-              const ctx = { u: REPORTER, type: safe(versionType), hint: HINT[selectedChannel] };
-              if (!askComment) {
-                await sayOnce("ask-version", pick(ASK)(ctx).trim());
+              if (badSource) {
+                await addLabel("invalid-source").catch(() => {});
+                await closeWith("policy",
+                  `⚠️ **Unofficial Release / Download Warning** 🛡️\n\n**NetShield DNS Resolver is NOT published on ${sourceLabel}.**\n\n` +
+                  `If you installed an app with this name from there, it is an **unofficial or modified build** not maintained by this project.\n\n` +
+                  `🔒 **Security Recommendation:** uninstall it and get official releases from **GitHub Releases**, **F-Droid**, or **APK Pure**.`);
                 return;
               }
-              if (isComment) {
-                if (lastMismatch && lastMismatch.id === trigger.id) {
-                  const said = `${lastMismatch.p.channel ? lastMismatch.p.channel.toUpperCase() + "-" : ""}${lastMismatch.p.ver}`;
-                  await sayOnce(`mismatch-${trigger.id}`, pick(MISMATCH)({ ...ctx, said }).trim());
-                } else if (!parseVersionReply(trigger.body)) {
-                  const nudges = comments.filter((c) => c.user?.type === "Bot" && c.body?.includes("<!-- netshield-bot:nudge-")).length;
-                  if (nudges < 3) await sayOnce(`nudge-${trigger.id}`, pick(NUDGE)(ctx).trim());
+
+              function parseVersionReply(text) {
+                const m = (text || "").slice(0, 500).match(/\b(?:(alpha|beta|nightly)[\s_:-]*)?v?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b/i);
+                if (!m) return null;
+                return { channel: m[1] ? m[1].toLowerCase() : null, nums: [+m[2], +m[3], +m[4]], ver: `${m[2]}.${m[3]}.${m[4]}` };
+              }
+              function resolveChannel(p) {
+                if (selectedChannel === "other") return p.channel || "prerelease";
+                if (p.channel && p.channel !== selectedChannel) return null;
+                return selectedChannel;
+              }
+
+              const logVersion = (body.match(/NetShield\s+v?(\d+\.\d+\.\d+)/i) || [])[1];
+              const logHint = logVersion ? `Your diagnostic log mentions \`${logVersion}\`, which is usually the installed version.` : "";
+
+              const HINT = {
+                stable: "Just the number is fine, e.g. `3.1.1`.",
+                beta: "Since you picked **Beta Build**, something like `BETA-3.1.1` works.",
+                alpha: "Since you picked **Alpha Build**, something like `ALPHA-3.1.1` works.",
+                nightly: "Since you picked **Nightly Build**, something like `NIGHTLY-3.1.1` works.",
+                other: "The release number from GitHub is fine, e.g. `3.2.0`.",
+              };
+
+              const ASK = [
+                ({ u, hint }) => `Hey @${u}, thanks for taking the time to report this! 🙏 One quick thing before I pass it along: which version of NetShield are you running? ${hint}`,
+                ({ u, hint }) => `Hi @${u}! Got your report — thanks! Could you tell me which version of the app you're on? ${hint} Just reply right here.`,
+                ({ u, hint }) => `Thanks for the report, @${u}! There's just one thing I'm missing: your app version. ${hint}`,
+                ({ u, hint }) => `Hello @${u} 👋 Appreciate you filing this. Which version of NetShield is installed on your phone? ${hint}`,
+                ({ u, hint }) => `Hey @${u}, before the developer takes a look I need to know which version you're on. ${hint} A quick reply is all it takes!`,
+                ({ u, hint }) => `Nice, thanks @${u}. Last piece of the puzzle: which app version are you using? ${hint} Just reply in this thread.`,
+                ({ u, hint }) => `Hi @${u}, thanks for the detailed report! Mind telling me which version of the app this happened on? ${hint}`,
+                ({ u, hint }) => `Hey @${u}, got it, thanks! Which version is this happening on? ${hint}`,
+                ({ u, hint }) => `Thanks a lot for the info, @${u}! 🙌 One tiny gap: which NetShield version are you on? ${hint}`,
+                ({ u, hint }) => `👋 Hi @${u}, we received your report! Could you confirm the app version? ${hint}`,
+                ({ u, hint }) => `@${u} thanks for filing this! Which version of the app are you using right now? ${hint}`,
+                ({ u, hint }) => `Appreciate the report, @${u}! Before I forward this to the developer, could you share your NetShield version? ${hint}`,
+              ];
+              const NUDGE = [
+                ({ u }) => `Hmm, I couldn't spot a version number in that, @${u}. 🤔 Could you send it like \`3.1.1\`? ${logHint}`,
+                () => `Thanks for replying! I'm still missing the version though. Something like \`3.1.1\` would do it. ${logHint}`,
+                ({ u }) => `Almost there, @${u}! I just need the version number (three numbers, like \`3.1.1\`). ${logHint}`,
+                () => `Sorry, I didn't catch a version in that. Mind sending it as \`x.y.z\`, e.g. \`3.1.1\`? ${logHint}`,
+                ({ u }) => `No worries if it's hard to find, @${u}. ${logHint} Once you have it, just reply with the number (e.g. \`3.1.1\`).`,
+                ({ u }) => `Thanks @${u}! The version is still missing — could you paste it exactly as shown, like \`3.1.1\`? ${logHint}`,
+                ({ u }) => `Almost there, @${u} — I just need the version number. Format \`X.Y.Z\` please (e.g. \`3.1.1\`). ${logHint}`,
+                () => `I couldn't find a version in that reply. Could you send something like \`3.1.1\`? ${logHint}`,
+              ];
+              const MISMATCH = [
+                ({ u, type, said }) => `Hmm, @${u}, you picked **${type}** in the form, but \`${said}\` looks like a different kind of build. 🤔 Could you double-check and send the version again? If the Version Type in the form was wrong, you can also just edit the issue and change it.`,
+                ({ u, type, said }) => `Quick sanity check, @${u}: the form says **${type}**, but \`${said}\` doesn't look like that kind of build. Which one is right? Reply with the correct version, or edit the Version Type in the issue if that's what was off.`,
+                ({ u, type, said }) => `Thanks! One thing doesn't add up though: you chose **${type}** but \`${said}\` is from a different channel. Mind confirming the version again, @${u}? (Or fix the Version Type by editing the issue.)`,
+                ({ u, type, said }) => `Hey @${u}, I think something got mixed up: **${type}** and \`${said}\` don't match. Could you send the right version? You can also edit the issue to change the Version Type.`,
+                ({ u, type, said }) => `Hold on, @${u} — the form says **${type}** but \`${said}\` sounds like a different channel. Which is correct? Feel free to edit the issue if the Version Type was wrong.`,
+              ];
+              const ACK = [
+                ({ u, v }) => `Perfect, thanks @${u}! 🙌 Noted **${v}**. I've passed this to the developer and they'll take a look as soon as they're free.`,
+                ({ v }) => `Got it, **${v}**. Thanks for confirming! The developer has been notified and will look into it when they get a chance.`,
+                ({ u, v }) => `Thanks @${u}, that's everything I needed. 👍 Marked as **${v}** and handed over to the developer.`,
+                ({ v }) => `Awesome, thank you! **${v}** noted. This is now in the developer's queue.`,
+                ({ v }) => `Great, that helps a lot. Logged **${v}** and sent it over to the developer. 🚀`,
+                ({ u, v }) => `Thanks for the quick reply, @${u}! Version **${v}** is on record and the developer will pick this up soon.`,
+                ({ u, v }) => `All set, @${u} — **${v}** noted. 🙏 The developer has been looped in.`,
+                ({ u, v }) => `Perfect, @${u}! Logged **${v}**. You'll hear from us here when the developer gets to it. 🛠️`,
+                ({ v }) => `Thanks! **${v}** is now recorded and the issue is with the developer. Appreciate the quick reply! 🙌`,
+                ({ u, v }) => `Great, thanks @${u}. Marked **${v}** and moved this to the developer's queue. 🚀`,
+              ];
+              const LEGACY = [
+                ({ u, v }) => `Thanks for letting me know, @${u}. 🙏 **${v}** is an older release that's no longer supported, so I can't take bug reports for it. Please update to the **latest stable release** from GitHub Releases, F-Droid, or APK Pure, and open a new issue if the problem is still there.`,
+                ({ u, v }) => `Thanks, @${u}! Unfortunately **${v}** is past its support window. Could you update to the **latest stable release** (GitHub Releases, F-Droid, or APK Pure) and check if it still happens? If it does, please open a fresh issue.`,
+                ({ u, v }) => `Appreciate the quick reply, @${u}. 📦 That version (**${v}**) has reached end of support, so I'll close this one. Updating to the **latest stable release** often fixes things, and a new issue is welcome if it doesn't.`,
+                ({ u, v }) => `Thanks for confirming, @${u}. **${v}** is no longer supported — could you update to the latest stable build (GitHub Releases / F-Droid / APK Pure) and re-check? If the issue persists, just open a new issue. 🙏`,
+              ];
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: issueNumber, per_page: 100,
+              });
+              const trigger = isComment ? context.payload.comment : null;
+              const thread = trigger && !comments.some((c) => c.id === trigger.id) ? [...comments, trigger] : comments;
+
+              const askComment = thread.find((c) => c.user?.type === "Bot" && c.body?.includes(MARK("ask-version")));
+              let accepted = null;
+              let lastMismatch = null;
+              if (askComment) {
+                const replies = thread.filter((c) => c.user?.login === REPORTER && c.id > askComment.id);
+                for (const r of replies) {
+                  const p = parseVersionReply(r.body);
+                  if (!p) continue;
+                  const channel = resolveChannel(p);
+                  if (channel) { accepted = { ...p, channel }; break; }
+                  lastMismatch = { p, id: r.id };
                 }
               }
-              return;
+
+              if (!accepted) {
+                await setStatus("on-hold");
+                const ctx = { u: REPORTER, type: safe(versionType), hint: HINT[selectedChannel] };
+                if (!askComment) {
+                  await sayOnce("ask-version", pick(ASK)(ctx).trim());
+                  return;
+                }
+                if (isComment) {
+                  if (lastMismatch && lastMismatch.id === trigger.id) {
+                    const said = `${lastMismatch.p.channel ? lastMismatch.p.channel.toUpperCase() + "-" : ""}${lastMismatch.p.ver}`;
+                    await sayOnce(`mismatch-${trigger.id}`, pick(MISMATCH)({ ...ctx, said }).trim());
+                  } else if (!parseVersionReply(trigger.body)) {
+                    const nudges = comments.filter((c) => c.user?.type === "Bot" && c.body?.includes("<!-- netshield-bot:nudge-")).length;
+                    if (nudges < 3) await sayOnce(`nudge-${trigger.id}`, pick(NUDGE)(ctx).trim());
+                  }
+                }
+                return;
+              }
+
+              const isTestBuild = ["alpha", "beta", "nightly"].includes(accepted.channel);
+              const shown = isTestBuild ? `${accepted.channel.toUpperCase()}-${accepted.ver}` : accepted.ver;
+              const versionTag = accepted.channel === "stable" ? `v${accepted.ver}` : isTestBuild ? shown : `PRE-${accepted.ver}`;
+              const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+              if (cmp(accepted.nums, MIN_SUPPORTED) < 0) {
+                await closeWith("legacy", pick(LEGACY)({ u: REPORTER, v: shown }));
+                return;
+              }
+
+              await setStatus("handed-over-to-developer");
+              try { await trackVersion(accepted.ver, versionTag); }
+              catch (e) { core.warning(`Version tracking failed: ${e.message}`); }
+
+              await sayOnce("ack",
+                pick(ACK)({ u: REPORTER, v: shown }) +
+                (accepted.channel === "stable" ? "" : `\n\nThanks for testing our preview builds, it really helps! 🧪`));
+              await sendCustomMessage();
             }
-
-            const isTestBuild = ["alpha", "beta", "nightly"].includes(accepted.channel);
-            const shown = isTestBuild ? `${accepted.channel.toUpperCase()}-${accepted.ver}` : accepted.ver;
-            const versionTag = accepted.channel === "stable" ? `v${accepted.ver}` : isTestBuild ? shown : `PRE-${accepted.ver}`;
-            const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-            if (cmp(accepted.nums, MIN_SUPPORTED) < 0) {
-              await closeWith("legacy", pick(LEGACY)({ u: REPORTER, v: shown }));
-              return;
-            }
-
-            await setStatus("handed-over-to-developer");
-            try { await trackVersion(accepted.ver, versionTag); }
-            catch (e) { core.warning(`Version tracking failed: ${e.message}`); }
-
-            await sayOnce("ack",
-              pick(ACK)({ u: REPORTER, v: shown }) +
-              (accepted.channel === "stable" ? "" : `\n\nThanks for testing our preview builds, it really helps! 🧪`));
 
             // ==========================================
             // 💡 SMART FAQ
             // ==========================================
-            const text = `${issue.title}\n${body}`.toLowerCase();
+            const text = `${issue.title}\n${body.replace(/^\s*- \[[ xX]\] .*$/gm, "")}`.toLowerCase();
             const FAQ = [
               { id: "battery", match: /\b(battery|drain(ing|s|ed)?|power usage|wakelock)\b/,
                 tips: [
@@ -687,13 +750,13 @@ jobs:
               const fs = require("fs");
               const nodePath = require("path");
               const wikiDir = nodePath.join(process.env.GITHUB_WORKSPACE, "wiki");
-              const diagnosticLog = field("Diagnostic Log") || field("Logcat") || field("Log") || "";
+              const diagnosticLog = field("Diagnostic Log (Copied from App)") || field("Diagnostic Log") || field("Logcat") || field("Log") || "";
               if (fs.existsSync(wikiDir)) {
                 const STOP = new Set(("the and for with not you your this that have has had was were are but can cant dont does did when after before from into out all any app apps issue bug version stable release releases download downloaded github droid fdroid apk pure android tag commit hash build builds test prerelease steps expected actual behavior behaviour describe reproduce problem using use used get got just also please thanks netshield dns resolver psbdx").split(" "));
                 const tok = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
                 const query = new Map();
                 for (const w of tok(issue.title)) query.set(w, (query.get(w) || 0) + 3);
-                for (const w of tok(body.replace(/^###.*$/gm, ""))) query.set(w, (query.get(w) || 0) + 1);
+                for (const w of tok(body.replace(/^###.*$/gm, "").replace(/^\s*- \[[ xX]\] .*$/gm, ""))) query.set(w, (query.get(w) || 0) + 1);
                 const pages = fs.readdirSync(wikiDir).filter((f) => f.endsWith(".md") && !f.startsWith("_"));
                 const scored = [];
                 for (const file of pages) {
