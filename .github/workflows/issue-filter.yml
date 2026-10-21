@@ -35,18 +35,7 @@ concurrency:
 env:
   CUSTOM_MESSAGE_ENABLED: "true"
   CUSTOM_MESSAGE: |
-    Hello @{user}! 👋
-
-Thank you for opening an issue on this repository. 
-
-Please note that @{developer} is currently preparing for **Secondary School Test Examinations** and will have limited to no availability until **November 13**. 📅
-
-### 📌 What happens next?
-* **Issue Status:** Your issue has been logged and queued for review.
-* **Response Time:** @{developer} will review and respond to this issue as soon as possible after **November 13**.
-* **Urgent Updates:** If you have additional details, feel free to drop them in this thread so everything is ready for review once work resumes.
-
-Thank you for your patience and understanding! 🌟
+  Hello {user}! 👋 Thank you for opening an issue. Please note that {developer} is currently busy with board test exams and will have limited availability until November 13, but will review your request as soon as possible after that. Thank you for your patience! 🌟
 
 
 permissions: {}
