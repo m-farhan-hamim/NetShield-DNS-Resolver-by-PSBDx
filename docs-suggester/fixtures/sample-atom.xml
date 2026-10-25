@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Atom fixture</title>
+  <entry>
+    <title>Blocklist &amp; filter list guide</title>
+    <link rel="self" href="https://wiki.example.org/feed/1"/>
+    <link rel="alternate" href="https://wiki.example.org/blocklist-guide/"/>
+    <summary type="html">&lt;p&gt;How to add a custom blocklist.&lt;/p&gt;</summary>
+    <category term="Blocklists"/>
+  </entry>
+  <entry>
+    <title>Using DNS over HTTPS</title>
+    <link href="https://wiki.example.org/doh/"/>
+    <content type="html">&lt;p&gt;Pick a DoH provider.&lt;/p&gt;</content>
+    <category term="DNS"/><category term="TLS"/>
+  </entry>
+</feed>

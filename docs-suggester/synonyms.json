@@ -1,0 +1,13 @@
+{
+  "battery": ["drain", "charging", "standby", "wakelock"],
+  "background": ["autostart", "kill", "killed", "restricted", "restriction", "optimization"],
+  "dns": ["resolver", "nameserver", "resolution", "doh", "dot", "doq"],
+  "tls": ["ssl", "https", "certificate", "cert", "encryption", "encrypted"],
+  "vpn": ["tunnel", "tunneling", "wireguard", "openvpn"],
+  "block": ["filter", "blocklist", "adblock", "blocking", "ads", "tracker"],
+  "slow": ["latency", "lag", "delay", "sluggish"],
+  "install": ["apk", "sideload"],
+  "signature": ["signing", "fingerprint", "checksum", "sha256", "verify", "verification"],
+  "translate": ["translation", "bengali", "bangla", "locale"],
+  "lan": ["hotspot", "router", "wifi"]
+}

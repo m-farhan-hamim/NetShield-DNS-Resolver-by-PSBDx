@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>NetShield Wiki (test fixture)</title>
+    <link>https://wiki.example.org/</link>
+    <item>
+      <title>Fixing battery drain and background limits on Xiaomi and realme</title>
+      <link>https://wiki.example.org/battery-and-background/</link>
+      <description>Why Android kills background VPN apps, how to allow autostart and disable battery optimization for NetShield.</description>
+      <category>Battery</category><category>Android</category><category>Xiaomi</category>
+    </item>
+    <item>
+      <title>Setting up DNS over TLS (DoT) upstreams</title>
+      <link>https://wiki.example.org/dot-upstreams/</link>
+      <description>Configure encrypted upstream resolvers on port 853 and fix UnknownHostException errors for dns.adguard-dns.com.</description>
+      <category>DNS</category><category>TLS</category>
+      <content:encoded><![CDATA[<p>If your network blocks <b>port 853</b> the app cannot reach the upstream. Try DoH on port 443 instead.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Blocklists and filter lists explained</title>
+      <link>https://wiki.example.org/blocklists/</link>
+      <description>Add, remove and update filter lists to block ads and trackers.</description>
+      <category>Blocklists</category><category>Privacy</category>
+    </item>
+    <item>
+      <title>Verify your APK signature and fingerprint</title>
+      <link>https://wiki.example.org/verify-apk/</link>
+      <description>Check the signing certificate SHA-256 fingerprint with apksigner before installing.</description>
+      <category>Security</category><category>Install</category>
+    </item>
+    <item>
+      <title>Local DNS Server Mode for your LAN</title>
+      <link>https://wiki.example.org/dns-server-mode/</link>
+      <description>Share NetShield with other devices on your Wi-Fi or hotspot by turning your phone into a DNS server.</description>
+      <category>DNS</category><category>LAN</category>
+    </item>
+    <item>
+      <title>Welcome to the Bengali translation project</title>
+      <link>https://wiki.example.org/translations/</link>
+      <description>Help us translate the wiki into Bengali.</description>
+      <category>Translation</category><category>Bengali</category>
+    </item>
+    <!-- hostile entries: they MUST never be suggested -->
+    <item>
+      <title>Fix &amp; tune &lt;b&gt;battery drain&lt;/b&gt; @everyone</title>
+      <link>https://evil.example.net/phish</link>
+      <description>battery drain background autostart fix</description>
+      <category>Battery</category>
+    </item>
+    <item>
+      <title>Verify APK signature fingerprint now</title>
+      <link>javascript:alert(1)</link>
+      <description>verify apk signature fingerprint signing certificate</description>
+      <category>Security</category>
+    </item>
+    <item>
+      <title>Insecure copy of the DoT upstream guide</title>
+      <link>http://wiki.example.org/insecure/</link>
+      <description>dns over tls dot upstream port 853 unknownhostexception</description>
+      <category>DNS</category>
+    </item>
+  </channel>
+</rss>

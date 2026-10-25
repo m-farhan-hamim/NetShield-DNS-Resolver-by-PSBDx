@@ -1,0 +1,23 @@
+name: Docs Suggester Tests
+
+# Offline tests for docs-suggester/ (no model, no network). Cheap, so they run on every change to the folder.
+on:
+  pull_request:
+    paths:
+      - "docs-suggester/**"
+  push:
+    branches: [main]
+    paths:
+      - "docs-suggester/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --version && node --test docs-suggester/suggest.test.js docs-suggester/intro.test.js
