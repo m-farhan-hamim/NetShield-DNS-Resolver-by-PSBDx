@@ -29,13 +29,14 @@ const one = (s) => String(s || "").replace(/\s+/g, " ").trim();
       const row = { id: it.id, matcher: r.status, used: "-", reason: "", text: "", genMs: 0, raw: "" };
       if (r.status === "ok") {
         const m = intro.modelText(it.title, it.body);
+        const prefix = intro.prefixFor(it.title);
         const gate = intro.shouldTryAi(m.title, m.body);
         if (!gate.ok) { row.used = "skipped"; row.reason = gate.reason; }
         else {
           const ctx = { title: m.title, body: m.body, suggestions: r.suggestions };
           try {
-            const g = await writeIntro(generator, ctx, 150000, minTokensFor(MODEL));
-            const j = judge(g.raw, ctx);
+            const g = await writeIntro(generator, ctx, 150000, minTokensFor(MODEL), prefix);
+            const j = judge(g.raw, ctx, prefix);
             Object.assign(row, { genMs: g.genMs, raw: g.raw, used: j.ok ? "ai" : "fallback", text: j.text, reason: j.reason });
           } catch (e) { row.used = "error"; row.reason = e.message; }
         }

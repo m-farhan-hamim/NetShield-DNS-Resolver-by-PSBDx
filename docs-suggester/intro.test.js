@@ -249,3 +249,20 @@ test("REGRESSION: the live junk output ' ready to go!' is rejected (not about th
   const r = I.validateIntro(I.composeIntro(" ready to go!"), { title: m.title, body: m.body, suggestions: [] });
   assert.equal(r.ok, false);
 });
+
+test("prefixFor: bug reports and questions get different, topic-naming openings", () => {
+  assert.equal(I.prefixFor("[BUG]: UnknownHostException on mobile data"), I.PREFIX_BUG);
+  assert.equal(I.prefixFor("  [bug] app crashes"), I.PREFIX_BUG);
+  assert.equal(I.prefixFor("[QUESTION]: How do I use Orbot"), I.PREFIX_ASK);
+  assert.equal(I.prefixFor("How do I use Orbot"), I.PREFIX_ASK);
+  assert.equal(I.prefixFor(null), I.PREFIX_ASK);
+});
+
+test("composeIntro/buildMessages use the prefix they are given; the opening stays code-written", () => {
+  assert.equal(I.composeIntro(" how to switch Orbot to proxy mode.", I.PREFIX_ASK), "It sounds like you're asking about how to switch Orbot to proxy mode. The pages below may help.");
+  assert.equal(I.composeIntro(" EAI_NODATA errors on mobile data.", I.PREFIX_BUG), "It sounds like you're running into EAI_NODATA errors on mobile data. The pages below may help.");
+  assert.match(I.buildMessages("t", "b", I.PREFIX_BUG)[0].content, /running into/);
+  const ctx = { title: "How do I make Orbot work", body: "I installed Orbot and want a SOCKS proxy but cannot find the setting.", suggestions: [] };
+  assert.ok(I.validateIntro(I.composeIntro(" making Orbot work as a SOCKS proxy.", I.PREFIX_ASK), ctx).ok);
+  assert.equal(I.validateIntro(I.composeIntro(" ready to get started.", I.PREFIX_ASK), ctx).ok, false);
+});

@@ -66,6 +66,7 @@ function finish() {
 
     const title = env.ISSUE_TITLE || "";
     const m = intro.modelText(title, env.ISSUE_BODY || "");
+    const prefix = intro.prefixFor(title); // chosen from the RAW title ([BUG]: vs [QUESTION]:)
     const gate = intro.shouldTryAi(m.title, m.body);
     if (!gate.ok) { out.used = "skipped"; out.reason = gate.reason; return finish(); }
 
@@ -75,12 +76,12 @@ function finish() {
     } else {
       const { generator, loadMs } = await loadGenerator(MODEL, DTYPE, env.HF_CACHE_DIR);
       out.timings.loadMs = loadMs;
-      const g = await writeIntro(generator, ctx, MAX_GEN_MS, minTokensFor(MODEL));
+      const g = await writeIntro(generator, ctx, MAX_GEN_MS, minTokensFor(MODEL), prefix);
       out.raw = g.raw;
       out.timings.genMs = g.genMs;
     }
 
-    const verdict = judge(out.raw, ctx);
+    const verdict = judge(out.raw, ctx, prefix);
     if (!verdict.ok) { out.used = "fallback"; out.reason = `output rejected: ${verdict.reason}`; return finish(); }
 
     out.used = "ai";

@@ -20,9 +20,9 @@ export async function loadGenerator(model, dtype, cacheDir) {
 // say..." repeated), so it is applied per model family, not globally.
 export const minTokensFor = (model) => (/smollm2/i.test(model) ? 4 : 0);
 
-export async function writeIntro(generator, { title, body, suggestions }, maxMs = 150000, minNewTokens = 0) {
-  const messages = intro.buildMessages(title, body);
-  const prompt = generator.tokenizer.apply_chat_template(messages, { tokenize: false, add_generation_prompt: true }) + intro.PREFIX;
+export async function writeIntro(generator, { title, body, suggestions }, maxMs = 150000, minNewTokens = 0, prefix = intro.PREFIX) {
+  const messages = intro.buildMessages(title, body, prefix);
+  const prompt = generator.tokenizer.apply_chat_template(messages, { tokenize: false, add_generation_prompt: true }) + prefix;
   const t = performance.now();
   let timer;
   try {
@@ -37,8 +37,8 @@ export async function writeIntro(generator, { title, body, suggestions }, maxMs 
 }
 
 // raw model text -> { ok, text, reason }. Untrusted input: compose, restore casing, validate.
-export function judge(raw, { title, body, suggestions }) {
-  const composed = intro.composeIntro(raw);
+export function judge(raw, { title, body, suggestions }, prefix = intro.PREFIX) {
+  const composed = intro.composeIntro(raw, prefix);
   if (!composed) return { ok: false, text: "", reason: "no complete sentence (output was cut off or contained a glued domain)" };
   const fixed = intro.restoreCase(composed, `${title}\n${body}`);
   const v = intro.validateIntro(fixed, { title, body, suggestions });

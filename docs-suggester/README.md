@@ -70,23 +70,25 @@ SmolLM2-360M-Instruct (8-bit, 365 MB) is the default. Measured on GitHub runners
 | Test | SmolLM2-360M | SmolLM2-135M | Qwen2.5-0.5B |
 |---|---|---|---|
 | 7 clean one-paragraph issues (early prompt) | 6 accepted | 2 | 2 |
-| 10 varied issues incl. real form bodies (final prompt) | **3 accepted** | not re-run | gibberish, 0 |
+| 10 varied issues incl. real form bodies, bare opening | 3 accepted | not re-run | gibberish, 0 |
+| same 10 issues, **final** topic-naming opening | **7 accepted** | 3 | gibberish, 0 |
 
-Be realistic: **expect the AI line on roughly a third of issues.** For the rest the checks reject the
-model's text (usually "not about the issue") and the plain suggestion stays, which is the intended
-outcome. What it does write when accepted has been faithful ("It sounds like you're asking how to enable
-proxy mode on Orbot"). No model followed an injected instruction, and none posted an invented link.
+Be realistic: that is a small test set, so treat "about two thirds" as an estimate, not a promise. For the rest
+the checks reject the model's text (cut off, or "not about the issue") and the plain suggestion stays, which is
+the intended outcome. Accepted lines have been faithful ("It sounds like you're asking about how to enable
+Orbot as a SOCKS proxy in Android 13"). No model followed an injected instruction, and none posted an invented link.
 
 Lessons from the real runs (all are covered by tests in `intro.test.js`):
 
 - A tiny model's output swings with small prompt changes. Page titles are therefore **not** sent to it.
 - Real issues are whole forms. Only the free-text fields and the title without `[QUESTION]:` are sent,
   because dropdown values like "Setup & Configuration" or "3.2.0" made it write "ready to go!".
+- The bare opening "It sounds like you're" often continued with "ready to go!" / "ready to get started.". An opening that names the topic ("...asking about" for questions, "...running into" for `[BUG]` issues) raised acceptance from 3 to 7 of 10.
 - Never judge a model on clean test sentences only.
 - `min_new_tokens` stopped SmolLM2 from ending its text immediately but made Qwen ramble, so it is
   applied to SmolLM2 only (`ai.mjs`). 135M once invented a URL (the checks caught it).
 
-If you would rather not spend a runner minute for a line that appears on about a third of issues, set
+If you would rather not spend a runner minute on the extra line, set
 `DOCS_AI_ENABLED: "false"`; the plain suggestion is unaffected.
 
 Change the model with `DOCS_AI_MODEL` in the workflow `env:` block. Settings are per model family: `min_new_tokens`
