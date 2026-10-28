@@ -65,11 +65,11 @@ function finish() {
     if (result.status !== "ok") { out.reason = `no suggestion to personalize (status ${result.status})`; return finish(); }
 
     const title = env.ISSUE_TITLE || "";
-    const { bodyPart } = S.cleanIssueText(title, env.ISSUE_BODY || "");
-    const gate = intro.shouldTryAi(title, bodyPart);
+    const m = intro.modelText(title, env.ISSUE_BODY || "");
+    const gate = intro.shouldTryAi(m.title, m.body);
     if (!gate.ok) { out.used = "skipped"; out.reason = gate.reason; return finish(); }
 
-    const ctx = { title, body: bodyPart, suggestions: result.suggestions };
+    const ctx = { title: m.title, body: m.body, suggestions: result.suggestions };
     if (env.AI_FAKE_OUTPUT !== undefined) {
       out.raw = env.AI_FAKE_OUTPUT; // test hook, no model
     } else {

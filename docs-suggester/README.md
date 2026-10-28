@@ -42,7 +42,7 @@ Generic questions ("proxy mode only", "app not working") get no suggestion on pu
 
 ## What the AI does, and what it is not allowed to do
 
-The model only finishes one clause. The code writes everything else:
+The model only finishes one clause, and sees only the user's own words (never the page titles). The code writes everything else:
 
 ```
 It sounds like you're <one clause from the model>. The pages below may help.
@@ -63,17 +63,31 @@ thrown away unless **all** of these pass (see `intro.js`, covered by tests):
 Identifiers get their casing back (`unknownhostexception` -> `UnknownHostException`).
 The comment says that a small AI model wrote the intro line, and names the model.
 
-## Which model (real GitHub runs, 7 issues the matcher answered)
+## Which model, and how often the AI line appears
 
-| Model (8-bit) | Size | Accepted | Notes |
+SmolLM2-360M-Instruct (8-bit, 365 MB) is the default. Measured on GitHub runners:
+
+| Test | SmolLM2-360M | SmolLM2-135M | Qwen2.5-0.5B |
 |---|---|---|---|
-| **SmolLM2-360M-Instruct** (default) | 365 MB | **6 / 7** | 5 accurate, 1 vague; about 1.7-2.7 s per intro |
-| SmolLM2-135M-Instruct | 137 MB | 2 / 7 | one accepted intro was wrong; in an earlier run it invented a URL (caught) |
-| Qwen2.5-0.5B-Instruct | 512 MB | 2 / 7 | decent when accepted, but slower and wordy |
+| 7 clean one-paragraph issues (early prompt) | 6 accepted | 2 | 2 |
+| 10 varied issues incl. real form bodies (final prompt) | **3 accepted** | not re-run | gibberish, 0 |
 
-This is a small sample (9 issues: angry all-caps, long log, vague, unrelated and a prompt-injection
-attempt), not a benchmark. In it, no model followed the injected instructions. Greedy decoding is
-used (no randomness): the same input gave the same output on repeated runs.
+Be realistic: **expect the AI line on roughly a third of issues.** For the rest the checks reject the
+model's text (usually "not about the issue") and the plain suggestion stays, which is the intended
+outcome. What it does write when accepted has been faithful ("It sounds like you're asking how to enable
+proxy mode on Orbot"). No model followed an injected instruction, and none posted an invented link.
+
+Lessons from the real runs (all are covered by tests in `intro.test.js`):
+
+- A tiny model's output swings with small prompt changes. Page titles are therefore **not** sent to it.
+- Real issues are whole forms. Only the free-text fields and the title without `[QUESTION]:` are sent,
+  because dropdown values like "Setup & Configuration" or "3.2.0" made it write "ready to go!".
+- Never judge a model on clean test sentences only.
+- `min_new_tokens` stopped SmolLM2 from ending its text immediately but made Qwen ramble, so it is
+  applied to SmolLM2 only (`ai.mjs`). 135M once invented a URL (the checks caught it).
+
+If you would rather not spend a runner minute for a line that appears on about a third of issues, set
+`DOCS_AI_ENABLED: "false"`; the plain suggestion is unaffected.
 
 Change the model with `DOCS_AI_MODEL` in the workflow `env:` block. Settings are per model family: `min_new_tokens`
 fixed empty outputs from SmolLM2 but made Qwen ramble, so it is only applied to SmolLM2 (`ai.mjs`).

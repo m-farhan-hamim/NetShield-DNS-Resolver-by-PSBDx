@@ -28,11 +28,11 @@ const one = (s) => String(s || "").replace(/\s+/g, " ").trim();
       const r = await S.run({ feedUrl: "https://wiki.psbdx.com/api/v1/posts", feedFile: path.join(here, "fixtures", "wiki-api-sample.json"), title: it.title, body: it.body, user: "alice" });
       const row = { id: it.id, matcher: r.status, used: "-", reason: "", text: "", genMs: 0, raw: "" };
       if (r.status === "ok") {
-        const { bodyPart } = S.cleanIssueText(it.title, it.body);
-        const gate = intro.shouldTryAi(it.title, bodyPart);
+        const m = intro.modelText(it.title, it.body);
+        const gate = intro.shouldTryAi(m.title, m.body);
         if (!gate.ok) { row.used = "skipped"; row.reason = gate.reason; }
         else {
-          const ctx = { title: it.title, body: bodyPart, suggestions: r.suggestions };
+          const ctx = { title: m.title, body: m.body, suggestions: r.suggestions };
           try {
             const g = await writeIntro(generator, ctx, 150000, minTokensFor(MODEL));
             const j = judge(g.raw, ctx);

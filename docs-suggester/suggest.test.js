@@ -216,3 +216,11 @@ test("title-coverage rule: one generic title word is not enough, a strong title 
   assert.ok(r.length >= 1 && r[0].item.link.includes("orbot-to-proxy-mode"));
   assert.deepEqual(apiSuggest("proxy mode only", ""), []);        // no distinctive word: which app? stay silent
 });
+
+test("REGRESSION (live #29): a stray non-title word must not earn a second suggestion", () => {
+  // Real output was a second suggestion "(matched: set)": the v2rayNG guide, from the words "where to set it up".
+  const r = apiSuggest("How do I make Orbot work in proxy mode only", "I installed Orbot on Android 13 and want NetShield to use it as a SOCKS proxy but I do not see where to set it up.");
+  assert.ok(r.length >= 1 && r[0].item.link.includes("orbot-to-proxy-mode"), "Orbot guide must still be first");
+  for (const s of r.slice(1)) assert.ok(s.matchedInTitle >= 1 || s.matched.length >= 2, `weak extra suggestion: ${s.item.title} (${s.matched})`);
+  assert.ok(!r.some((s) => s.item.link.includes("v2rayng") && s.matched.join() === "set"));
+});

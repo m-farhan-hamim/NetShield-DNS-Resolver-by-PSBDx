@@ -21,7 +21,7 @@ export async function loadGenerator(model, dtype, cacheDir) {
 export const minTokensFor = (model) => (/smollm2/i.test(model) ? 4 : 0);
 
 export async function writeIntro(generator, { title, body, suggestions }, maxMs = 150000, minNewTokens = 0) {
-  const messages = intro.buildMessages(title, body, suggestions);
+  const messages = intro.buildMessages(title, body);
   const prompt = generator.tokenizer.apply_chat_template(messages, { tokenize: false, add_generation_prompt: true }) + intro.PREFIX;
   const t = performance.now();
   let timer;

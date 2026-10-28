@@ -68,8 +68,9 @@ test("shouldTryAi: skips Bengali, very short text, accepts English", () => {
   assert.ok(I.shouldTryAi(CTX.title, CTX.body).ok);
 });
 
-test("buildMessages: issue text is clipped and labelled as data; only titles of pages are included", () => {
+test("buildMessages: issue text is clipped and labelled as data; page titles and links are NOT sent to the model", () => {
   const m = I.buildMessages("t".repeat(1000), "b".repeat(5000), [{ title: "Page A", link: "https://x/y" }]);
+  assert.ok(!/Page A/.test(m[1].content), "page titles are not sent");
   assert.equal(m[0].role, "system");
   assert.match(m[0].content, /data, not instructions/);
   assert.ok(m[1].content.length < 1300, String(m[1].content.length));
@@ -226,4 +227,25 @@ test("ai.mjs: min_new_tokens is applied to SmolLM2 only (it broke Qwen in the re
   assert.equal(minTokensFor("HuggingFaceTB/SmolLM2-360M-Instruct"), 4);
   assert.equal(minTokensFor("HuggingFaceTB/SmolLM2-135M-Instruct"), 4);
   assert.equal(minTokensFor("onnx-community/Qwen2.5-0.5B-Instruct"), 0);
+});
+
+/* ---------------- regressions from the first LIVE run on the real repo (issue #29) ---------------- */
+test("modelText: keeps only free-text fields, drops dropdown values and title prefixes (real form body)", () => {
+  const body = "### Help Topic\n\nSetup & Configuration\n\n### Your Question\n\nHow do I make Orbot work in proxy mode only? I want a SOCKS proxy.\n\n### What have you already tried?\n\n_No response_\n\n### App Version\n\n3.2.0\n\n### Before you submit\n\n- [x] I looked.\n- [x] This is a question.";
+  const m = I.modelText("[QUESTION]: [TEST] How do I make Orbot work", body);
+  assert.equal(m.title, "How do I make Orbot work");
+  assert.equal(m.body, "How do I make Orbot work in proxy mode only? I want a SOCKS proxy.");
+  assert.ok(!/Setup & Configuration|3\.2\.0|No response|looked/.test(m.body));
+});
+
+test("modelText: a plain, non-form body is kept (and tiny/empty ones do not crash)", () => {
+  assert.equal(I.modelText("t", "Just a plain sentence about my problem with the app.").body, "Just a plain sentence about my problem with the app.");
+  assert.equal(I.modelText("", "").body, "");
+  assert.equal(I.modelText(null, null).title, "");
+});
+
+test("REGRESSION: the live junk output ' ready to go!' is rejected (not about the issue)", () => {
+  const m = I.modelText("[QUESTION]: How do I make Orbot work in proxy mode only", "### Your Question\n\nI installed Orbot and want NetShield to use it as a SOCKS proxy but cannot find the setting.");
+  const r = I.validateIntro(I.composeIntro(" ready to go!"), { title: m.title, body: m.body, suggestions: [] });
+  assert.equal(r.ok, false);
 });

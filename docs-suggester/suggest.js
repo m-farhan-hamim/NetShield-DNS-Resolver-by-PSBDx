@@ -255,6 +255,7 @@ function rank(index, title, body, syn, opts = {}) {
   for (const d of index.docs) {
     let score = 0;
     const matched = [];
+    let matchedInTitle = 0;
     let titleHits = 0;
     for (const t of q.keys()) if (d.titleSet.has(t)) titleHits++;
     for (const [t, qc] of q) {
@@ -264,9 +265,9 @@ function rank(index, title, body, syn, opts = {}) {
       const idf = Math.log(1 + (index.n - dfv + 0.5) / (dfv + 0.5));
       const part = (idf * (f * (k1 + 1))) / (f + k1 * (1 - b + (b * d.len) / (index.avgLen || 1)));
       score += part * (1 + Math.log(qc));
-      if (dfv <= informativeMax && d.shallow.has(t)) matched.push(t);
+      if (dfv <= informativeMax && d.shallow.has(t)) { matched.push(t); if (d.titleSet.has(t)) matchedInTitle++; }
     }
-    scored.push({ item: d.item, score, matched, titleHits, titleCov: d.titleSet.size ? titleHits / d.titleSet.size : 0 });
+    scored.push({ item: d.item, score, matched, matchedInTitle, titleHits, titleCov: d.titleSet.size ? titleHits / d.titleSet.size : 0 });
   }
   scored.sort((x, y) => y.score - x.score);
   return scored;
@@ -280,7 +281,8 @@ function pick(scored, allowedHosts, opts = {}) {
     // Enough evidence = 2+ distinctive words, OR 1 distinctive word plus a strong title match
     // (at least 2 shared title words covering half of the page title). The second rule is what
     // lets "Orbot proxy mode only" find its page on a small wiki where "proxy"/"mode" are common.
-    const strongTitle = s.matched.length >= 1 && s.titleHits >= 2 && s.titleCov >= 0.5;
+    // (the distinctive word must be in the page TITLE: a stray word in a summary or tag is not evidence)
+    const strongTitle = s.matched.length >= 1 && s.matchedInTitle >= 1 && s.titleHits >= 2 && s.titleCov >= 0.5;
     if ((s.matched.length < o.minMatchedTerms && !strongTitle) || s.score < o.minScore) continue;
     if (out.length && s.score < out[0].score * o.secondRatio) break;
     out.push(s);
