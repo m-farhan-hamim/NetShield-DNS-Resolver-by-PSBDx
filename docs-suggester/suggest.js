@@ -164,7 +164,7 @@ function isAllowedLink(url, allowedHosts) {
 function escapeMd(s) {
   return String(s)
     .replace(/[\r\n]+/g, " ")
-    .replace(/[`\[\]()<>|*_~#]/g, "")
+    .replace(/[`\[\]<>|*~#]/g, "")   // brackets are what make links; () and _ are harmless and real titles use them (EAI_NODATA)
     .replace(/@/g, "@\u200b")
     .replace(/\s+/g, " ")
     .trim()

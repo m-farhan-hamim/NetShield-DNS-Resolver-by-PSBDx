@@ -266,3 +266,12 @@ test("composeIntro/buildMessages use the prefix they are given; the opening stay
   assert.ok(I.validateIntro(I.composeIntro(" making Orbot work as a SOCKS proxy.", I.PREFIX_ASK), ctx).ok);
   assert.equal(I.validateIntro(I.composeIntro(" ready to get started.", I.PREFIX_ASK), ctx).ok, false);
 });
+
+test("REGRESSION (live #32): identifiers in page titles keep their underscores and parentheses; injection stays blocked", () => {
+  const sug = [{ item: { title: "Troubleshooting Guide (EAI_NODATA & Connectivity)", link: "https://wiki.example.org/t/" }, matched: ["eai"] }];
+  const c = S.buildComment(sug, "bob");
+  assert.match(c, /\[Troubleshooting Guide \(EAI_NODATA & Connectivity\)\]\(https:\/\/wiki\.example\.org\/t\/\)/);
+  const evil = S.buildComment([{ item: { title: "click [here](http://evil.example) <b>x</b> @everyone", link: "https://wiki.example.org/t/" }, matched: [] }], "bob");
+  assert.ok(!evil.includes("](http://evil.example)"), "an injected link must not survive");
+  assert.ok(!evil.includes("<b>") && !evil.includes("@everyone"));
+});
