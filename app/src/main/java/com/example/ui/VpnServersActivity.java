@@ -350,6 +350,15 @@ public class VpnServersActivity extends AppCompatActivity {
 
     @Nullable
     private String readTextFromUri(Uri uri) {
+        // Defence in depth, kept right next to the ContentResolver call so the check is
+        // easy to audit (and so CodeQL's java/android/unsafe-content-uri-resolution query
+        // can see it): refuse anything that is not a plain document-provider path - no
+        // ".." traversal and nothing that points into app-private storage under /data.
+        String uriPath = uri.getPath();
+        if (uriPath == null || uriPath.contains("..") || uriPath.startsWith("/data")) {
+            Log.w(TAG, "Refusing to read a picked file with an unsafe path");
+            return null;
+        }
         StringBuilder sb = new StringBuilder();
         try (InputStream is = getContentResolver().openInputStream(uri)) {
             if (is == null) return null;
@@ -368,6 +377,10 @@ public class VpnServersActivity extends AppCompatActivity {
 
     @Nullable
     private String queryDisplayName(Uri uri) {
+        String uriPath = uri.getPath();
+        if (uriPath == null || uriPath.contains("..") || uriPath.startsWith("/data")) {
+            return null;
+        }
         try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
             if (cursor != null && cursor.moveToFirst()) {
                 int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
