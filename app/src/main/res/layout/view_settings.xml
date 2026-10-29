@@ -500,6 +500,15 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
 
+                <TextView
+                    android:id="@+id/tv_split_tunnel_summary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
                 <Button
                     android:id="@+id/btn_configure_split_tunnel"
                     android:layout_width="match_parent"
@@ -963,6 +972,17 @@
                         android:textAllCaps="false"
                         android:textSize="13sp" />
                 </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_about_setup_wizard"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:backgroundTint="@color/surface_variant"
+                    android:text="@string/wizard_run_again"
+                    android:textAllCaps="false"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="13sp" />
             </LinearLayout>
 
         </LinearLayout>

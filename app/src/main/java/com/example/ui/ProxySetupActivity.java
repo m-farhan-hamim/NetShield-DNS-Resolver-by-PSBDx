@@ -2,7 +2,9 @@ package com.example.ui;
 
 import androidx.core.content.ContextCompat;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -25,16 +27,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 
 import com.example.R;
+import com.example.dns.DnsResolverEngine;
 import com.example.proxy.KnownProxyApps;
 import com.example.proxy.ProxyMessages;
 import com.example.proxy.ProxySettings;
 import com.example.proxy.core.ProxyEndpoint;
 import com.example.proxy.core.ProxyTester;
 import com.example.service.ServiceManager;
+import com.example.util.AppRouting;
 import com.example.util.VpnConflictDetector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Four plain steps for non-technical users: pick the proxy app, get it ready, test it, switch it on.
@@ -72,6 +78,9 @@ public class ProxySetupActivity extends AppCompatActivity {
     private boolean testedOk;
     private boolean changedWhileRunning;
     private boolean suppress;
+    private TextView tvAppsSummary;
+    private SharedPreferences routingPrefs;
+    private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -166,6 +175,24 @@ public class ProxySetupActivity extends AppCompatActivity {
                 boolean show = advanced.getVisibility() != View.VISIBLE;
                 advanced.setVisibility(show ? View.VISIBLE : View.GONE);
                 advancedToggle.setText(show ? R.string.proxy_advanced_hide : R.string.proxy_advanced_show);
+            }
+        });
+
+        routingPrefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
+        tvAppsSummary = findViewById(R.id.tv_proxy_apps_summary);
+        refreshAppsSummary();
+        findViewById(R.id.btn_proxy_choose_apps).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AppRoutingDialog.show(ProxySetupActivity.this, routingPrefs, backgroundExecutor, new Runnable() {
+                    @Override
+                    public void run() {
+                        refreshAppsSummary();
+                        // The routing is read when the VPN starts, so a running tunnel needs a restart.
+                        changedWhileRunning = true;
+                        updateState();
+                    }
+                });
             }
         });
 
@@ -431,6 +458,18 @@ public class ProxySetupActivity extends AppCompatActivity {
         }
         changedWhileRunning = true;
         updateState();
+    }
+
+    private void refreshAppsSummary() {
+        if (tvAppsSummary != null) {
+            tvAppsSummary.setText(AppRouting.summary(this, routingPrefs));
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        backgroundExecutor.shutdownNow();
+        super.onDestroy();
     }
 
     private void revertSwitch(boolean value) {

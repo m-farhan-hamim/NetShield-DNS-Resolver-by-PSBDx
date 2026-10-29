@@ -34,10 +34,12 @@ Private, open source, and built in pure Java. No Firebase, no Google Play Servic
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-3.2.0-blue?style=for-the-badge)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/tag/3.2.0)
+[![Version](https://img.shields.io/badge/version-3.3.0-blue?style=for-the-badge)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/releases/tag/3.3.0)
 [![License: GPL v3+](https://img.shields.io/badge/license-GPL--3.0--or--later-green?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![Language](https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/badge)](https://scorecard.dev/viewer/?uri=github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx)
+[![CodeQL code quality](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/security/code-scanning)
 
 [![Verified by VirusTotal](https://img.shields.io/badge/VirusTotal-verified-394EFF?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/a85837898b21d4f6992103fbc83a55ab33abe3ea7a200a3fafb950879bee3a34/behavior)
 [![Available on F-Droid](https://img.shields.io/badge/F--Droid-available-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org/packages/com.netshield.dns.psbdx/)
