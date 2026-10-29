@@ -84,6 +84,7 @@ import com.example.trust.TrustedListManager;
 import com.example.service.DnsServerService;
 import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
+import com.example.util.AppRouting;
 import com.example.util.ConfigBackupUtils;
 import com.example.util.UpdateChecker;
 import com.google.android.material.tabs.TabLayout;
@@ -251,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
     private SwitchCompat switchCacheEnable;
     private Button btnClearCacheAction;
     private Button btnConfigureSplitTunnel;
+    private TextView tvSplitTunnelSummary;
     private SwitchCompat switchAutoStart;
     private SwitchCompat switchListenAll;
     private EditText etServerPort;
@@ -349,6 +351,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         syncOperationModeFromPrefs();
         refreshProxySummary();
+        refreshRoutingSummary();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ServiceManager.ACTION_STATE_CHANGED);
         filter.addAction(DnsResolverEngine.ACTION_LOG_UPDATED);
@@ -2345,6 +2348,8 @@ public class MainActivity extends AppCompatActivity {
         switchCacheEnable = findViewById(R.id.switch_cache_enable);
         btnClearCacheAction = findViewById(R.id.btn_clear_cache_action);
         btnConfigureSplitTunnel = findViewById(R.id.btn_configure_split_tunnel);
+        tvSplitTunnelSummary = findViewById(R.id.tv_split_tunnel_summary);
+        refreshRoutingSummary();
         switchAutoStart = findViewById(R.id.switch_auto_start);
         switchListenAll = findViewById(R.id.switch_listen_all);
         etServerPort = findViewById(R.id.et_server_port);
@@ -2679,64 +2684,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showSplitTunnelDialog() {
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_split_tunnel, null);
-        final EditText etSearch = view.findViewById(R.id.et_search_apps);
-        final ProgressBar pbLoading = view.findViewById(R.id.pb_loading_apps);
-        final RecyclerView rvApps = view.findViewById(R.id.rv_split_apps);
-
-        rvApps.setLayoutManager(new LinearLayoutManager(this));
-        final AppSelectAdapter appAdapter = new AppSelectAdapter();
-        rvApps.setAdapter(appAdapter);
-
-        pbLoading.setVisibility(View.VISIBLE);
-
-        final Set<String> currentExcluded = prefs.getStringSet("split_tunnel_apps", new HashSet<String>());
-
-        backgroundExecutor.execute(new Runnable() {
+        // One shared picker (exclude chosen apps / include ONLY chosen apps) for the DNS resolver
+        // and the proxy; see AppRouting and AppRoutingDialog.
+        AppRoutingDialog.show(this, prefs, backgroundExecutor, new Runnable() {
             @Override
             public void run() {
-                PackageManager pm = getPackageManager();
-                List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-                final List<AppSelectAdapter.AppItem> appItems = new ArrayList<>();
-
-                for (ApplicationInfo app : apps) {
-                    // Include all launchable or installed apps
-                    try {
-                        String label = pm.getApplicationLabel(app).toString();
-                        Drawable icon = pm.getApplicationIcon(app);
-                        appItems.add(new AppSelectAdapter.AppItem(label, app.packageName, icon, false));
-                    } catch (Exception ignored) {}
-                }
-
-                Collections.sort(appItems, new Comparator<AppSelectAdapter.AppItem>() {
-                    @Override
-                    public int compare(AppSelectAdapter.AppItem o1, AppSelectAdapter.AppItem o2) {
-                        return o1.label.compareToIgnoreCase(o2.label);
-                    }
-                });
-
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        pbLoading.setVisibility(View.GONE);
-                        appAdapter.setItems(appItems, currentExcluded);
-                    }
-                });
+                refreshRoutingSummary();
             }
         });
+    }
 
-        new AlertDialog.Builder(this)
-                .setView(view)
-                .setPositiveButton("Save Bypass List", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Set<String> selected = appAdapter.getSelectedPackages();
-                        prefs.edit().putStringSet("split_tunnel_apps", selected).apply();
-                        Toast.makeText(MainActivity.this, selected.size() + " apps set to bypass VPN", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+    private void refreshRoutingSummary() {
+        if (tvSplitTunnelSummary != null) {
+            tvSplitTunnelSummary.setText(AppRouting.summary(this, prefs));
+        }
     }
 
     private void applyPresetSettings(String name, String dohUrl, String dotHost, String primaryDns, String secondaryDns) {

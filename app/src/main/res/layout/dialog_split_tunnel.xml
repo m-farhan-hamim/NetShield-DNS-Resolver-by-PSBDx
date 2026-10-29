@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="520dp"
+    android:layout_height="560dp"
     android:background="@color/bg_card"
     android:orientation="vertical"
     android:padding="16dp">
 
     <TextView
+        android:id="@+id/tv_split_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/dialog_split_tunnel_title"
@@ -15,12 +16,39 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/tv_split_desc"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="Selected apps will bypass VPN and resolve DNS via standard network."
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />
+
+    <!-- Only shown by AppRoutingDialog (exclude / include mode). Hidden for the trusted-apps picker. -->
+    <RadioGroup
+        android:id="@+id/rg_routing_mode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <RadioButton
+            android:id="@+id/rb_mode_exclude"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/routing_mode_exclude"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+
+        <RadioButton
+            android:id="@+id/rb_mode_include"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/routing_mode_include"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+    </RadioGroup>
 
     <EditText
         android:id="@+id/et_search_apps"
