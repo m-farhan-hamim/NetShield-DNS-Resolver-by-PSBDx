@@ -2407,6 +2407,17 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+        Button btnAboutWizard = findViewById(R.id.btn_about_setup_wizard);
+        if (btnAboutWizard != null) {
+            btnAboutWizard.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent wizard = new Intent(MainActivity.this, SetupWizardActivity.class);
+                    wizard.putExtra(SetupWizardActivity.EXTRA_RERUN, true);
+                    startActivity(wizard);
+                }
+            });
+        }
 
         // Load Upstream
         String upstreamMode = prefs.getString("upstream_mode", "DOH");
