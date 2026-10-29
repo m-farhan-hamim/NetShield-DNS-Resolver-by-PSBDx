@@ -1,0 +1,29 @@
+# Keeps dependencies current so security fixes arrive as pull requests instead of
+# waiting for someone to notice. This file is also what OpenSSF Scorecard looks for
+# in its "Dependency-Update-Tool" check.
+version: 2
+updates:
+  # Android app and build tooling (gradle/libs.versions.toml, build.gradle.kts).
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+
+  # Pinned GitHub Actions (every `uses:` line is a full commit SHA with a version comment).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # The issue bot's model runtime (docs-suggester/package-lock.json).
+  - package-ecosystem: "npm"
+    directory: "/docs-suggester"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
