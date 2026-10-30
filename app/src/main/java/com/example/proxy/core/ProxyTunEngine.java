@@ -93,7 +93,7 @@ public final class ProxyTunEngine {
     private final ScheduledExecutorService timer;
     private final SecureRandom random = new SecureRandom();
     private final AtomicInteger ipId = new AtomicInteger(1);
-    private volatile boolean closed;
+    private volatile boolean engineClosed;
 
     private final AtomicLong totalConnections = new AtomicLong();
     private final AtomicLong failedConnections = new AtomicLong();
@@ -148,7 +148,7 @@ public final class ProxyTunEngine {
     }
 
     public void close() {
-        closed = true;
+        engineClosed = true;
         timer.shutdownNow();
         dnsPool.shutdownNow();
         workers.shutdownNow();
@@ -164,7 +164,7 @@ public final class ProxyTunEngine {
 
     /** Feed one IP packet read from the tunnel. The buffer may be reused after this returns. */
     public void onPacket(byte[] p, int len) {
-        if (closed || len < 20) {
+        if (engineClosed || len < 20) {
             return;
         }
         if (((p[0] >> 4) & 0xF) != 4) {
@@ -282,7 +282,7 @@ public final class ProxyTunEngine {
                             DnsTools.answerIpv4(response, response.length));
                 }
             }
-            if (response != null && !closed) {
+            if (response != null && !engineClosed) {
                 emit(IpPacketUtils.buildUdpResponsePacket(info, response));
             }
         } catch (RuntimeException ignored) {
@@ -603,7 +603,7 @@ public final class ProxyTunEngine {
             }
         }
 
-        private void processAck(int ack, int window) {
+        private synchronized void processAck(int ack, int window) {
             clientWindow = window;
             if (lt(sndUna, ack) && le(ack, sndNxt)) {
                 sndUna = ack;
@@ -749,7 +749,7 @@ public final class ProxyTunEngine {
             return w;
         }
 
-        void closeNow(boolean sendRst) {
+        synchronized void closeNow(boolean sendRst) {
             if (state == CLOSED) {
                 return;
             }
