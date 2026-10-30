@@ -134,7 +134,28 @@ public class DnsVpnService extends VpnService {
                     while (isRunning) {
                         try {
                             int length = inStream.read(packet);
-                            if (length <= 0) continue;
+                            if (length < 0) {
+                                // End of stream: the system closed the tunnel under us (the app was put to
+                                // sleep, another VPN took over, the network was reset). It will never
+                                // produce data again, and looping on it pins a CPU core at 100%, which is
+                                // what users on Android 17 were seeing. Stop the VPN cleanly instead.
+                                Log.w(TAG, "Tunnel read returned end-of-stream; shutting the VPN down");
+                                mainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (isRunning) {
+                                            performTeardown();
+                                            stopSelf();
+                                        }
+                                    }
+                                });
+                                break;
+                            }
+                            if (length == 0) {
+                                // Nothing to read right now; never spin.
+                                Thread.sleep(10);
+                                continue;
+                            }
 
                             ProxyTunEngine pe = proxyEngine;
                             if (pe != null) {
@@ -177,6 +198,9 @@ public class DnsVpnService extends VpnService {
                                     }
                                 });
                             }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
                         } catch (Exception e) {
                             break;
                         }
