@@ -163,6 +163,16 @@
     <string name="widget_trend_no_data">Not enough data for a trend yet</string>
     <string name="warn_block_update_domain_title">This domain powers app updates</string>
     <string name="warn_block_update_domain_body">%1$s is used to check for new versions and security fixes. Blocking it means the app won\'t be able to notify you about them. You can still block it - this is your call.</string>
+
+    <!-- Warning on Android versions newer than the app supports -->
+    <string name="android_unsupported_title">Android %1$s is not supported yet</string>
+    <string name="android_unsupported_body">This version of NetShield has not been tested on Android %1$s. On this Android version the system may put the app to sleep or limit it in the background, which can stop protection or cause high CPU use.\n\nWe suggest turning off battery optimization for NetShield, or setting its battery usage to Unrestricted.</string>
+    <string name="android_unsupported_howto">Path: App info, Battery, then Unrestricted (or \"Don\'t optimize\").</string>
+    <string name="battery_open_app_info">App battery settings</string>
+    <string name="battery_open_list">Optimization list</string>
+    <string name="battery_later">Later</string>
+    <string name="battery_dont_show">Don\'t show this again on this Android version</string>
+    <string name="battery_settings_error">Could not open the battery settings. Open Settings, Apps, NetShield, Battery.</string>
     <string name="action_block_anyway">Block anyway</string>
     <string name="action_save">Save</string>
     <string name="action_add">Add</string>

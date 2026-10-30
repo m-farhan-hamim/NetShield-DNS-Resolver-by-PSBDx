@@ -86,6 +86,7 @@ import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
 import com.example.util.ConfigBackupUtils;
 import com.example.util.UpdateChecker;
+import com.example.util.BatteryOptimizationHelper;
 import com.google.android.material.tabs.TabLayout;
 
 import java.io.ByteArrayOutputStream;
@@ -319,6 +320,9 @@ public class MainActivity extends AppCompatActivity {
         setupUpdateBanner();
         checkForAppUpdate();
         handleAutoStartExtra(getIntent());
+        // Android newer than this build supports (17+): warn once and suggest turning battery
+        // optimization off, because the system may otherwise put the app to sleep.
+        BatteryOptimizationHelper.maybeShowWarning(this, prefs);
     }
 
     @Override
