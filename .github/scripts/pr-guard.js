@@ -259,7 +259,13 @@ function sectionOf(body, heading) {
 /** Problems with the filled-in pull request form; [] when it is complete. */
 function checkTemplate(rawBody) {
   const problems = [];
-  const body = String(rawBody || '').replace(/<!--[\s\S]*?-->/g, '');
+  // Strip HTML comments until nothing changes: a single pass can leave a new "<!--" behind
+  // (for example "<!<!---->-->"), which CodeQL reports as incomplete multi-character sanitization.
+  let body = String(rawBody || '');
+  for (let prev = null; prev !== body;) {
+    prev = body;
+    body = body.replace(/<!--[\s\S]*?-->/g, '');
+  }
   for (const h of REQUIRED_HEADINGS) {
     if (sectionOf(body, h) === null) problems.push('The section "' + h + '" is missing. Please keep the pull request form as it is.');
   }
@@ -365,7 +371,7 @@ function renderComment(result) {
     for (const f of rows) {
       const where = '`' + snippet(f.file, 70) + (f.line ? ':' + f.line : '') + '`';
       const what = f.msg + (f.text && f.rule !== 'binary-file' ? ': `' + f.text + '`' : '');
-      out.push('| ' + f.sev + ' | ' + where + ' | ' + what.replace(/\|/g, '\\|') + ' |');
+      out.push('| ' + f.sev + ' | ' + where + ' | ' + what.replace(/\\/g, '\\\\').replace(/\|/g, '\\|') + ' |');
     }
     if (result.findings.length > rows.length) out.push('| | | ... and ' + (result.findings.length - rows.length) + ' more |');
     out.push('', '</details>', '');

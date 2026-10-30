@@ -15,7 +15,7 @@ const FEED = "https://wiki.example.org/rss.xml";
 
 test("parses RSS: entities decoded, CDATA unwrapped, tags stripped", () => {
   assert.equal(items.length, 9);
-  const evil = items.find((i) => i.link.includes("evil.example.net"));
+  const evil = items.find((i) => new URL(i.link).hostname === "evil.example.net");
   assert.equal(evil.title, "Fix & tune battery drain @everyone");
   const dot = items.find((i) => i.link.endsWith("/dot-upstreams/"));
   assert.match(dot.content, /port 853 the app cannot reach/);

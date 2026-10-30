@@ -72,7 +72,7 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -87,7 +87,7 @@ jobs:
 
       - name: Process issue
         id: process
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -897,14 +897,14 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
       - name: Handle countdown
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -1100,14 +1100,14 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
       - name: Close expired countdowns
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -1195,14 +1195,14 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
       - name: Close referenced open issues
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -1295,14 +1295,14 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
       - name: Close stale on-hold issues
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -1336,14 +1336,14 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
       - name: Assign milestone from maintainer comment
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -1405,13 +1405,13 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           sparse-checkout: docs-suggester
 
@@ -1427,7 +1427,7 @@ jobs:
 
       - name: Post the suggestion
         id: post
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -1457,7 +1457,7 @@ jobs:
 
       - name: Keep the suggestion for the AI job
         if: steps.post.outputs.posted == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: docs-suggestion
           path: result.json
@@ -1475,33 +1475,33 @@ jobs:
     steps:
       - name: Generate bot token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           sparse-checkout: docs-suggester
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: docs-suggestion
           path: suggestion
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
 
       - name: Cache npm downloads
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.npm
           key: npm-transformers-3.8.1-${{ runner.os }}
 
       - name: Cache model files
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: docs-suggester/.hf-cache
           key: hf-${{ needs.docs-suggest.outputs.model }}-q8-v1
@@ -1509,7 +1509,7 @@ jobs:
       - name: Install the model runtime
         env:
           ONNXRUNTIME_NODE_INSTALL_CUDA: skip   # CPU only, do not download GPU libraries
-        run: npm install --prefix docs-suggester --no-save --no-audit --no-fund @huggingface/transformers@3.8.1
+        run: npm ci --prefix docs-suggester --no-audit --no-fund
 
       - name: Write the intro with the small model
         env:
@@ -1523,7 +1523,7 @@ jobs:
 
       - name: Replace the plain suggestion with the AI version
         if: hashFiles('comment-ai.md') != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |

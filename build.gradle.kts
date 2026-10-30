@@ -37,6 +37,8 @@ buildscript {
       add("classpath", "org.apache.commons:commons-lang3:3.18.0") { because("Dependabot: uncontrolled recursion on long inputs") }
       add("classpath", "org.apache.httpcomponents:httpclient:4.5.14") { because("Dependabot: XSS in Apache HttpClient (fixed in 4.5.13)") }
       add("classpath", "org.apache.httpcomponents:httpmime:4.5.14") { because("must match httpclient") }
+
+      add("classpath", "com.google.guava:guava:33.7.2-jre") { because("Dependabot GHSA-xxph-c9ww-hj94: uncontrolled allocation in CompactHashMap/CompactHashSet deserialization, fixed in 33.7.2") }
     }
   }
 }
@@ -63,6 +65,10 @@ allprojects {
         requested.group == "org.apache.httpcomponents" &&
           (requested.name == "httpclient" || requested.name == "httpmime") ->
           useVersion("4.5.14")
+        // Guava (GHSA-xxph-c9ww-hj94): raise every copy to the patched 33.7.2, keeping the
+        // flavour (-jre or -android) the requesting library asked for.
+        requested.group == "com.google.guava" && requested.name == "guava" ->
+          useVersion(if (requestedVersion.endsWith("-android")) "33.7.2-android" else "33.7.2-jre")
       }
     }
   }
