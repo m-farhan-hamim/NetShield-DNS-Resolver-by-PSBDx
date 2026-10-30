@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -20,11 +21,13 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.R;
 import com.example.dns.DnsResolverEngine;
 import com.example.util.BatteryOptimizationHelper;
+import com.example.util.RemoteSyncScheduler;
 
 /**
  * The setup wizard shown once, on the first launch after a fresh install. Every step is optional and
@@ -38,7 +41,7 @@ public class SetupWizardActivity extends AppCompatActivity {
     /** Set when the wizard is opened again from Settings: finishing then just closes it. */
     public static final String EXTRA_RERUN = "rerun";
 
-    private static final int STEP_COUNT = 6;
+    private static final int STEP_COUNT = 7;
     private static final int STEP_BATTERY = 4;
     /** An update keeps firstInstallTime but moves lastUpdateTime; allow a little clock slack. */
     private static final long UPDATE_THRESHOLD_MS = 60_000L;
@@ -57,6 +60,7 @@ public class SetupWizardActivity extends AppCompatActivity {
     private Button btnNotif;
     private TextView tvBatteryState;
     private TextView tvBatteryUnsupported;
+    private SwitchCompat swSync;
 
     private ActivityResultLauncher<Intent> vpnLauncher;
     private ActivityResultLauncher<String> notificationLauncher;
@@ -95,7 +99,8 @@ public class SetupWizardActivity extends AppCompatActivity {
 
         panels = new View[]{
                 findViewById(R.id.panel_0), findViewById(R.id.panel_1), findViewById(R.id.panel_2),
-                findViewById(R.id.panel_3), findViewById(R.id.panel_4), findViewById(R.id.panel_5)};
+                findViewById(R.id.panel_3), findViewById(R.id.panel_4), findViewById(R.id.panel_5),
+                findViewById(R.id.panel_6)};
         tvStep = findViewById(R.id.tv_wizard_step);
         pbWizard = findViewById(R.id.pb_wizard);
         pbWizard.setMax(STEP_COUNT);
@@ -168,6 +173,22 @@ public class SetupWizardActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 BatteryOptimizationHelper.openOptimizationList(SetupWizardActivity.this);
+            }
+        });
+
+        // Remote list sync step: on = sync now and then every 24 hours, with a notification each time.
+        swSync = findViewById(R.id.sw_wizard_sync);
+        swSync.setChecked(RemoteSyncScheduler.isEnabled(this));
+        swSync.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                RemoteSyncScheduler.setEnabled(SetupWizardActivity.this, isChecked);
+                if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        && ContextCompat.checkSelfPermission(SetupWizardActivity.this,
+                        Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    // The sync still runs without it, but the "finished" notification needs this.
+                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                }
             }
         });
 
@@ -305,6 +326,7 @@ public class SetupWizardActivity extends AppCompatActivity {
 
     private void finishWizard() {
         prefs.edit().putBoolean(KEY_DONE, true).apply();
+        WhatsNew.markSeen(prefs); // a fresh install has nothing "new" to catch up on
         if (!rerun) {
             startActivity(new Intent(this, MainActivity.class));
         }
