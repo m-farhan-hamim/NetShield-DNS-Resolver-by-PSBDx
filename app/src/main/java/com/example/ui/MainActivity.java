@@ -86,6 +86,7 @@ import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
 import com.example.util.AppRouting;
 import com.example.util.ConfigBackupUtils;
+import com.example.util.HelpLinks;
 import com.example.util.UpdateChecker;
 import com.example.util.BatteryOptimizationHelper;
 import com.google.android.material.tabs.TabLayout;
@@ -2399,7 +2400,25 @@ public class MainActivity extends AppCompatActivity {
             btnAboutSupport.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    openExternalLink(ConnectionCheckActivity.ISSUES_URL);
+                    SupportOverlay.show(MainActivity.this);
+                }
+            });
+        }
+        Button btnAboutCommunity = findViewById(R.id.btn_about_community);
+        if (btnAboutCommunity != null) {
+            btnAboutCommunity.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openExternalLink(HelpLinks.TELEGRAM_COMMUNITY);
+                }
+            });
+        }
+        Button btnAboutWiki = findViewById(R.id.btn_about_wiki);
+        if (btnAboutWiki != null) {
+            btnAboutWiki.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openExternalLink(HelpLinks.WIKI);
                 }
             });
         }

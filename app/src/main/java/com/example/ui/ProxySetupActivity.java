@@ -35,6 +35,7 @@ import com.example.proxy.core.ProxyEndpoint;
 import com.example.proxy.core.ProxyTester;
 import com.example.service.ServiceManager;
 import com.example.util.AppRouting;
+import com.example.util.HelpLinks;
 import com.example.util.VpnConflictDetector;
 
 import java.util.ArrayList;
@@ -62,6 +63,7 @@ public class ProxySetupActivity extends AppCompatActivity {
     private final List<Choice> choices = new ArrayList<>();
     private RadioGroup rgApps;
     private TextView tvHint;
+    private Button btnDocs;
     private TextView tvTestResult;
     private TextView tvState;
     private Button btnOpenApp;
@@ -95,6 +97,7 @@ public class ProxySetupActivity extends AppCompatActivity {
         });
         rgApps = findViewById(R.id.rg_proxy_apps);
         tvHint = findViewById(R.id.tv_proxy_hint);
+        btnDocs = findViewById(R.id.btn_proxy_docs);
         tvTestResult = findViewById(R.id.tv_test_result);
         tvState = findViewById(R.id.tv_proxy_state);
         btnOpenApp = findViewById(R.id.btn_open_proxy_app);
@@ -308,6 +311,17 @@ public class ProxySetupActivity extends AppCompatActivity {
         if (c == null) {
             return;
         }
+        // A step-by-step guide for the chosen app (or the wiki for a custom proxy).
+        final String docsUrl = c.app != null ? HelpLinks.docsFor(c.app) : HelpLinks.WIKI;
+        btnDocs.setText(c.app != null
+                ? getString(R.string.proxy_docs_button, c.app.label)
+                : getString(R.string.proxy_docs_custom));
+        btnDocs.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                HelpLinks.open(ProxySetupActivity.this, docsUrl != null ? docsUrl : HelpLinks.WIKI);
+            }
+        });
         if (c.app != null) {
             tvHint.setText(c.app.hintRes);
             if (KnownProxyApps.installedPackage(this, c.app) != null) {

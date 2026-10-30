@@ -401,4 +401,17 @@
     </plurals>
     <string name="proxy_apps_title">Which apps use the proxy</string>
     <string name="proxy_apps_desc">Send only the apps you pick through the proxy, or everything except some apps. This is the same setting as Settings, Apps and routing.</string>
+
+    <!-- Support overlay and help links -->
+    <string name="support_title">Need support?</string>
+    <string name="support_intro">Pick how you would like to get help. The Telegram bot is the quickest way to reach us.</string>
+    <string name="support_telegram_bot">Ask the Telegram bot (suggested)</string>
+    <string name="support_github">Open a GitHub issue</string>
+    <string name="support_community">Telegram community</string>
+    <string name="support_wiki">App wiki</string>
+    <string name="support_close">Close</string>
+    <string name="about_community">Community</string>
+    <string name="about_wiki">Wiki</string>
+    <string name="proxy_docs_button">Guide: switch %1$s to proxy mode only</string>
+    <string name="proxy_docs_custom">Open the NetShield wiki</string>
 </resources>
