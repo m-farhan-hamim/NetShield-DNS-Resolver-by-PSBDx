@@ -1,0 +1,5 @@
+New: first-run setup wizard (VPN access, notifications, DNS provider, battery).
+New: choose which apps use NetShield - exclude some apps, or include only the apps you pick. Works for the DNS resolver and for proxy mode.
+New: warning and advice on Android 17 and newer to turn off battery optimization, so the system does not put the app to sleep.
+Fixed: very high CPU use when Android closed the tunnel in the background.
+Security: hardened file import and updated build dependencies.
