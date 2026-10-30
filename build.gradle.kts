@@ -16,7 +16,7 @@ buildscript {
   }
   dependencies {
     // Netty: a BOM keeps every netty-* module on the same patched release.
-    classpath(platform("io.netty:netty-bom:4.1.137.Final"))
+    classpath(platform("io.netty:netty-bom:4.2.19.Final"))
 
     // Kotlin: AGP 9.1.1 bundles Kotlin Gradle Plugin 2.2.10. The BOM keeps the plugin, its API and
     // the stdlib aligned on the first stable release that fixes the build-cache deserialization
