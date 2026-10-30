@@ -285,8 +285,8 @@
 
     <string name="pref_category_routing">Per-App Split Tunneling</string>
     <string name="split_tunnel_title">Bypass Apps (Split Tunneling)</string>
-    <string name="split_tunnel_desc">Selected apps will bypass the local DNS VPN</string>
-    <string name="btn_select_apps">Configure Excluded Apps</string>
+    <string name="split_tunnel_desc">Choose which apps use NetShield: exclude a few, or include only the ones you pick</string>
+    <string name="btn_select_apps">Choose apps</string>
 
     <string name="pref_category_system">System &amp; Automation</string>
     <string name="listen_all_label">Share DNS on local network</string>
@@ -379,4 +379,26 @@
     <string name="dns_preset_google">Google</string>
     <string name="dns_preset_adguard">AdGuard</string>
     <string name="dns_preset_quad9">Quad9</string>
+
+    <!-- App routing: exclude chosen apps / include ONLY chosen apps (GitHub issue #26) -->
+    <string name="routing_dialog_title">Which apps use NetShield</string>
+    <string name="routing_mode_exclude">Exclude chosen apps - every other app uses NetShield</string>
+    <string name="routing_mode_include">Include only chosen apps - everything else, system apps too, stays direct</string>
+    <string name="routing_desc_exclude">Ticked apps bypass NetShield (no DNS filtering and no proxy). All other apps use it.</string>
+    <string name="routing_desc_include">Only ticked apps use NetShield\'s DNS filter and the proxy. All other apps and system processes connect directly.</string>
+    <string name="routing_save">Save</string>
+    <string name="routing_include_empty">Tick at least one app, or switch to \"Exclude\".</string>
+    <string name="routing_saved">Saved. Restart protection for it to take effect.</string>
+    <string name="routing_summary_exclude_none">Nothing excluded: every app uses NetShield</string>
+    <plurals name="routing_summary_exclude">
+        <item quantity="one">%d app bypasses NetShield</item>
+        <item quantity="other">%d apps bypass NetShield</item>
+    </plurals>
+    <string name="routing_summary_include_none">Include mode is on but no apps are chosen yet, so nothing uses NetShield</string>
+    <plurals name="routing_summary_include">
+        <item quantity="one">Only %d chosen app uses NetShield</item>
+        <item quantity="other">Only %d chosen apps use NetShield</item>
+    </plurals>
+    <string name="proxy_apps_title">Which apps use the proxy</string>
+    <string name="proxy_apps_desc">Send only the apps you pick through the proxy, or everything except some apps. This is the same setting as Settings, Apps and routing.</string>
 </resources>

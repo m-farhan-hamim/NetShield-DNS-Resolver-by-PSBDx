@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.app.NotificationManager;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,11 +20,11 @@ import com.example.proxy.core.ProxyEndpoint;
 import com.example.proxy.core.ProxyTunEngine;
 import com.example.proxy.core.RouteMath;
 import com.example.proxy.core.Socks5Exception;
+import com.example.util.AppRouting;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -92,27 +91,14 @@ public class DnsVpnService extends VpnService {
                 // IPv6 is not carried: capture it and drop it so it cannot leak around the proxy.
                 builder.addAddress("fd00:10::2", 128);
                 builder.addRoute("::", 0);
-                // The proxy app's own connections must stay outside the tunnel, or they would loop back in.
-                if (proxy.packageName != null) {
-                    try {
-                        builder.addDisallowedApplication(proxy.packageName);
-                    } catch (PackageManager.NameNotFoundException ignored) {
-                        // not installed: nothing to exclude
-                    }
-                }
             }
 
-            // Apply Per-App Split Tunneling (Disallowed Applications)
+            // Per-app routing, the same for the DNS resolver and for proxy mode: either every app
+            // EXCEPT the chosen ones uses the tunnel, or ONLY the chosen ones do (include mode).
+            // The proxy app itself is always kept outside the tunnel, or its own connections would
+            // loop straight back in. See AppRouting for why the two modes cannot be mixed.
             SharedPreferences prefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE);
-            Set<String> excludedApps = prefs.getStringSet("split_tunnel_apps", null);
-            if (excludedApps != null && !excludedApps.isEmpty()) {
-                for (String pkg : excludedApps) {
-                    try {
-                        builder.addDisallowedApplication(pkg);
-                    } catch (Exception ignored) {
-                    }
-                }
-            }
+            AppRouting.apply(builder, prefs, getPackageName(), proxyMode ? proxy.packageName : null);
 
             vpnInterface = builder.establish();
             if (vpnInterface == null) {

@@ -16,6 +16,7 @@ import com.example.R;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppViewHolder> {
@@ -34,11 +35,14 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
         }
     }
 
+    /** Every app, whatever the search box says. {@link #items} is the filtered view of it. */
+    private final List<AppItem> allItems = new ArrayList<>();
     private final List<AppItem> items = new ArrayList<>();
     private final Set<String> selectedPackages = new HashSet<>();
+    private String query = "";
 
     public void setItems(List<AppItem> newItems, Set<String> initialSelected) {
-        items.clear();
+        allItems.clear();
         selectedPackages.clear();
         if (initialSelected != null) {
             selectedPackages.addAll(initialSelected);
@@ -46,6 +50,39 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
         if (newItems != null) {
             for (AppItem item : newItems) {
                 item.isSelected = selectedPackages.contains(item.packageName);
+                allItems.add(item);
+            }
+        }
+        applyFilter();
+    }
+
+    /**
+     * Swaps the ticked apps (used when the routing mode changes and the other mode's list has to
+     * be shown) without reloading the app list.
+     */
+    public void replaceSelection(Set<String> selected) {
+        selectedPackages.clear();
+        if (selected != null) {
+            selectedPackages.addAll(selected);
+        }
+        for (AppItem item : allItems) {
+            item.isSelected = selectedPackages.contains(item.packageName);
+        }
+        notifyDataSetChanged();
+    }
+
+    /** Shows only apps whose name or package contains the text. Ticks are kept for hidden apps. */
+    public void filter(String text) {
+        query = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+        applyFilter();
+    }
+
+    private void applyFilter() {
+        items.clear();
+        for (AppItem item : allItems) {
+            if (query.isEmpty()
+                    || item.label.toLowerCase(Locale.ROOT).contains(query)
+                    || item.packageName.toLowerCase(Locale.ROOT).contains(query)) {
                 items.add(item);
             }
         }
