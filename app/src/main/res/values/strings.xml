@@ -327,6 +327,38 @@
     <string name="action_pause_5m">Pause 5m</string>
     <string name="action_resume">Resume</string>
 
+    <!-- First-run setup wizard -->
+    <string name="wizard_step_format">Step %1$d of %2$d</string>
+    <string name="wizard_skip">Skip setup</string>
+    <string name="wizard_back">Back</string>
+    <string name="wizard_next">Next</string>
+    <string name="wizard_finish">Start using NetShield</string>
+    <string name="wizard_welcome_title">Welcome to NetShield</string>
+    <string name="wizard_welcome_body">NetShield is a private DNS resolver and ad and tracker blocker that runs on your phone, with a live dashboard of what your apps look up.\n\nNo account, no tracking, no Google services. This short setup takes about a minute and you can change everything later in Settings.</string>
+    <string name="wizard_vpn_title">How protection works</string>
+    <string name="wizard_vpn_body">NetShield uses Android\'s VPN feature only to catch DNS lookups on your own phone and answer them locally. It is not a VPN service: your traffic is not sent to any NetShield server.\n\nAndroid asks you to confirm this once. You can do it now, or the first time you turn protection on.</string>
+    <string name="wizard_vpn_button">Allow VPN access</string>
+    <string name="wizard_vpn_granted">VPN access is allowed.</string>
+    <string name="wizard_vpn_denied">Not allowed yet. You will be asked again when you turn protection on.</string>
+    <string name="wizard_notif_title">Notifications</string>
+    <string name="wizard_notif_body">While protection is on, Android shows a small notification with the live status and a Stop button. Allowing notifications also lets you see if the protection ever stops unexpectedly.</string>
+    <string name="wizard_notif_button">Allow notifications</string>
+    <string name="wizard_notif_granted">Notifications are allowed.</string>
+    <string name="wizard_notif_not_needed">This Android version does not need a separate permission.</string>
+    <string name="wizard_dns_title">Choose a DNS provider</string>
+    <string name="wizard_dns_body">This is where NetShield sends the lookups it does not block. You can change it any time in Settings.</string>
+    <string name="wizard_dns_cloudflare">Cloudflare (1.1.1.1) - fast, privacy-focused</string>
+    <string name="wizard_dns_google">Google (8.8.8.8) - fast, widely available</string>
+    <string name="wizard_dns_quad9">Quad9 (9.9.9.9) - blocks known malicious domains</string>
+    <string name="wizard_dns_adguard">AdGuard (94.140.14.14) - also blocks many ads</string>
+    <string name="wizard_battery_title">Keep it running in the background</string>
+    <string name="wizard_battery_body">Some phones stop background apps to save battery, which would switch protection off. For reliable protection, turn off battery optimization for NetShield, or set its battery usage to Unrestricted.</string>
+    <string name="wizard_battery_state_restricted">Battery optimization is currently ON for NetShield.</string>
+    <string name="wizard_battery_state_ok">Battery optimization is already OFF for NetShield. Nothing to do.</string>
+    <string name="wizard_done_title">You are all set</string>
+    <string name="wizard_done_body">Open the Dashboard and tap the big button to turn protection on.\n\nProxy mode, app routing (which apps use NetShield), blocklists and rules are in Settings.</string>
+    <string name="wizard_run_again">Run setup wizard again</string>
+
     <!-- Traffic Dashboard & Features -->
     <string name="traffic_title">Network Traffic &amp; Diagnostics</string>
     <string name="traffic_throughput_title">Live Query Throughput</string>

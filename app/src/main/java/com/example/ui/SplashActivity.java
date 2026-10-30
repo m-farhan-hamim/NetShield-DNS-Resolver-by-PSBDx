@@ -114,7 +114,9 @@ public class SplashActivity extends AppCompatActivity {
         if (navigated) return;
         navigated = true;
         handler.removeCallbacks(navigateRunnable);
-        startActivity(new Intent(SplashActivity.this, MainActivity.class));
+        // First launch after a fresh install goes through the setup wizard; everyone else, straight to the app.
+        Class<?> next = SetupWizardActivity.shouldShow(this) ? SetupWizardActivity.class : MainActivity.class;
+        startActivity(new Intent(SplashActivity.this, next));
         finish();
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
