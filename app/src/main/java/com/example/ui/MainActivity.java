@@ -86,6 +86,8 @@ import com.example.service.DnsVpnService;
 import com.example.service.ServiceManager;
 import com.example.util.AppRouting;
 import com.example.util.ConfigBackupUtils;
+import com.example.util.HelpLinks;
+import com.example.util.RemoteSyncScheduler;
 import com.example.util.UpdateChecker;
 import com.example.util.BatteryOptimizationHelper;
 import com.google.android.material.tabs.TabLayout;
@@ -254,6 +256,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnClearCacheAction;
     private Button btnConfigureSplitTunnel;
     private TextView tvSplitTunnelSummary;
+    private TextView tvSyncLast;
     private SwitchCompat switchAutoStart;
     private SwitchCompat switchListenAll;
     private EditText etServerPort;
@@ -324,7 +327,12 @@ public class MainActivity extends AppCompatActivity {
         handleAutoStartExtra(getIntent());
         // Android newer than this build supports (17+): warn once and suggest turning battery
         // optimization off, because the system may otherwise put the app to sleep.
-        BatteryOptimizationHelper.maybeShowWarning(this, prefs);
+        // People who just updated see what changed (and the tour) first; the battery advice follows next launch.
+        if (!WhatsNew.maybeShow(this, prefs, backgroundExecutor)) {
+            BatteryOptimizationHelper.maybeShowWarning(this, prefs);
+        }
+        // Re-create the daily sync job if the user turned auto sync on (cheap, keeps the existing one).
+        RemoteSyncScheduler.scheduleIfEnabled(this);
     }
 
     @Override
@@ -356,6 +364,7 @@ public class MainActivity extends AppCompatActivity {
         syncOperationModeFromPrefs();
         refreshProxySummary();
         refreshRoutingSummary();
+        refreshSyncLast();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ServiceManager.ACTION_STATE_CHANGED);
         filter.addAction(DnsResolverEngine.ACTION_LOG_UPDATED);
@@ -2399,7 +2408,25 @@ public class MainActivity extends AppCompatActivity {
             btnAboutSupport.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    openExternalLink(ConnectionCheckActivity.ISSUES_URL);
+                    SupportOverlay.show(MainActivity.this);
+                }
+            });
+        }
+        Button btnAboutCommunity = findViewById(R.id.btn_about_community);
+        if (btnAboutCommunity != null) {
+            btnAboutCommunity.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openExternalLink(HelpLinks.TELEGRAM_COMMUNITY);
+                }
+            });
+        }
+        Button btnAboutWiki = findViewById(R.id.btn_about_wiki);
+        if (btnAboutWiki != null) {
+            btnAboutWiki.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openExternalLink(HelpLinks.WIKI);
                 }
             });
         }
@@ -2409,6 +2436,15 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     openExternalLink(DONATE_URL);
+                }
+            });
+        }
+        Button btnAboutWhatsNew = findViewById(R.id.btn_about_whats_new);
+        if (btnAboutWhatsNew != null) {
+            btnAboutWhatsNew.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    WhatsNew.show(MainActivity.this, prefs, backgroundExecutor);
                 }
             });
         }
@@ -2616,6 +2652,18 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Remote list auto sync (every 24 hours, with a notification)
+        final SwitchCompat switchRemoteSync = findViewById(R.id.switch_remote_sync);
+        tvSyncLast = findViewById(R.id.tv_sync_last);
+        refreshSyncLast();
+        switchRemoteSync.setChecked(RemoteSyncScheduler.isEnabled(this));
+        switchRemoteSync.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                RemoteSyncScheduler.setEnabled(MainActivity.this, isChecked);
+            }
+        });
+
         // Auto Start
         switchAutoStart.setChecked(prefs.getBoolean("auto_start_on_boot", false));
         switchAutoStart.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -2707,6 +2755,18 @@ public class MainActivity extends AppCompatActivity {
                 refreshRoutingSummary();
             }
         });
+    }
+
+    private void refreshSyncLast() {
+        if (tvSyncLast == null) {
+            return;
+        }
+        long last = RemoteSyncScheduler.lastSyncMillis(this);
+        tvSyncLast.setText(last == 0L
+                ? getString(R.string.sync_last_never)
+                : getString(R.string.sync_last_format,
+                        android.text.format.DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(),
+                                android.text.format.DateUtils.MINUTE_IN_MILLIS)));
     }
 
     private void refreshRoutingSummary() {

@@ -401,4 +401,70 @@
     </plurals>
     <string name="proxy_apps_title">Which apps use the proxy</string>
     <string name="proxy_apps_desc">Send only the apps you pick through the proxy, or everything except some apps. This is the same setting as Settings, Apps and routing.</string>
+
+    <!-- Support overlay and help links -->
+    <string name="support_title">Need support?</string>
+    <string name="support_intro">Pick how you would like to get help. The Telegram bot is the quickest way to reach us.</string>
+    <string name="support_telegram_bot">Ask the Telegram bot (suggested)</string>
+    <string name="support_github">Open a GitHub issue</string>
+    <string name="support_community">Telegram community</string>
+    <string name="support_wiki">App wiki</string>
+    <string name="support_close">Close</string>
+    <string name="about_community">Community</string>
+    <string name="about_wiki">Wiki</string>
+    <string name="proxy_docs_button">Guide: switch %1$s to proxy mode only</string>
+    <string name="proxy_docs_custom">Open the NetShield wiki</string>
+
+    <!-- Remote list sync -->
+    <string name="sync_label">Sync remote lists every 24 hours</string>
+    <string name="sync_desc">Downloads your enabled remote blocklists once a day in the background and shows a notification when it is done.</string>
+    <string name="sync_last_never">Last sync: never</string>
+    <string name="sync_last_format">Last sync: %1$s</string>
+    <string name="sync_channel_name">Remote list sync</string>
+    <string name="sync_channel_desc">Shown when the daily sync of remote blocklists finishes</string>
+    <string name="sync_notification_title_ok">Remote lists synced</string>
+    <string name="sync_notification_title_fail">Remote list sync failed</string>
+    <string name="sync_notification_ok">%1$d domains are now blocked. Next sync in about 24 hours.</string>
+    <string name="wizard_sync_title">Keep your blocklists fresh</string>
+    <string name="wizard_sync_body">NetShield blocks ads and trackers using lists that are updated online. Turn on auto sync and it will download the newest versions once every 24 hours in the background. You get a notification each time it finishes.\n\nYou can change this later in Settings.</string>
+    <string name="wizard_sync_switch">Sync remote lists every 24 hours</string>
+
+    <!-- What's new pop-up and feature tour -->
+    <string name="whats_new_title">What\'s new in %1$s</string>
+    <string-array name="whats_new_items">
+        <item>Choose which apps use NetShield. You can now include ONLY the apps you pick, or exclude some, for both the DNS resolver and the proxy.</item>
+        <item>Setup wizard for new installs, now with a remote list sync step. You can run it again from Settings, About.</item>
+        <item>Android 17 and newer: a warning with advice to turn off battery optimization, so the system does not put NetShield to sleep.</item>
+        <item>Need support: the Telegram bot, GitHub, the Telegram community and the app wiki are one tap away, and the proxy screen has guides for Orbot, InviZible and v2rayNG.</item>
+        <item>Fixed very high CPU use when Android closed the tunnel in the background, plus security and dependency fixes.</item>
+    </string-array>
+    <string name="whats_new_sync_title">Remote list sync</string>
+    <string name="whats_new_sync_body">NetShield can download the newest versions of your remote blocklists by itself once every 24 hours and notify you when it is done. It was easy to miss, so you can turn it on right here.</string>
+    <string name="whats_new_tour">Take a quick tour</string>
+    <string name="whats_new_close">Not now</string>
+    <string name="tour_skip">Skip tour</string>
+    <string name="tour_done">Done</string>
+    <string name="tour_sync_on">Auto sync is on</string>
+    <string name="about_whats_new">What\'s new and tour</string>
+    <string-array name="tour_titles">
+        <item>Choose which apps use NetShield</item>
+        <item>Keep blocklists fresh</item>
+        <item>Help is one tap away</item>
+        <item>Stay awake on Android 17</item>
+        <item>Setup wizard</item>
+    </string-array>
+    <string-array name="tour_bodies">
+        <item>Open Settings, Apps and routing, then Choose apps. Pick \"Exclude\" to let some apps bypass NetShield, or \"Include only\" so just the apps you tick use it. Everything else, system apps too, connects directly. It works for DNS mode and for proxy mode. Restart protection after changing it.</item>
+        <item>Blocklists are downloaded from the internet. Turn on auto sync and NetShield refreshes them every 24 hours in the background and shows a notification. You can also turn it off any time in Settings.</item>
+        <item>In Settings, About, \"Need support\" opens the Telegram bot (the quickest way), GitHub, the Telegram community and the wiki. On the proxy screen, the guide button shows how to put Orbot, InviZible or v2rayNG in proxy mode only.</item>
+        <item>If your phone runs Android 17 or newer, the system may put NetShield to sleep. Turn off battery optimization for NetShield, or set its battery usage to Unrestricted. You can open the settings from here.</item>
+        <item>Setting up again, or helping a friend? Settings, About, \"Run setup wizard again\" walks through the VPN permission, notifications, DNS provider, battery and list sync.</item>
+    </string-array>
+    <string-array name="tour_actions">
+        <item>Open app routing</item>
+        <item>Turn on auto sync</item>
+        <item>Open support</item>
+        <item>Open battery advice</item>
+        <item>Run setup wizard now</item>
+    </string-array>
 </resources>
