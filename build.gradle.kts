@@ -32,7 +32,7 @@ buildscript {
       add("classpath", "org.bouncycastle:bcpkix-jdk18on:1.86") { because("Dependabot: Bouncy Castle advisories fixed in 1.84+") }
       add("classpath", "org.bouncycastle:bcutil-jdk18on:1.86") { because("must match bcpkix/bcprov") }
 
-      add("classpath", "org.bitbucket.b_c:jose4j:0.9.6") { because("Dependabot: DoS via compressed JWE content") }
+      add("classpath", "org.bitbucket.b_c:jose4j:0.9.7") { because("Dependabot: DoS via compressed JWE content") }
       add("classpath", "org.jdom:jdom2:2.0.6.1") { because("Dependabot: XXE injection in JDOM") }
       add("classpath", "org.apache.commons:commons-lang3:3.18.0") { because("Dependabot: uncontrolled recursion on long inputs") }
       add("classpath", "org.apache.httpcomponents:httpclient:4.5.14") { because("Dependabot: XSS in Apache HttpClient (fixed in 4.5.13)") }
