@@ -22,9 +22,9 @@ buildscript {
     // the stdlib aligned on the first stable release that fixes the build-cache deserialization
     // advisory. This crosses two Kotlin minors, so it is a separate commit: if CI objects,
     // revert just this one.
-    classpath(platform("org.jetbrains.kotlin:kotlin-bom:2.4.20"))
+    classpath(platform("org.jetbrains.kotlin:kotlin-bom:2.4.21"))
     // Kotlin Gradle Plugin itself is managed by this separate BOM, not by kotlin-bom.
-    classpath(platform("org.jetbrains.kotlin:kotlin-gradle-plugins-bom:2.4.20"))
+    classpath(platform("org.jetbrains.kotlin:kotlin-gradle-plugins-bom:2.4.21"))
 
     constraints {
       // Bouncy Castle: keep the provider, PKIX and util artifacts on one version.
