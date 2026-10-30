@@ -326,6 +326,7 @@ public class SetupWizardActivity extends AppCompatActivity {
 
     private void finishWizard() {
         prefs.edit().putBoolean(KEY_DONE, true).apply();
+        WhatsNew.markSeen(prefs); // a fresh install has nothing "new" to catch up on
         if (!rerun) {
             startActivity(new Intent(this, MainActivity.class));
         }

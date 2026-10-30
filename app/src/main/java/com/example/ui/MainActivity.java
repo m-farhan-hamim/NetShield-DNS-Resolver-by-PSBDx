@@ -327,7 +327,10 @@ public class MainActivity extends AppCompatActivity {
         handleAutoStartExtra(getIntent());
         // Android newer than this build supports (17+): warn once and suggest turning battery
         // optimization off, because the system may otherwise put the app to sleep.
-        BatteryOptimizationHelper.maybeShowWarning(this, prefs);
+        // People who just updated see what changed (and the tour) first; the battery advice follows next launch.
+        if (!WhatsNew.maybeShow(this, prefs, backgroundExecutor)) {
+            BatteryOptimizationHelper.maybeShowWarning(this, prefs);
+        }
         // Re-create the daily sync job if the user turned auto sync on (cheap, keeps the existing one).
         RemoteSyncScheduler.scheduleIfEnabled(this);
     }
@@ -2433,6 +2436,15 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     openExternalLink(DONATE_URL);
+                }
+            });
+        }
+        Button btnAboutWhatsNew = findViewById(R.id.btn_about_whats_new);
+        if (btnAboutWhatsNew != null) {
+            btnAboutWhatsNew.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    WhatsNew.show(MainActivity.this, prefs, backgroundExecutor);
                 }
             });
         }
