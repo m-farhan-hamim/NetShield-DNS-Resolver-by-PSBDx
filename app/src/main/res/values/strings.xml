@@ -484,4 +484,6 @@
         <item quantity="one">Only %d chosen app uses the proxy</item>
         <item quantity="other">Only %d chosen apps use the proxy</item>
     </plurals>
+
+    <string name="apps_show_system">Show system apps</string>
 </resources>

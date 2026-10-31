@@ -50,6 +50,14 @@
             android:textSize="13sp" />
     </RadioGroup>
 
+    <CheckBox
+        android:id="@+id/cb_show_system"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/apps_show_system"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
     <EditText
         android:id="@+id/et_search_apps"
         android:layout_width="match_parent"

@@ -1,6 +1,8 @@
 package com.example.ui;
 
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.util.LruCache;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +20,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppViewHolder> {
 
@@ -26,12 +30,19 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
         public String packageName;
         public Drawable icon;
         public boolean isSelected;
+        /** A built-in system app that was never updated. Hidden unless "Show system apps" is on. */
+        public boolean isSystem;
 
         public AppItem(String label, String packageName, Drawable icon, boolean isSelected) {
+            this(label, packageName, icon, isSelected, false);
+        }
+
+        public AppItem(String label, String packageName, Drawable icon, boolean isSelected, boolean isSystem) {
             this.label = label;
             this.packageName = packageName;
             this.icon = icon;
             this.isSelected = isSelected;
+            this.isSystem = isSystem;
         }
     }
 
@@ -40,6 +51,42 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
     private final List<AppItem> items = new ArrayList<>();
     private final Set<String> selectedPackages = new HashSet<>();
     private String query = "";
+    private boolean showSystem = true;
+
+    /** Icons are loaded only for the rows that are on screen, a few at a time, and kept in a small cache. */
+    private PackageManager iconSource;
+    private ExecutorService iconExecutor;
+    private final LruCache<String, Drawable> iconCache = new LruCache<>(120);
+
+    /** Turns on lazy icon loading for items that were created without an icon. */
+    public void setIconSource(PackageManager pm) {
+        this.iconSource = pm;
+        if (iconExecutor == null) {
+            iconExecutor = Executors.newFixedThreadPool(2);
+        }
+    }
+
+    /** Call when the picker closes. */
+    public void shutdown() {
+        if (iconExecutor != null) {
+            iconExecutor.shutdownNow();
+        }
+    }
+
+    public void setShowSystem(boolean show) {
+        showSystem = show;
+        applyFilter();
+    }
+
+    /** True when any ticked app is a built-in system app (so the picker should show them by default). */
+    public boolean hasSelectedSystemApp() {
+        for (AppItem item : allItems) {
+            if (item.isSystem && selectedPackages.contains(item.packageName)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public void setItems(List<AppItem> newItems, Set<String> initialSelected) {
         allItems.clear();
@@ -80,6 +127,9 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
     private void applyFilter() {
         items.clear();
         for (AppItem item : allItems) {
+            if (item.isSystem && !showSystem) {
+                continue;
+            }
             if (query.isEmpty()
                     || item.label.toLowerCase(Locale.ROOT).contains(query)
                     || item.packageName.toLowerCase(Locale.ROOT).contains(query)) {
@@ -105,11 +155,7 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
         final AppItem item = items.get(position);
         holder.tvName.setText(item.label);
         holder.tvPackage.setText(item.packageName);
-        if (item.icon != null) {
-            holder.ivIcon.setImageDrawable(item.icon);
-        } else {
-            holder.ivIcon.setImageResource(R.drawable.ic_shield);
-        }
+        bindIcon(holder.ivIcon, item);
 
         holder.cbSelected.setOnCheckedChangeListener(null);
         holder.cbSelected.setChecked(item.isSelected);
@@ -131,6 +177,53 @@ public class AppSelectAdapter extends RecyclerView.Adapter<AppSelectAdapter.AppV
                 holder.cbSelected.setChecked(!holder.cbSelected.isChecked());
             }
         });
+    }
+
+    private void bindIcon(final ImageView view, final AppItem item) {
+        final String pkg = item.packageName;
+        view.setTag(pkg);
+        if (item.icon != null) {
+            view.setImageDrawable(item.icon);
+            return;
+        }
+        Drawable cached = iconCache.get(pkg);
+        if (cached != null) {
+            view.setImageDrawable(cached);
+            return;
+        }
+        view.setImageDrawable(null); // blank until the real icon arrives
+        final PackageManager pm = iconSource;
+        final ExecutorService exec = iconExecutor;
+        if (pm == null || exec == null) {
+            view.setImageResource(R.drawable.ic_shield);
+            return;
+        }
+        try {
+            exec.execute(new Runnable() {
+                @Override
+                public void run() {
+                    Drawable loaded;
+                    try {
+                        loaded = pm.getApplicationIcon(pkg);
+                    } catch (PackageManager.NameNotFoundException | RuntimeException e) {
+                        return;
+                    }
+                    iconCache.put(pkg, loaded);
+                    final Drawable result = loaded;
+                    view.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            // the row may have been reused for another app while we were loading
+                            if (pkg.equals(view.getTag())) {
+                                view.setImageDrawable(result);
+                            }
+                        }
+                    });
+                }
+            });
+        } catch (RuntimeException rejected) {
+            // the picker was closed
+        }
     }
 
     @Override

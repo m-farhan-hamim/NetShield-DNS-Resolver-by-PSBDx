@@ -12,6 +12,8 @@ import android.util.Log;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
@@ -113,34 +115,31 @@ public final class AppRoutingDialog {
             }
         });
 
+        final CheckBox cbSystem = view.findViewById(R.id.cb_show_system);
+        adapter.setShowSystem(false); // built-in system apps are hidden until asked for: far fewer rows
+        cbSystem.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                adapter.setShowSystem(isChecked);
+            }
+        });
+
         final Context appContext = activity.getApplicationContext();
         background.execute(new Runnable() {
             @Override
             public void run() {
-                PackageManager pm = appContext.getPackageManager();
-                List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-                final List<AppSelectAdapter.AppItem> items = new ArrayList<>();
-                for (ApplicationInfo app : apps) {
-                    try {
-                        String label = pm.getApplicationLabel(app).toString();
-                        Drawable icon = pm.getApplicationIcon(app);
-                        items.add(new AppSelectAdapter.AppItem(label, app.packageName, icon, false));
-                    } catch (Exception e) {
-                        Log.w("AppRoutingDialog", "Skipping unreadable app " + app.packageName);
-                    }
-                }
-                Collections.sort(items, new Comparator<AppSelectAdapter.AppItem>() {
-                    @Override
-                    public int compare(AppSelectAdapter.AppItem a, AppSelectAdapter.AppItem b) {
-                        return a.label.compareToIgnoreCase(b.label);
-                    }
-                });
+                // Names only (read on several threads and remembered); icons load later, per visible row.
+                final List<AppSelectAdapter.AppItem> items = AppListLoader.loadItems(appContext);
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         pbLoading.setVisibility(View.GONE);
+                        adapter.setIconSource(appContext.getPackageManager());
                         adapter.setItems(items, includeMode[0] ? includedWork : excludedWork);
                         loaded[0] = true;
+                        if (adapter.hasSelectedSystemApp()) {
+                            cbSystem.setChecked(true); // do not hide something the user already ticked
+                        }
                     }
                 });
             }
@@ -151,6 +150,12 @@ public final class AppRoutingDialog {
                 .setPositiveButton(R.string.routing_save, null) // real handler below, so it can refuse to close
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
+        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface d) {
+                adapter.shutdown();
+            }
+        });
         dialog.setOnShowListener(new DialogInterface.OnShowListener() {
             @Override
             public void onShow(DialogInterface d) {
