@@ -39,7 +39,7 @@ public final class ConnectionOwner {
                 return uid < 0 ? UNKNOWN : uid;
             }
             return uidFromProc(clientIp, clientPort);
-        } catch (IOException | RuntimeException e) // includes SecurityException {
+        } catch (IOException | RuntimeException e) { // RuntimeException includes SecurityException
             return UNKNOWN;
         }
     }
