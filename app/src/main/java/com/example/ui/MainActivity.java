@@ -2417,7 +2417,7 @@ public class MainActivity extends AppCompatActivity {
             btnAboutCommunity.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    openExternalLink(HelpLinks.TELEGRAM_COMMUNITY);
+                    openExternalLink(HelpLinks.FORUM);
                 }
             });
         }

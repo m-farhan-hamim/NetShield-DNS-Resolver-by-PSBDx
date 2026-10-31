@@ -15,12 +15,12 @@
         android:textSize="13sp" />
 
     <Button
-        android:id="@+id/btn_support_bot"
+        android:id="@+id/btn_support_forum"
         style="@style/Widget.AppCompat.Button.Colored"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="@string/support_telegram_bot"
+        android:text="@string/support_forum"
         android:textAllCaps="false" />
 
     <Button
@@ -30,15 +30,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/support_github"
-        android:textAllCaps="false" />
-
-    <Button
-        android:id="@+id/btn_support_community"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="@string/support_community"
         android:textAllCaps="false" />
 
     <Button

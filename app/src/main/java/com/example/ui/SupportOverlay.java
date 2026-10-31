@@ -10,8 +10,7 @@ import com.example.R;
 import com.example.util.HelpLinks;
 
 /**
- * The "Need support" overlay: the Telegram bot (suggested), the GitHub issue tracker, the Telegram
- * community and the app wiki. Opened from Settings > About and from the feature tour.
+ * The "Need support" overlay: the PSBDx forum (suggested), the GitHub issue tracker and the app wiki. Opened from Settings > About and from the feature tour.
  */
 public final class SupportOverlay {
 
@@ -25,9 +24,8 @@ public final class SupportOverlay {
                 .setView(view)
                 .setNegativeButton(R.string.support_close, null)
                 .create();
-        bind(view, R.id.btn_support_bot, activity, dialog, HelpLinks.TELEGRAM_BOT);
+        bind(view, R.id.btn_support_forum, activity, dialog, HelpLinks.FORUM);
         bind(view, R.id.btn_support_github, activity, dialog, HelpLinks.GITHUB_ISSUES);
-        bind(view, R.id.btn_support_community, activity, dialog, HelpLinks.TELEGRAM_COMMUNITY);
         bind(view, R.id.btn_support_wiki, activity, dialog, HelpLinks.WIKI);
         dialog.show();
     }
