@@ -5,6 +5,7 @@ import com.example.dns.IpPacketUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
@@ -47,6 +48,25 @@ public final class ProxyTunEngine {
         byte[] resolve(byte[] query, int length, String clientIp, int sourcePort, String destIp, int destPort);
     }
 
+    /**
+     * Decides per connection whether it goes through the proxy. A connection that does not is made
+     * straight to the server, but still passes through this engine, so NetShield's DNS filtering
+     * applies to it either way.
+     */
+    public interface RouteDecider {
+        /**
+         * @return true to use the proxy, false to connect directly. Called once per TCP connection on a
+         * worker thread, so it may block briefly. When in doubt answer true: failing closed keeps
+         * traffic inside the proxy.
+         */
+        boolean useProxy(String clientIp, int clientPort, String destIp, int destPort);
+    }
+
+    /** Keeps a socket outside the VPN (VpnService.protect), needed for direct connections. */
+    public interface SocketProtector {
+        void protect(Socket socket) throws IOException;
+    }
+
     public interface Listener {
         /** Called once when several connection attempts in a row fail because the proxy itself is not working. */
         void onProxyDown(Socks5Exception.Kind kind);
@@ -85,6 +105,8 @@ public final class ProxyTunEngine {
     private final DnsHook dns;
     private final Listener listener;
     private final boolean dropIpv6Answers;
+    private final RouteDecider router;
+    private final SocketProtector protector;
 
     private final DnsNameCache names = new DnsNameCache();
     private final Map<SessionKey, TcpSession> sessions = new ConcurrentHashMap<>();
@@ -108,6 +130,17 @@ public final class ProxyTunEngine {
      */
     public ProxyTunEngine(ProxyEndpoint proxy, PacketSink sink, DnsHook dns, Listener listener,
                           boolean dropIpv6Answers) {
+        this(proxy, sink, dns, listener, dropIpv6Answers, null, null);
+    }
+
+    /**
+     * @param router    chooses proxy or direct per connection; null means every connection uses the proxy
+     * @param protector needed when {@code router} can answer "direct"; null disables direct connections
+     */
+    public ProxyTunEngine(ProxyEndpoint proxy, PacketSink sink, DnsHook dns, Listener listener,
+                          boolean dropIpv6Answers, RouteDecider router, SocketProtector protector) {
+        this.router = router;
+        this.protector = protector;
         this.proxy = proxy;
         this.sink = sink;
         this.dns = dns;
@@ -409,21 +442,37 @@ public final class ProxyTunEngine {
         /** Runs on a worker thread: connect through the proxy, then relay proxy -> app. */
         @Override
         public void run() {
-            String host = names.lookup(sIp);
-            if (host == null) {
-                host = ipString(sIp);
-            }
+            final boolean viaProxy = shouldUseProxy();
             Socket s;
-            try {
-                s = Socks5Client.connect(proxy, host, sPort, CONNECT_TIMEOUT_MS);
-            } catch (Socks5Exception e) {
-                connectFailed(e.kind);
-                return;
-            } catch (IOException e) {
-                connectFailed(Socks5Exception.Kind.PROTOCOL);
-                return;
+            if (viaProxy) {
+                String host = names.lookup(sIp);
+                if (host == null) {
+                    host = ipString(sIp);
+                }
+                try {
+                    s = Socks5Client.connect(proxy, host, sPort, CONNECT_TIMEOUT_MS);
+                } catch (Socks5Exception e) {
+                    connectFailed(e.kind, true);
+                    return;
+                } catch (IOException e) {
+                    connectFailed(Socks5Exception.Kind.PROTOCOL, true);
+                    return;
+                }
+                noteSuccess();
+            } else {
+                // Skips the proxy: connect straight to the server, outside the VPN. A failure here says
+                // nothing about the proxy, so it must not count towards "proxy is down".
+                s = new Socket();
+                try {
+                    protector.protect(s);
+                    s.setTcpNoDelay(true);
+                    s.connect(new InetSocketAddress(ipString(sIp), sPort), CONNECT_TIMEOUT_MS);
+                } catch (IOException e) {
+                    closeQuietly(s);
+                    connectFailed(Socks5Exception.Kind.PROTOCOL, false);
+                    return;
+                }
             }
-            noteSuccess();
             synchronized (this) {
                 if (state == CLOSED) {
                     closeQuietly(s);
@@ -457,8 +506,24 @@ public final class ProxyTunEngine {
             readerLoop();
         }
 
-        private void connectFailed(Socks5Exception.Kind kind) {
-            noteFailure(kind);
+        /** Asks the router; any doubt or error means "use the proxy". */
+        private boolean shouldUseProxy() {
+            if (router == null || protector == null) {
+                return true;
+            }
+            try {
+                return router.useProxy(ipString(cIp), cPort, ipString(sIp), sPort);
+            } catch (RuntimeException e) {
+                return true;
+            }
+        }
+
+        private void connectFailed(Socks5Exception.Kind kind, boolean viaProxy) {
+            if (viaProxy) {
+                noteFailure(kind);
+            } else {
+                failedConnections.incrementAndGet();
+            }
             synchronized (this) {
                 if (state != CLOSED) {
                     state = CLOSED;

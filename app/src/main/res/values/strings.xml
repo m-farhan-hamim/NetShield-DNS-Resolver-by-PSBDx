@@ -381,11 +381,11 @@
     <string name="dns_preset_quad9">Quad9</string>
 
     <!-- App routing: exclude chosen apps / include ONLY chosen apps (GitHub issue #26) -->
-    <string name="routing_dialog_title">Which apps use NetShield</string>
+    <string name="routing_dialog_title">Apps and routing: which apps use NetShield</string>
     <string name="routing_mode_exclude">Exclude chosen apps - every other app uses NetShield</string>
     <string name="routing_mode_include">Include only chosen apps - everything else, system apps too, stays direct</string>
-    <string name="routing_desc_exclude">Ticked apps bypass NetShield (no DNS filtering and no proxy). All other apps use it.</string>
-    <string name="routing_desc_include">Only ticked apps use NetShield\'s DNS filter and the proxy. All other apps and system processes connect directly.</string>
+    <string name="routing_desc_exclude">Ticked apps bypass NetShield completely: no DNS filtering and no proxy. All other apps use it. This applies to the whole app.</string>
+    <string name="routing_desc_include">Only ticked apps use NetShield\'s DNS filter and the proxy. All other apps and system processes connect directly, unfiltered. This applies to the whole app.</string>
     <string name="routing_save">Save</string>
     <string name="routing_include_empty">Tick at least one app, or switch to \"Exclude\".</string>
     <string name="routing_saved">Saved. Restart protection for it to take effect.</string>
@@ -400,7 +400,7 @@
         <item quantity="other">Only %d chosen apps use NetShield</item>
     </plurals>
     <string name="proxy_apps_title">Which apps use the proxy</string>
-    <string name="proxy_apps_desc">Send only the apps you pick through the proxy, or everything except some apps. This is the same setting as Settings, Apps and routing.</string>
+    <string name="proxy_apps_desc">Choose which apps go through the proxy. Apps that skip it still pass through NetShield, so its DNS filtering still applies to them; they just connect directly. This is separate from Settings, Apps and routing, which applies to the whole app.</string>
 
     <!-- Support overlay and help links -->
     <string name="support_title">Need support?</string>
@@ -431,7 +431,7 @@
     <!-- What's new pop-up and feature tour -->
     <string name="whats_new_title">What\'s new in %1$s</string>
     <string-array name="whats_new_items">
-        <item>Choose which apps use NetShield. You can now include ONLY the apps you pick, or exclude some, for both the DNS resolver and the proxy.</item>
+        <item>Choose which apps use NetShield (Settings, Apps and routing) and, separately, which apps use the proxy (proxy screen). Each can exclude some apps or include only the ones you pick.</item>
         <item>Setup wizard for new installs, now with a remote list sync step. You can run it again from Settings, About.</item>
         <item>Android 17 and newer: a warning with advice to turn off battery optimization, so the system does not put NetShield to sleep.</item>
         <item>Need support: the PSBDx forum, GitHub and the app wiki are one tap away, and the proxy screen has guides for Orbot, InviZible and v2rayNG.</item>
@@ -453,7 +453,7 @@
         <item>Setup wizard</item>
     </string-array>
     <string-array name="tour_bodies">
-        <item>Open Settings, Apps and routing, then Choose apps. Pick \"Exclude\" to let some apps bypass NetShield, or \"Include only\" so just the apps you tick use it. Everything else, system apps too, connects directly. It works for DNS mode and for proxy mode. Restart protection after changing it.</item>
+        <item>Open Settings, Apps and routing, then Choose apps. Pick \"Exclude\" to let some apps bypass NetShield completely, or \"Include only\" so just the apps you tick use it; everything else connects directly. Using a proxy? The proxy screen has its own list: apps that skip the proxy still go through NetShield\'s filtering, they just connect directly. Restart protection after changing either.</item>
         <item>Blocklists are downloaded from the internet. Turn on auto sync and NetShield refreshes them every 24 hours in the background and shows a notification. You can also turn it off any time in Settings.</item>
         <item>In Settings, About, \"Need support\" opens the PSBDx forum (the quickest way), GitHub and the wiki. On the proxy screen, the guide button shows how to put Orbot, InviZible or v2rayNG in proxy mode only.</item>
         <item>If your phone runs Android 17 or newer, the system may put NetShield to sleep. Turn off battery optimization for NetShield, or set its battery usage to Unrestricted. You can open the settings from here.</item>
@@ -466,4 +466,22 @@
         <item>Open battery advice</item>
         <item>Run setup wizard now</item>
     </string-array>
+
+    <!-- Proxy-only app routing: which apps use the proxy (NetShield filtering still applies to all) -->
+    <string name="proxy_routing_dialog_title">Proxy: which apps use the proxy</string>
+    <string name="proxy_mode_exclude">Exclude chosen apps - they skip the proxy, every other app uses it</string>
+    <string name="proxy_mode_include">Include only chosen apps - only they use the proxy, everything else connects directly</string>
+    <string name="proxy_desc_exclude">Ticked apps skip the proxy and connect directly. NetShield still filters their DNS like everyone else\'s.</string>
+    <string name="proxy_desc_include">Only ticked apps go through the proxy. All other apps connect directly. NetShield still filters everyone\'s DNS.</string>
+    <string name="proxy_include_empty">Tick at least one app, or switch to \"Exclude\".</string>
+    <string name="proxy_summary_exclude_none">Every app uses the proxy</string>
+    <plurals name="proxy_summary_exclude">
+        <item quantity="one">%d app skips the proxy</item>
+        <item quantity="other">%d apps skip the proxy</item>
+    </plurals>
+    <string name="proxy_summary_include_none">Include mode is on but no apps are chosen, so every app uses the proxy for now</string>
+    <plurals name="proxy_summary_include">
+        <item quantity="one">Only %d chosen app uses the proxy</item>
+        <item quantity="other">Only %d chosen apps use the proxy</item>
+    </plurals>
 </resources>

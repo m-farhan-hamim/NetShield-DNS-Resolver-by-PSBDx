@@ -46,7 +46,8 @@ public final class AppRoutingDialog {
     }
 
     public static void show(final Activity activity, final SharedPreferences prefs,
-                            final Executor background, @Nullable final Runnable onSaved) {
+                            final Executor background, final AppRouting.Scope scope,
+                            @Nullable final Runnable onSaved) {
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_split_tunnel, null);
         final TextView tvTitle = view.findViewById(R.id.tv_split_title);
         final TextView tvDesc = view.findViewById(R.id.tv_split_desc);
@@ -57,7 +58,9 @@ public final class AppRoutingDialog {
         final ProgressBar pbLoading = view.findViewById(R.id.pb_loading_apps);
         final RecyclerView rvApps = view.findViewById(R.id.rv_split_apps);
 
-        tvTitle.setText(R.string.routing_dialog_title);
+        tvTitle.setText(scope.titleRes);
+        rbExclude.setText(scope.modeExcludeRes);
+        rbInclude.setText(scope.modeIncludeRes);
         rgMode.setVisibility(View.VISIBLE);
 
         rvApps.setLayoutManager(new LinearLayoutManager(activity));
@@ -66,15 +69,15 @@ public final class AppRoutingDialog {
         pbLoading.setVisibility(View.VISIBLE);
 
         // Two working copies, so flipping the mode back and forth inside the dialog never loses ticks.
-        final Set<String> excludedWork = AppRouting.getExcluded(prefs);
-        final Set<String> includedWork = AppRouting.getIncluded(prefs);
-        final boolean[] includeMode = {AppRouting.isIncludeMode(prefs)};
+        final Set<String> excludedWork = AppRouting.getExcluded(prefs, scope);
+        final Set<String> includedWork = AppRouting.getIncluded(prefs, scope);
+        final boolean[] includeMode = {AppRouting.isIncludeMode(prefs, scope)};
         // Until the app list has loaded the adapter knows no ticks yet, so the working copies are the truth.
         final boolean[] loaded = {false};
 
         rbExclude.setChecked(!includeMode[0]);
         rbInclude.setChecked(includeMode[0]);
-        tvDesc.setText(includeMode[0] ? R.string.routing_desc_include : R.string.routing_desc_exclude);
+        tvDesc.setText(includeMode[0] ? scope.descIncludeRes : scope.descExcludeRes);
 
         rgMode.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
@@ -91,7 +94,7 @@ public final class AppRoutingDialog {
                 }
                 includeMode[0] = nowInclude;
                 adapter.replaceSelection(nowInclude ? includedWork : excludedWork);
-                tvDesc.setText(nowInclude ? R.string.routing_desc_include : R.string.routing_desc_exclude);
+                tvDesc.setText(nowInclude ? scope.descIncludeRes : scope.descExcludeRes);
             }
         });
 
@@ -161,11 +164,11 @@ public final class AppRoutingDialog {
                         Set<String> included = includeMode[0] ? current : includedWork;
                         if (includeMode[0] && included.isEmpty()) {
                             // Include mode with nothing ticked would route nothing at all; make that explicit.
-                            Toast.makeText(activity, R.string.routing_include_empty, Toast.LENGTH_LONG).show();
+                            Toast.makeText(activity, scope.includeEmptyRes, Toast.LENGTH_LONG).show();
                             return;
                         }
-                        AppRouting.save(prefs, includeMode[0], excluded, included);
-                        Toast.makeText(activity, R.string.routing_saved, Toast.LENGTH_LONG).show();
+                        AppRouting.save(prefs, scope, includeMode[0], excluded, included);
+                        Toast.makeText(activity, scope.savedRes, Toast.LENGTH_LONG).show();
                         dialog.dismiss();
                         if (onSaved != null) {
                             onSaved.run();
