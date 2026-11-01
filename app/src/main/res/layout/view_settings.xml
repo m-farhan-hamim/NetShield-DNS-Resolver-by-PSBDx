@@ -76,7 +76,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="QUICK PROVIDER PRESETS"
+                    android:text="@string/ui_quick_provider_presets"
                     android:textColor="@color/text_muted"
                     android:textSize="10sp"
                     android:textStyle="bold" />
@@ -232,7 +232,7 @@
                             android:paddingTop="4dp"
                             android:paddingEnd="8dp"
                             android:paddingBottom="4dp"
-                            android:text="Cloudflare"
+                            android:text="@string/dns_preset_cloudflare"
                             android:textColor="@color/colorPrimary"
                             android:textSize="11sp" />
 
@@ -246,7 +246,7 @@
                             android:paddingTop="4dp"
                             android:paddingEnd="8dp"
                             android:paddingBottom="4dp"
-                            android:text="Google"
+                            android:text="@string/dns_preset_google"
                             android:textColor="@color/colorPrimary"
                             android:textSize="11sp" />
 
@@ -260,7 +260,7 @@
                             android:paddingTop="4dp"
                             android:paddingEnd="8dp"
                             android:paddingBottom="4dp"
-                            android:text="AdGuard"
+                            android:text="@string/dns_preset_adguard"
                             android:textColor="@color/colorPrimary"
                             android:textSize="11sp" />
                     </LinearLayout>
@@ -291,7 +291,7 @@
                         android:inputType="textUri"
                         android:paddingStart="10dp"
                         android:paddingEnd="10dp"
-                        android:text="dns.google"
+                        android:text="@string/ui_dns_google"
                         android:textColor="@color/text_primary"
                         android:textSize="13sp" />
                 </LinearLayout>
@@ -916,7 +916,7 @@
                         android:layout_marginEnd="6dp"
                         android:layout_weight="1"
                         android:backgroundTint="@color/surface_variant"
-                        android:text="Export JSON"
+                        android:text="@string/ui_export_json"
                         android:textColor="@color/colorPrimary"
                         android:textSize="12sp" />
 
@@ -927,7 +927,7 @@
                         android:layout_marginStart="6dp"
                         android:layout_weight="1"
                         android:backgroundTint="@color/surface_variant"
-                        android:text="Import JSON"
+                        android:text="@string/ui_import_json"
                         android:textColor="@color/colorPrimary"
                         android:textSize="12sp" />
                 </LinearLayout>

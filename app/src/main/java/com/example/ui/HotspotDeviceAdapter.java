@@ -67,7 +67,7 @@ public class HotspotDeviceAdapter extends RecyclerView.Adapter<HotspotDeviceAdap
 
         int limit = hotspotManager != null ? hotspotManager.getClientLimit(device.getClientIp()) : 0;
         if (limit > 0) {
-            holder.tvLimit.setText("Daily limit: " + limit + " queries");
+            holder.tvLimit.setText(holder.itemView.getContext().getString(R.string.hotspot_daily_limit, limit));
             holder.tvLimit.setVisibility(View.VISIBLE);
         } else {
             holder.tvLimit.setVisibility(View.GONE);

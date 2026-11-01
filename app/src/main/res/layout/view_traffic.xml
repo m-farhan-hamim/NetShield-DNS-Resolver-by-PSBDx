@@ -29,7 +29,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="Traffic Icon"
+                    android:contentDescription="@string/ui_traffic_icon"
                     android:src="@drawable/ic_traffic" />
 
                 <TextView
@@ -51,7 +51,7 @@
                     android:paddingTop="3dp"
                     android:paddingEnd="8dp"
                     android:paddingBottom="3dp"
-                    android:text="DoH: Cloudflare"
+                    android:text="@string/ui_doh_cloudflare"
                     android:textColor="@color/colorPrimary"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -74,7 +74,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Throughput"
+                        android:text="@string/ui_throughput"
                         android:textColor="@color/text_secondary"
                         android:textSize="11sp" />
 
@@ -99,7 +99,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Avg Latency"
+                        android:text="@string/ui_avg_latency"
                         android:textColor="@color/text_secondary"
                         android:textSize="11sp" />
 
@@ -124,7 +124,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Cache Hit %"
+                        android:text="@string/ui_cache_hit"
                         android:textColor="@color/text_secondary"
                         android:textSize="11sp" />
 
@@ -191,7 +191,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="QUERY TIMELINE ACTIVITY"
+                    android:text="@string/ui_query_timeline_activity"
                     android:textColor="@color/text_muted"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -208,7 +208,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
                     android:layout_marginEnd="10dp"
-                    android:text="Allowed"
+                    android:text="@string/filter_allowed"
                     android:textColor="@color/text_secondary"
                     android:textSize="10sp" />
 
@@ -222,7 +222,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
-                    android:text="Blocked"
+                    android:text="@string/stat_blocked_queries"
                     android:textColor="@color/text_secondary"
                     android:textSize="10sp" />
             </LinearLayout>
@@ -320,7 +320,7 @@
                 android:layout_marginTop="10dp"
                 android:gravity="center"
                 android:padding="12dp"
-                android:text="No blocked domains recorded yet"
+                android:text="@string/ui_no_blocked_domains_recorded_yet"
                 android:textColor="@color/text_muted"
                 android:textSize="12sp" />
 
@@ -357,7 +357,7 @@
                 android:layout_marginTop="10dp"
                 android:gravity="center"
                 android:padding="12dp"
-                android:text="No queries recorded yet"
+                android:text="@string/ui_no_queries_recorded_yet"
                 android:textColor="@color/text_muted"
                 android:textSize="12sp" />
 
@@ -402,7 +402,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Type A"
+                        android:text="@string/ui_type_a"
                         android:textColor="@color/colorPrimary"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -433,7 +433,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="AAAA (v6)"
+                        android:text="@string/ui_aaaa_v6"
                         android:textColor="@color/colorAccent"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -464,7 +464,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="HTTPS"
+                        android:text="@string/ui_https"
                         android:textColor="@color/colorCached"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -494,7 +494,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Other"
+                        android:text="@string/ui_other"
                         android:textColor="@color/colorLocal"
                         android:textSize="11sp"
                         android:textStyle="bold" />

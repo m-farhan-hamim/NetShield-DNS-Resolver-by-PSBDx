@@ -65,7 +65,7 @@
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Delete profile"
+        android:contentDescription="@string/ui_delete_profile"
         android:padding="8dp"
         android:src="@drawable/ic_delete" />
 

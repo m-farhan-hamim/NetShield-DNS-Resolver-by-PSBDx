@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="AdAway Default Blocklist"
+            android:text="@string/ui_adaway_default_blocklist"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -41,7 +41,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="42,150 active rules • Last synced: Today"
+            android:text="@string/ui_42_150_active_rules_last"
             android:textColor="@color/colorAccent"
             android:textSize="11sp" />
     </LinearLayout>
@@ -57,7 +57,7 @@
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Delete source"
+        android:contentDescription="@string/ui_delete_source"
         android:padding="8dp"
         android:src="@drawable/ic_delete" />
 

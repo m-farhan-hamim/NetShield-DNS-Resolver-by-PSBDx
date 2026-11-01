@@ -33,7 +33,7 @@
         android:layout_weight="1"
         android:ellipsize="middle"
         android:singleLine="true"
-        android:text="analytics.google.com"
+        android:text="@string/ui_analytics_google_com"
         android:textColor="@color/text_primary"
         android:textSize="13sp"
         android:textStyle="bold" />
@@ -48,7 +48,7 @@
         android:paddingTop="3dp"
         android:paddingEnd="8dp"
         android:paddingBottom="3dp"
-        android:text="42 hits"
+        android:text="@string/ui_42_hits"
         android:textColor="@color/colorPrimary"
         android:textSize="11sp"
         android:textStyle="bold" />
@@ -63,7 +63,7 @@
         android:minWidth="0dp"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:text="Block"
+        android:text="@string/txt_block"
         android:textColor="@color/colorBlocked"
         android:textSize="12sp"
         android:textStyle="bold" />

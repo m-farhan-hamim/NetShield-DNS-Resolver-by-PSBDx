@@ -52,7 +52,7 @@ public class RuleAdapter extends RecyclerView.Adapter<RuleAdapter.RuleViewHolder
 
         if (CustomRule.TYPE_MAPPING.equals(rule.getRuleType()) && rule.getTargetIp() != null && !rule.getTargetIp().isEmpty()) {
             holder.tvTarget.setVisibility(View.VISIBLE);
-            holder.tvTarget.setText("Target IP: " + rule.getTargetIp());
+            holder.tvTarget.setText(holder.itemView.getContext().getString(R.string.rule_target_ip, rule.getTargetIp()));
         } else {
             holder.tvTarget.setVisibility(View.GONE);
         }

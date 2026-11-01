@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="ads.example.com"
+            android:text="@string/ui_ads_example_com"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -30,7 +30,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Target: 192.168.1.1"
+            android:text="@string/ui_target_192_168_1_1"
             android:textColor="@color/colorPrimary"
             android:textSize="12sp"
             android:visibility="gone" />
@@ -47,7 +47,7 @@
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Delete rule"
+        android:contentDescription="@string/ui_delete_rule"
         android:padding="8dp"
         android:src="@drawable/ic_delete" />
 

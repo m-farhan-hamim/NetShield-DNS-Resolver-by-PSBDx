@@ -20,7 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Selected apps will bypass VPN and resolve DNS via standard network."
+        android:text="@string/ui_selected_apps_will_bypass_vpn"
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />
 
@@ -64,7 +64,7 @@
         android:layout_height="42dp"
         android:layout_marginTop="10dp"
         android:background="@drawable/bg_input"
-        android:hint="Search installed applications…"
+        android:hint="@string/ui_search_installed_applications"
         android:inputType="text"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"

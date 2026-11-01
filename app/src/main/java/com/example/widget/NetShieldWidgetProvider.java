@@ -162,7 +162,7 @@ public class NetShieldWidgetProvider extends AppWidgetProvider {
             int percentChange = (int) Math.round(((todayCount - yesterdayCount) / (double) yesterdayCount) * 100);
             String arrow = percentChange > 0 ? "\u2191" : percentChange < 0 ? "\u2193" : "\u2192";
             views.setTextViewText(R.id.tv_widget_trend,
-                    String.format(Locale.getDefault(), "%s %d%% vs yesterday at this time", arrow, Math.abs(percentChange)));
+                    context.getString(R.string.widget_trend_format, arrow, Math.abs(percentChange)));
         }
     }
 }

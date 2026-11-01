@@ -41,7 +41,7 @@
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Remove"
+        android:contentDescription="@string/ui_remove"
         android:padding="8dp"
         android:src="@drawable/ic_delete" />
 </LinearLayout>

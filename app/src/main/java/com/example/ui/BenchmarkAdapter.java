@@ -67,7 +67,7 @@ public class BenchmarkAdapter extends RecyclerView.Adapter<BenchmarkAdapter.View
         }
 
         if (result.isSuccess() && result.getLatencyMs() >= 0) {
-            holder.tvLatency.setText(result.getLatencyMs() + " ms");
+            holder.tvLatency.setText(holder.itemView.getContext().getString(R.string.latency_ms, result.getLatencyMs()));
             if (result.getLatencyMs() < 35) {
                 holder.tvLatency.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.colorAllowed));
             } else if (result.getLatencyMs() < 80) {
@@ -77,7 +77,7 @@ public class BenchmarkAdapter extends RecyclerView.Adapter<BenchmarkAdapter.View
             }
             holder.btnApply.setEnabled(true);
         } else {
-            holder.tvLatency.setText("Timeout");
+            holder.tvLatency.setText(R.string.txt_timeout);
             holder.tvLatency.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
             holder.btnApply.setEnabled(false);
         }

@@ -698,7 +698,7 @@ public class MainActivity extends AppCompatActivity {
                 ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                 ClipData clip = ClipData.newPlainText("Local DNS Server", tvServerAddress.getText().toString());
                 clipboard.setPrimaryClip(clip);
-                Toast.makeText(MainActivity.this, "Copied address: " + tvServerAddress.getText(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, getString(R.string.toast_copied_address, tvServerAddress.getText()), Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -763,10 +763,10 @@ public class MainActivity extends AppCompatActivity {
                     manager.resumeProtection();
                     mainHandler.removeCallbacks(pauseTickRunnable);
                     updatePauseUi();
-                    Toast.makeText(MainActivity.this, "Sinkhole protection resumed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.toast_sinkhole_protection_resumed, Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
                     Log.e(TAG, "resumeProtection failed", e);
-                    Toast.makeText(MainActivity.this, "Couldn't resume protection: " + e.getMessage(),
+                    Toast.makeText(MainActivity.this, getString(R.string.toast_resume_failed, e.getMessage()),
                             Toast.LENGTH_LONG).show();
                 }
             }
@@ -784,10 +784,10 @@ public class MainActivity extends AppCompatActivity {
             mainHandler.removeCallbacks(pauseTickRunnable);
             updatePauseUi();
             mainHandler.post(pauseTickRunnable);
-            Toast.makeText(this, "Sinkhole blocking paused for " + label, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_paused_for, label), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Log.e(TAG, "pauseProtection failed", e);
-            Toast.makeText(this, "Couldn't pause protection: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.toast_pause_failed, e.getMessage()), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -803,7 +803,7 @@ public class MainActivity extends AppCompatActivity {
             long totalSec = remainingMs / 1000;
             long min = totalSec / 60;
             long sec = totalSec % 60;
-            tvPauseStatus.setText(String.format(Locale.getDefault(), "Protection paused (%02d:%02d remaining)", min, sec));
+            tvPauseStatus.setText(getString(R.string.pause_status_format, min, sec));
             tvPauseStatus.setVisibility(View.VISIBLE);
             tvPauseDot.setVisibility(View.VISIBLE);
             btnResumeProtection.setVisibility(View.VISIBLE);
@@ -1089,24 +1089,24 @@ public class MainActivity extends AppCompatActivity {
         btnToggleService.setAlpha(canToggle ? 1f : 0.4f);
 
         if (state == ServiceManager.STATE_VPN) {
-            tvHeaderStatus.setText("PROTECTED (VPN)");
+            tvHeaderStatus.setText(R.string.txt_protected_vpn);
             tvHeaderStatus.setTextColor(ContextCompat.getColor(this, R.color.colorAllowed));
             indicatorStatusDot.getBackground().setTint(ContextCompat.getColor(this, R.color.colorAllowed));
 
             tvDashboardStatus.setText(R.string.status_vpn_running);
-            tvDashboardSubtitle.setText("Filtering all system DNS queries via local VPN sinkhole");
+            tvDashboardSubtitle.setText(R.string.txt_filtering_all_system_dns_queries);
             btnToggleService.setText(R.string.btn_stop);
             btnToggleService.setBackgroundResource(R.drawable.bg_button_stop);
             btnToggleService.setTextColor(Color.WHITE);
             ivStatusIcon.setImageResource(R.drawable.ic_shield);
             ivStatusIcon.setColorFilter(ContextCompat.getColor(this, R.color.colorAllowed));
         } else if (state == ServiceManager.STATE_SERVER) {
-            tvHeaderStatus.setText("LISTENING (127.0.0.1:" + port + ")");
+            tvHeaderStatus.setText(getString(R.string.header_listening, port));
             tvHeaderStatus.setTextColor(ContextCompat.getColor(this, R.color.colorPrimary));
             indicatorStatusDot.getBackground().setTint(ContextCompat.getColor(this, R.color.colorPrimary));
 
             tvDashboardStatus.setText(R.string.status_server_running);
-            tvDashboardSubtitle.setText("Ready for local client sockets on port " + port);
+            tvDashboardSubtitle.setText(getString(R.string.dashboard_subtitle_server, port));
             btnToggleService.setText(R.string.btn_stop);
             btnToggleService.setBackgroundResource(R.drawable.bg_button_stop);
             btnToggleService.setTextColor(Color.WHITE);
@@ -1155,11 +1155,11 @@ public class MainActivity extends AppCompatActivity {
     private void runDnsTestQuery() {
         final String domain = etTestDomain.getText().toString().trim();
         if (domain.isEmpty()) {
-            Toast.makeText(this, "Please enter a domain name", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_please_enter_a_domain_name, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        tvTestResult.setText("Querying DNS engine for '" + domain + "'…");
+        tvTestResult.setText(getString(R.string.test_querying, domain));
         btnTestQuery.setEnabled(false);
 
         backgroundExecutor.execute(new Runnable() {
@@ -1204,7 +1204,7 @@ public class MainActivity extends AppCompatActivity {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            tvTestResult.setText("Error: " + e.getMessage());
+                            tvTestResult.setText(getString(R.string.test_error, e.getMessage()));
                             btnTestQuery.setEnabled(true);
                         }
                     });
@@ -1326,7 +1326,7 @@ public class MainActivity extends AppCompatActivity {
                 engine.getCache().clear();
                 refreshStats();
                 refreshTrafficDashboard();
-                Toast.makeText(MainActivity.this, "DNS memory cache flushed", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, R.string.toast_dns_memory_cache_flushed, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -1368,9 +1368,9 @@ public class MainActivity extends AppCompatActivity {
         if (rbUpstreamDoh != null) {
             rbUpstreamDoh.setChecked(true);
         }
-        Toast.makeText(this, "Active upstream changed to " + result.getName(), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.toast_upstream_changed, result.getName()), Toast.LENGTH_SHORT).show();
         if (tvTrafficUpstreamTag != null) {
-            tvTrafficUpstreamTag.setText("DoH: " + result.getName());
+            tvTrafficUpstreamTag.setText(getString(R.string.traffic_upstream_doh, result.getName()));
         }
 
         int state = ServiceManager.getCurrentState();
@@ -1425,10 +1425,10 @@ public class MainActivity extends AppCompatActivity {
                             tvTrafficUpstreamTag.setText(upstreamLabel);
                         }
                         if (tvTrafficThroughput != null) {
-                            tvTrafficThroughput.setText(count1Min + " q/m");
+                            tvTrafficThroughput.setText(getString(R.string.traffic_throughput_qpm, count1Min));
                         }
                         if (tvTrafficAvgLatency != null) {
-                            tvTrafficAvgLatency.setText(avgLatency > 0 ? String.format(Locale.getDefault(), "%.1f ms", avgLatency) : "< 1 ms");
+                            tvTrafficAvgLatency.setText(avgLatency > 0 ? getString(R.string.latency_ms_decimal, avgLatency) : getString(R.string.latency_under_1ms));
                         }
                         if (tvTrafficCacheRatio != null) {
                             double cacheRatio = stats[0] > 0 ? ((double) stats[2] / stats[0]) * 100.0 : 0.0;
@@ -1488,7 +1488,7 @@ public class MainActivity extends AppCompatActivity {
                             sendIntent.setType("text/csv");
                             startActivity(Intent.createChooser(sendIntent, "Export DNS Logs"));
                         } catch (Exception e) {
-                            Toast.makeText(MainActivity.this, "Logs CSV copied to clipboard", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, R.string.toast_logs_csv_copied_to_clipboard, Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
@@ -1555,9 +1555,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Clear Logs")
-                        .setMessage("Are you sure you want to erase all query logs?")
-                        .setPositiveButton("Clear", new DialogInterface.OnClickListener() {
+                        .setTitle(R.string.btn_clear_logs)
+                        .setMessage(R.string.dlg_are_you_sure_you_want)
+                        .setPositiveButton(R.string.logs_range_clear, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 backgroundExecutor.execute(new Runnable() {
@@ -1575,7 +1575,7 @@ public class MainActivity extends AppCompatActivity {
                                 });
                             }
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(R.string.btn_cancel, null)
                         .show();
             }
         });
@@ -1733,11 +1733,11 @@ public class MainActivity extends AppCompatActivity {
                         } else if (which == 2) {
                             ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                             cb.setPrimaryClip(ClipData.newPlainText("DNS Domain", log.getDomain()));
-                            Toast.makeText(MainActivity.this, "Copied domain to clipboard", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, R.string.toast_copied_domain_to_clipboard, Toast.LENGTH_SHORT).show();
                         }
                     }
                 })
-                .setNegativeButton("Close", null)
+                .setNegativeButton(R.string.coexist_guide_close, null)
                 .show();
     }
 
@@ -1859,7 +1859,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 btnSyncSources.setEnabled(false);
-                Toast.makeText(MainActivity.this, "Syncing remote blocklists in background…", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, R.string.toast_syncing_remote_blocklists_in_background, Toast.LENGTH_SHORT).show();
 
                 blocklistManager.syncRemoteBlocklists(new BlocklistManager.SyncCallback() {
                     @Override
@@ -1870,14 +1870,14 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(int totalRules) {
                         btnSyncSources.setEnabled(true);
-                        Toast.makeText(MainActivity.this, "Sync complete! Loaded " + totalRules + " rules.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, getString(R.string.toast_sync_complete, totalRules), Toast.LENGTH_LONG).show();
                         refreshRules();
                     }
 
                     @Override
                     public void onError(String error) {
                         btnSyncSources.setEnabled(true);
-                        Toast.makeText(MainActivity.this, "Sync error: " + error, Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, getString(R.string.toast_sync_error, error), Toast.LENGTH_LONG).show();
                     }
                 });
             }
@@ -1924,9 +1924,9 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             sourceAdapter.setSources(sources);
-                            tvRulesCount.setText(sources.size() + " subscription sources configured");
+                            tvRulesCount.setText(getString(R.string.rules_sources_configured, sources.size()));
                             layoutRulesEmpty.setVisibility(sources.isEmpty() ? View.VISIBLE : View.GONE);
-                            tvRulesEmptyText.setText("No remote subscription sources");
+                            tvRulesEmptyText.setText(R.string.txt_no_remote_subscription_sources);
                         }
                     });
                 } else {
@@ -1935,14 +1935,17 @@ public class MainActivity extends AppCompatActivity {
                     if ("MAPPINGS".equals(currentRuleSubtab)) ruleType = CustomRule.TYPE_MAPPING;
 
                     final List<CustomRule> rules = dbHelper.getRulesByType(ruleType);
-                    final String typeLabel = currentRuleSubtab.toLowerCase(java.util.Locale.ROOT);
+                    final int countRes = CustomRule.TYPE_WHITE.equals(ruleType) ? R.string.rules_active_whitelist
+                            : CustomRule.TYPE_MAPPING.equals(ruleType) ? R.string.rules_active_mappings : R.string.rules_active_blocklist;
+                    final int emptyRes = CustomRule.TYPE_WHITE.equals(ruleType) ? R.string.rules_none_whitelist
+                            : CustomRule.TYPE_MAPPING.equals(ruleType) ? R.string.rules_none_mappings : R.string.rules_none_blocklist;
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             ruleAdapter.setRules(rules);
-                            tvRulesCount.setText(rules.size() + " " + typeLabel + " rules active");
+                            tvRulesCount.setText(getString(countRes, rules.size()));
                             layoutRulesEmpty.setVisibility(rules.isEmpty() ? View.VISIBLE : View.GONE);
-                            tvRulesEmptyText.setText("No " + typeLabel + " rules defined");
+                            tvRulesEmptyText.setText(getString(emptyRes));
                         }
                     });
                 }
@@ -1978,12 +1981,12 @@ public class MainActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this)
                 .setView(view)
-                .setPositiveButton("Add Rule", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.btn_add_rule, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         String domain = etDomain.getText().toString().trim();
                         if (domain.isEmpty()) {
-                            Toast.makeText(MainActivity.this, "Domain cannot be empty", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, R.string.toast_domain_cannot_be_empty, Toast.LENGTH_SHORT).show();
                             return;
                         }
                         String type = CustomRule.TYPE_BLOCK;
@@ -1997,7 +2000,7 @@ public class MainActivity extends AppCompatActivity {
                         addRule(domain, type, targetIp);
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show();
     }
 
@@ -2040,7 +2043,7 @@ public class MainActivity extends AppCompatActivity {
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(MainActivity.this, "Rule added for " + domain, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, getString(R.string.toast_rule_added, domain), Toast.LENGTH_SHORT).show();
                         refreshRules();
                     }
                 });
@@ -2055,13 +2058,13 @@ public class MainActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this)
                 .setView(view)
-                .setPositiveButton("Add Source", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.btn_add_source_2, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         final String name = etName.getText().toString().trim();
                         final String url = etUrl.getText().toString().trim();
                         if (name.isEmpty() || url.isEmpty()) {
-                            Toast.makeText(MainActivity.this, "Name and URL are required", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, R.string.toast_name_and_url_are_required, Toast.LENGTH_SHORT).show();
                             return;
                         }
                         backgroundExecutor.execute(new Runnable() {
@@ -2072,7 +2075,7 @@ public class MainActivity extends AppCompatActivity {
                                 mainHandler.post(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(MainActivity.this, "Source added", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(MainActivity.this, R.string.toast_source_added, Toast.LENGTH_SHORT).show();
                                         refreshRules();
                                     }
                                 });
@@ -2080,7 +2083,7 @@ public class MainActivity extends AppCompatActivity {
                         });
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show();
     }
 
@@ -2166,7 +2169,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
             } catch (Exception e2) {
-                Toast.makeText(this, "Couldn't open hotspot settings on this device", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_couldn_t_open_hotspot_settings, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -2183,8 +2186,8 @@ public class MainActivity extends AppCompatActivity {
         int globalLimit = hotspotManager.getGlobalDailyLimit();
         int globalCount = hotspotManager.getGlobalTodayQueryCount();
         tvGlobalLimitStatus.setText(globalLimit > 0
-                ? String.format(Locale.getDefault(), "%d / %d queries today", globalCount, globalLimit)
-                : String.format(Locale.getDefault(), "%d queries today • no limit set", globalCount));
+                ? getString(R.string.hotspot_global_usage, globalCount, globalLimit)
+                : getString(R.string.hotspot_global_usage_no_limit, globalCount));
 
         refreshHotspotDevices();
         refreshScannedDevices();
@@ -2218,7 +2221,7 @@ public class MainActivity extends AppCompatActivity {
                     public void run() {
                         if (scanned.isEmpty()) {
                             TextView tvEmpty = new TextView(MainActivity.this);
-                            tvEmpty.setText("No devices found (or unavailable on this device)");
+                            tvEmpty.setText(R.string.txt_no_devices_found_or_unavailable);
                             tvEmpty.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_muted));
                             tvEmpty.setTextSize(12f);
                             layoutScannedDevices.addView(tvEmpty);
@@ -2243,12 +2246,12 @@ public class MainActivity extends AppCompatActivity {
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
         int current = hotspotManager.getClientLimit(device.getClientIp());
         if (current > 0) input.setText(String.valueOf(current));
-        input.setHint("Daily query limit (0 = no limit)");
+        input.setHint(R.string.hint_daily_query_limit_0_no);
 
         new AlertDialog.Builder(this)
-                .setTitle("Set limit for " + device.getClientIp())
+                .setTitle(getString(R.string.dialog_set_limit_for, device.getClientIp()))
                 .setView(input)
-                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.proxy_sub_add_confirm, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         int limit = 0;
@@ -2260,7 +2263,7 @@ public class MainActivity extends AppCompatActivity {
                         refreshHotspotDevices();
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show();
     }
 
@@ -2268,19 +2271,19 @@ public class MainActivity extends AppCompatActivity {
         final EditText input = new EditText(this);
         String currentName = hotspotManager.getClientName(device.getClientIp());
         if (currentName != null) input.setText(currentName);
-        input.setHint("Device name (e.g. \"Kid's tablet\")");
+        input.setHint(R.string.hint_device_name_e_g_kid);
 
         new AlertDialog.Builder(this)
-                .setTitle("Rename " + device.getClientIp())
+                .setTitle(getString(R.string.dialog_rename_device, device.getClientIp()))
                 .setView(input)
-                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.proxy_sub_add_confirm, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         hotspotManager.setClientName(device.getClientIp(), input.getText().toString());
                         refreshHotspotDevices();
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show();
     }
 
@@ -2294,7 +2297,7 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.hotspot_device_history_title) + " - " + device.getClientIp())
                 .setView(dialogView)
-                .setPositiveButton("Close", null)
+                .setPositiveButton(R.string.coexist_guide_close, null)
                 .create();
         dialog.show();
 
@@ -2317,13 +2320,13 @@ public class MainActivity extends AppCompatActivity {
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
         int current = hotspotManager.getGlobalDailyLimit();
         if (current > 0) input.setText(String.valueOf(current));
-        input.setHint("Global daily query limit (0 = no limit)");
+        input.setHint(R.string.hint_global_daily_query_limit_0);
 
         new AlertDialog.Builder(this)
-                .setTitle("Global daily query limit")
-                .setMessage("Once the total number of DNS queries across all devices reaches this in a day, further queries are blocked until midnight. This limits query count, not data/bandwidth - the resolver doesn't see the actual bytes transferred afterward.")
+                .setTitle(R.string.hotspot_global_limit_title)
+                .setMessage(R.string.dlg_once_the_total_number_of)
                 .setView(input)
-                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.proxy_sub_add_confirm, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         int limit = 0;
@@ -2335,7 +2338,7 @@ public class MainActivity extends AppCompatActivity {
                         refreshHotspotTab();
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.btn_cancel, null)
                 .show();
     }
 
@@ -2636,7 +2639,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 engine.getCache().clear();
-                Toast.makeText(MainActivity.this, "In-memory DNS cache cleared", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, R.string.toast_in_memory_dns_cache_cleared, Toast.LENGTH_SHORT).show();
                 refreshStats();
             }
         });
@@ -2706,9 +2709,9 @@ public class MainActivity extends AppCompatActivity {
                 if (json != null) {
                     ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                     cb.setPrimaryClip(ClipData.newPlainText("DNS Config JSON", json));
-                    Toast.makeText(MainActivity.this, "Configuration copied to clipboard!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.toast_configuration_copied_to_clipboard, Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(MainActivity.this, "Failed to export config", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.toast_failed_to_export_config, Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -2717,27 +2720,27 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 final EditText etJson = new EditText(MainActivity.this);
-                etJson.setHint("Paste JSON configuration here…");
+                etJson.setHint(R.string.hint_paste_json_configuration_here);
                 etJson.setMinLines(5);
                 etJson.setMaxLines(10);
 
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Import Configuration")
+                        .setTitle(R.string.dlg_import_configuration)
                         .setView(etJson)
-                        .setPositiveButton("Import", new DialogInterface.OnClickListener() {
+                        .setPositiveButton(R.string.btn_import, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 String text = etJson.getText().toString().trim();
                                 if (ConfigBackupUtils.importConfigJson(MainActivity.this, text)) {
-                                    Toast.makeText(MainActivity.this, "Config imported successfully!", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(MainActivity.this, R.string.toast_config_imported_successfully, Toast.LENGTH_SHORT).show();
                                     setupSettings();
                                     refreshRules();
                                 } else {
-                                    Toast.makeText(MainActivity.this, "Invalid JSON configuration", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(MainActivity.this, R.string.toast_invalid_json_configuration, Toast.LENGTH_SHORT).show();
                                 }
                             }
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(R.string.btn_cancel, null)
                         .show();
             }
         });

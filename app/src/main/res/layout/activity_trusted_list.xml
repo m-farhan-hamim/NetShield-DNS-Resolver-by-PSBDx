@@ -19,7 +19,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
+            android:contentDescription="@string/wizard_back"
             android:src="@drawable/ic_back"
             app:tint="@color/text_primary" />
 
