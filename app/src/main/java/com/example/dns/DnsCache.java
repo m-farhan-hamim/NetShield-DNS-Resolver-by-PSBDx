@@ -35,7 +35,7 @@ public class DnsCache {
     }
 
     private String makeKey(String domain, int qType) {
-        return (domain + "#" + qType).toLowerCase();
+        return (domain + "#" + qType).toLowerCase(java.util.Locale.ROOT);
     }
 
     public synchronized byte[] get(String domain, int qType, int clientTransactionId) {

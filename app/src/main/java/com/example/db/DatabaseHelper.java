@@ -70,8 +70,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
-    @Override
-    public void onCreate(SQLiteDatabase db) {
+    private void createLogsTable(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + TABLE_LOGS + " ("
                 + COL_LOG_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + COL_LOG_TIME + " INTEGER, "
@@ -83,6 +82,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COL_LOG_CLIENT_IP + " TEXT)");
 
         db.execSQL("CREATE INDEX idx_logs_time ON " + TABLE_LOGS + " (" + COL_LOG_TIME + " DESC)");
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        createLogsTable(db);
 
         db.execSQL("CREATE TABLE " + TABLE_RULES + " ("
                 + COL_RULE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -149,10 +153,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // The query log is disposable (it is pruned anyway), so it may be rebuilt. The custom rules, local
+        // records and subscription sources are the user's own data: the old code dropped them on every
+        // version bump. Schema changes for them belong here as ALTER TABLE steps guarded by oldVersion.
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_LOGS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_RULES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_SOURCES);
-        onCreate(db);
+        db.execSQL("DROP INDEX IF EXISTS idx_logs_time");
+        createLogsTable(db);
+    }
+
+    @Override
+    public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // Installing an older build over a newer one used to crash on open; treat it like an upgrade.
+        onUpgrade(db, oldVersion, newVersion);
     }
 
     @Override
@@ -536,7 +548,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public synchronized long insertRule(CustomRule rule) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase());
+        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase(java.util.Locale.ROOT));
         cv.put(COL_RULE_TARGET_IP, rule.getTargetIp() != null ? rule.getTargetIp().trim() : "");
         cv.put(COL_RULE_TYPE, rule.getRuleType());
         cv.put(COL_RULE_ENABLED, rule.isEnabled() ? 1 : 0);
@@ -558,7 +570,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public synchronized void updateRule(CustomRule rule) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase());
+        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase(java.util.Locale.ROOT));
         cv.put(COL_RULE_TARGET_IP, rule.getTargetIp() != null ? rule.getTargetIp().trim() : "");
         cv.put(COL_RULE_TYPE, rule.getRuleType());
         cv.put(COL_RULE_ENABLED, rule.isEnabled() ? 1 : 0);

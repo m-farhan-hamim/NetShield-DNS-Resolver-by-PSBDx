@@ -39,11 +39,7 @@ public class QuickSettingsTileService extends TileService {
         if (!receiverRegistered) {
             IntentFilter filter = new IntentFilter(ServiceManager.ACTION_STATE_CHANGED);
             filter.addAction(BlocklistManager.ACTION_PAUSE_STATE_CHANGED);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.registerReceiver(this, stateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
-            } else {
-                registerReceiver(stateReceiver, filter);
-            }
+            ContextCompat.registerReceiver(this, stateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
             receiverRegistered = true;
         }
     }
@@ -80,6 +76,8 @@ public class QuickSettingsTileService extends TileService {
         launchConnectionCheck();
     }
 
+    // The Intent overload is deprecated from API 34 but is the only one below it; the branch is guarded.
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
     private void launchConnectionCheck() {
         Intent intent = new Intent(this, ConnectionCheckActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);

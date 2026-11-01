@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
@@ -29,7 +30,7 @@
             android:scaleX="0.4"
             android:scaleY="0.4"
             android:src="@drawable/ic_shield"
-            android:tint="@color/colorPrimary" />
+            app:tint="@color/colorPrimary" />
 
         <TextView
             android:id="@+id/tv_splash_app_name"

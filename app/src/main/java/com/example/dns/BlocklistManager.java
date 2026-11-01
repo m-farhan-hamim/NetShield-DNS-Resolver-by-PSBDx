@@ -96,7 +96,7 @@ public class BlocklistManager {
 
                     for (CustomRule r : rules) {
                         if (!r.isEnabled()) continue;
-                        String d = r.getDomain().trim().toLowerCase();
+                        String d = r.getDomain().trim().toLowerCase(java.util.Locale.ROOT);
                         if (CustomRule.TYPE_BLOCK.equals(r.getRuleType())) {
                             newBlocked.add(d);
                         } else if (CustomRule.TYPE_WHITE.equals(r.getRuleType())) {
@@ -126,7 +126,7 @@ public class BlocklistManager {
 
     public boolean isWhitelisted(String domain) {
         if (domain == null) return false;
-        String d = domain.toLowerCase();
+        String d = domain.toLowerCase(java.util.Locale.ROOT);
         if (whitelistDomains.contains(d)) return true;
 
         // Check parent domains
@@ -141,13 +141,13 @@ public class BlocklistManager {
 
     public String getCustomMapping(String domain) {
         if (domain == null) return null;
-        return customMappings.get(domain.toLowerCase());
+        return customMappings.get(domain.toLowerCase(java.util.Locale.ROOT));
     }
 
     public boolean isBlocked(String domain) {
         if (domain == null) return false;
         if (isPaused()) return false;
-        String d = domain.toLowerCase();
+        String d = domain.toLowerCase(java.util.Locale.ROOT);
 
         // 1. Whitelist takes precedence
         if (isWhitelisted(d)) return false;
@@ -172,10 +172,13 @@ public class BlocklistManager {
                 final Handler mainHandler = new Handler(Looper.getMainLooper());
                 try {
                     List<BlocklistSource> sources = dbHelper.getBlocklistSources();
-                    int totalSynced = 0;
+                    int attempted = 0;
+                    int failed = 0;
+                    String lastError = null;
 
                     for (final BlocklistSource source : sources) {
                         if (!source.isEnabled()) continue;
+                        attempted++;
 
                         mainHandler.post(new Runnable() {
                             @Override
@@ -186,11 +189,20 @@ public class BlocklistManager {
                             }
                         });
 
-                        int count = downloadAndParseSource(source.getUrl());
-                        source.setRuleCount(count);
-                        source.setLastUpdated(System.currentTimeMillis());
-                        dbHelper.updateBlocklistSource(source);
-                        totalSynced += count;
+                        try {
+                            int count = downloadAndParseSource(source.getUrl());
+                            source.setRuleCount(count);
+                            source.setLastUpdated(System.currentTimeMillis());
+                            dbHelper.updateBlocklistSource(source);
+                        } catch (Exception e) {
+                            // Keep the old rule count and "last updated" time, and carry on with the other sources.
+                            failed++;
+                            lastError = source.getName() + ": " + (e.getMessage() != null ? e.getMessage() : "download failed");
+                        }
+                    }
+
+                    if (attempted > 0 && failed == attempted) {
+                        throw new java.io.IOException(lastError != null ? lastError : "Sync failed");
                     }
 
                     final int finalTotal = blockedDomains.size();
@@ -216,7 +228,7 @@ public class BlocklistManager {
         });
     }
 
-    private int downloadAndParseSource(String sourceUrl) {
+    private int downloadAndParseSource(String sourceUrl) throws java.io.IOException {
         HttpURLConnection conn = null;
         int count = 0;
         try {
@@ -227,9 +239,13 @@ public class BlocklistManager {
             conn.setUseCaches(false);
             conn.setRequestProperty("User-Agent", "LocalDNS-Resolver/1.0");
 
-            if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+            int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK) {
+                throw new java.io.IOException("HTTP " + status);
+            }
+            {
                 InputStream is = conn.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8));
                 String line;
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
@@ -254,7 +270,7 @@ public class BlocklistManager {
                     }
 
                     if (domain != null) {
-                        domain = domain.toLowerCase();
+                        domain = domain.toLowerCase(java.util.Locale.ROOT);
                         if (!domain.equals("localhost") && !domain.equals("broadcasthost")
                                 && !domain.equals("local") && domain.contains(".")) {
                             blockedDomains.add(domain);
@@ -264,7 +280,6 @@ public class BlocklistManager {
                 }
                 reader.close();
             }
-        } catch (Exception ignored) {
         } finally {
             if (conn != null) {
                 conn.disconnect();

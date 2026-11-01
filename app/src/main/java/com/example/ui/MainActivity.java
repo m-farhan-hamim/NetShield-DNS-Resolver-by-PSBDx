@@ -368,11 +368,8 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(ServiceManager.ACTION_STATE_CHANGED);
         filter.addAction(DnsResolverEngine.ACTION_LOG_UPDATED);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(updateReceiver, filter);
-        }
+        // Our own broadcasts only; ContextCompat adds the flag where Android supports it.
+        ContextCompat.registerReceiver(this, updateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         updateServiceStatusUI();
         refreshStats();
         updatePauseUi();
@@ -1938,7 +1935,7 @@ public class MainActivity extends AppCompatActivity {
                     if ("MAPPINGS".equals(currentRuleSubtab)) ruleType = CustomRule.TYPE_MAPPING;
 
                     final List<CustomRule> rules = dbHelper.getRulesByType(ruleType);
-                    final String typeLabel = currentRuleSubtab.toLowerCase();
+                    final String typeLabel = currentRuleSubtab.toLowerCase(java.util.Locale.ROOT);
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
