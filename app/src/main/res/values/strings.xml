@@ -404,10 +404,9 @@
 
     <!-- Support overlay and help links -->
     <string name="support_title">Need support?</string>
-    <string name="support_intro">Pick how you would like to get help. The Telegram bot is the quickest way to reach us.</string>
-    <string name="support_telegram_bot">Ask the Telegram bot (suggested)</string>
+    <string name="support_intro">Pick how you would like to get help. The forum is the quickest way to reach us.</string>
+    <string name="support_forum">Ask on the PSBDx forum (suggested)</string>
     <string name="support_github">Open a GitHub issue</string>
-    <string name="support_community">Telegram community</string>
     <string name="support_wiki">App wiki</string>
     <string name="support_close">Close</string>
     <string name="about_community">Community</string>
@@ -435,7 +434,7 @@
         <item>Choose which apps use NetShield. You can now include ONLY the apps you pick, or exclude some, for both the DNS resolver and the proxy.</item>
         <item>Setup wizard for new installs, now with a remote list sync step. You can run it again from Settings, About.</item>
         <item>Android 17 and newer: a warning with advice to turn off battery optimization, so the system does not put NetShield to sleep.</item>
-        <item>Need support: the Telegram bot, GitHub, the Telegram community and the app wiki are one tap away, and the proxy screen has guides for Orbot, InviZible and v2rayNG.</item>
+        <item>Need support: the PSBDx forum, GitHub and the app wiki are one tap away, and the proxy screen has guides for Orbot, InviZible and v2rayNG.</item>
         <item>Fixed very high CPU use when Android closed the tunnel in the background, plus security and dependency fixes.</item>
     </string-array>
     <string name="whats_new_sync_title">Remote list sync</string>
@@ -456,7 +455,7 @@
     <string-array name="tour_bodies">
         <item>Open Settings, Apps and routing, then Choose apps. Pick \"Exclude\" to let some apps bypass NetShield, or \"Include only\" so just the apps you tick use it. Everything else, system apps too, connects directly. It works for DNS mode and for proxy mode. Restart protection after changing it.</item>
         <item>Blocklists are downloaded from the internet. Turn on auto sync and NetShield refreshes them every 24 hours in the background and shows a notification. You can also turn it off any time in Settings.</item>
-        <item>In Settings, About, \"Need support\" opens the Telegram bot (the quickest way), GitHub, the Telegram community and the wiki. On the proxy screen, the guide button shows how to put Orbot, InviZible or v2rayNG in proxy mode only.</item>
+        <item>In Settings, About, \"Need support\" opens the PSBDx forum (the quickest way), GitHub and the wiki. On the proxy screen, the guide button shows how to put Orbot, InviZible or v2rayNG in proxy mode only.</item>
         <item>If your phone runs Android 17 or newer, the system may put NetShield to sleep. Turn off battery optimization for NetShield, or set its battery usage to Unrestricted. You can open the settings from here.</item>
         <item>Setting up again, or helping a friend? Settings, About, \"Run setup wizard again\" walks through the VPN permission, notifications, DNS provider, battery and list sync.</item>
     </string-array>

@@ -13,14 +13,13 @@ import com.example.proxy.KnownProxyApps;
 
 /**
  * Every outside link NetShield offers for help, in one place. All of them are plain links opened
- * in the user's own browser or Telegram app: no SDK, no in-app web view, nothing is sent from here.
+ * in the user's own browser: no SDK, no in-app web view, nothing is sent from here.
  */
 public final class HelpLinks {
 
     public static final String GITHUB_ISSUES = "https://github.com/m-farhan-hamim/NetShield-DNS-Resolver-by-PSBDx/issues";
-    /** The suggested way to get help. */
-    public static final String TELEGRAM_BOT = "https://t.me/mfh_PSBDx_bot";
-    public static final String TELEGRAM_COMMUNITY = "https://t.me/psbdx_bd_comm";
+    /** The community forum, and also the suggested way to get help. */
+    public static final String FORUM = "https://forum.psbdx.com/";
     public static final String WIKI = "https://wiki.psbdx.com/category/netshield-dns-resolver";
     public static final String DOCS_ORBOT = "https://wiki.psbdx.com/wiki/how-to-switch-orbot-to-proxy-mode-only";
     public static final String DOCS_INVIZIBLE = "https://wiki.psbdx.com/wiki/how-to-switch-invizible-pro-to-proxy-mode-only";
