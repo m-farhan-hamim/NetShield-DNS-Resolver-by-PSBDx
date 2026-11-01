@@ -123,34 +123,30 @@ public class TrustedListActivity extends AppCompatActivity {
         final AppSelectAdapter picker = new AppSelectAdapter();
         rvApps.setAdapter(picker);
 
+        final android.widget.CheckBox cbSystem = view.findViewById(R.id.cb_show_system);
+        picker.setShowSystem(false);
+        cbSystem.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
+                picker.setShowSystem(isChecked);
+            }
+        });
         pbLoading.setVisibility(View.VISIBLE);
         final Set<String> currentTrusted = new java.util.HashSet<>(trustedListManager.getTrustedApps());
 
         backgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                PackageManager pm = getPackageManager();
-                List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-                final List<AppSelectAdapter.AppItem> appItems = new ArrayList<>();
-                for (ApplicationInfo app : apps) {
-                    try {
-                        String label = pm.getApplicationLabel(app).toString();
-                        Drawable icon = pm.getApplicationIcon(app);
-                        appItems.add(new AppSelectAdapter.AppItem(label, app.packageName, icon, false));
-                    } catch (Exception ignored) {
-                    }
-                }
-                Collections.sort(appItems, new Comparator<AppSelectAdapter.AppItem>() {
-                    @Override
-                    public int compare(AppSelectAdapter.AppItem o1, AppSelectAdapter.AppItem o2) {
-                        return o1.label.compareToIgnoreCase(o2.label);
-                    }
-                });
+                final List<AppSelectAdapter.AppItem> appItems = AppListLoader.loadItems(TrustedListActivity.this);
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
                         pbLoading.setVisibility(View.GONE);
+                        picker.setIconSource(getPackageManager());
                         picker.setItems(appItems, currentTrusted);
+                        if (picker.hasSelectedSystemApp()) {
+                            cbSystem.setChecked(true);
+                        }
                     }
                 });
             }
@@ -174,6 +170,12 @@ public class TrustedListActivity extends AppCompatActivity {
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
+                .setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(android.content.DialogInterface dialog) {
+                        picker.shutdown();
+                    }
+                })
                 .show();
     }
 
