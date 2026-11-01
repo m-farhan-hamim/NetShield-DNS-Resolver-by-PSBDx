@@ -2749,7 +2749,7 @@ public class MainActivity extends AppCompatActivity {
     private void showSplitTunnelDialog() {
         // One shared picker (exclude chosen apps / include ONLY chosen apps) for the DNS resolver
         // and the proxy; see AppRouting and AppRoutingDialog.
-        AppRoutingDialog.show(this, prefs, backgroundExecutor, new Runnable() {
+        AppRoutingDialog.show(this, prefs, backgroundExecutor, AppRouting.Scope.APP_WIDE, new Runnable() {
             @Override
             public void run() {
                 refreshRoutingSummary();
@@ -2771,7 +2771,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshRoutingSummary() {
         if (tvSplitTunnelSummary != null) {
-            tvSplitTunnelSummary.setText(AppRouting.summary(this, prefs));
+            tvSplitTunnelSummary.setText(AppRouting.summary(this, prefs, AppRouting.Scope.APP_WIDE));
         }
     }
 

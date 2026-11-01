@@ -14,27 +14,69 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Which apps go through NetShield's tunnel. One setting, shared by the DNS resolver and the
- * proxy mode, because both run inside the same VpnService.
+ * Which apps go where. There are two separate settings, each with an exclude and an include mode:
  *
- * Two modes, and Android does not allow mixing them on one VPN:
  * <ul>
- *   <li><b>Exclude</b> (the original behaviour, and still the default): every app uses
- *       NetShield except the ones you pick, which bypass it
- *       ({@link VpnService.Builder#addDisallowedApplication}).</li>
- *   <li><b>Include</b> (GitHub issue #26): ONLY the apps you pick use NetShield. Everything
- *       else - including system processes - stays on the normal direct connection
- *       ({@link VpnService.Builder#addAllowedApplication}).</li>
+ *   <li>{@link Scope#APP_WIDE} (Settings > Apps and routing): which apps use NetShield AT ALL. An app
+ *       outside it is not filtered and not proxied; it keeps the plain direct connection.</li>
+ *   <li>{@link Scope#PROXY} (the proxy screen): which apps use the PROXY. An app that skips the proxy
+ *       is still filtered by NetShield, it just connects directly.</li>
  * </ul>
- * The two lists are stored separately so switching mode never throws a list away.
+ *
+ * Android does not allow mixing allowed and disallowed apps on one VPN, hence the two modes, and the
+ * two lists of a scope are stored separately so switching mode never throws a list away.
  */
 public final class AppRouting {
 
-    public static final String KEY_MODE = "split_tunnel_mode";
-    /** Historical name from before include mode existed: the apps that BYPASS the tunnel. */
-    public static final String KEY_EXCLUDE = "split_tunnel_apps";
-    /** The apps that are the ONLY ones to use the tunnel while include mode is on. */
-    public static final String KEY_INCLUDE = "split_tunnel_include_apps";
+    public enum Scope {
+        APP_WIDE("split_tunnel_mode", "split_tunnel_apps", "split_tunnel_include_apps",
+                R.string.routing_dialog_title, R.string.routing_mode_exclude, R.string.routing_mode_include,
+                R.string.routing_desc_exclude, R.string.routing_desc_include,
+                R.string.routing_summary_exclude_none, R.plurals.routing_summary_exclude,
+                R.string.routing_summary_include_none, R.plurals.routing_summary_include,
+                R.string.routing_saved, R.string.routing_include_empty),
+        PROXY("proxy_route_mode", "proxy_route_exclude_apps", "proxy_route_include_apps",
+                R.string.proxy_routing_dialog_title, R.string.proxy_mode_exclude, R.string.proxy_mode_include,
+                R.string.proxy_desc_exclude, R.string.proxy_desc_include,
+                R.string.proxy_summary_exclude_none, R.plurals.proxy_summary_exclude,
+                R.string.proxy_summary_include_none, R.plurals.proxy_summary_include,
+                R.string.routing_saved, R.string.proxy_include_empty);
+
+        final String modeKey;
+        final String excludeKey;
+        final String includeKey;
+        public final int titleRes;
+        public final int modeExcludeRes;
+        public final int modeIncludeRes;
+        public final int descExcludeRes;
+        public final int descIncludeRes;
+        final int summaryExcludeNone;
+        final int summaryExcludePlural;
+        final int summaryIncludeNone;
+        final int summaryIncludePlural;
+        public final int savedRes;
+        public final int includeEmptyRes;
+
+        Scope(String modeKey, String excludeKey, String includeKey, int titleRes, int modeExcludeRes,
+              int modeIncludeRes, int descExcludeRes, int descIncludeRes, int summaryExcludeNone,
+              int summaryExcludePlural, int summaryIncludeNone, int summaryIncludePlural, int savedRes,
+              int includeEmptyRes) {
+            this.modeKey = modeKey;
+            this.excludeKey = excludeKey;
+            this.includeKey = includeKey;
+            this.titleRes = titleRes;
+            this.modeExcludeRes = modeExcludeRes;
+            this.modeIncludeRes = modeIncludeRes;
+            this.descExcludeRes = descExcludeRes;
+            this.descIncludeRes = descIncludeRes;
+            this.summaryExcludeNone = summaryExcludeNone;
+            this.summaryExcludePlural = summaryExcludePlural;
+            this.summaryIncludeNone = summaryIncludeNone;
+            this.summaryIncludePlural = summaryIncludePlural;
+            this.savedRes = savedRes;
+            this.includeEmptyRes = includeEmptyRes;
+        }
+    }
 
     public static final String MODE_EXCLUDE = "exclude";
     public static final String MODE_INCLUDE = "include";
@@ -44,24 +86,25 @@ public final class AppRouting {
     private AppRouting() {
     }
 
-    public static boolean isIncludeMode(SharedPreferences prefs) {
-        return MODE_INCLUDE.equals(prefs.getString(KEY_MODE, MODE_EXCLUDE));
+    public static boolean isIncludeMode(SharedPreferences prefs, Scope scope) {
+        return MODE_INCLUDE.equals(prefs.getString(scope.modeKey, MODE_EXCLUDE));
     }
 
-    public static Set<String> getExcluded(SharedPreferences prefs) {
-        return copyOf(prefs.getStringSet(KEY_EXCLUDE, null));
+    public static Set<String> getExcluded(SharedPreferences prefs, Scope scope) {
+        return copyOf(prefs.getStringSet(scope.excludeKey, null));
     }
 
-    public static Set<String> getIncluded(SharedPreferences prefs) {
-        return copyOf(prefs.getStringSet(KEY_INCLUDE, null));
+    public static Set<String> getIncluded(SharedPreferences prefs, Scope scope) {
+        return copyOf(prefs.getStringSet(scope.includeKey, null));
     }
 
-    /** Saves the mode and both lists in one commit-free (apply) edit. */
-    public static void save(SharedPreferences prefs, boolean includeMode, Set<String> excluded, Set<String> included) {
+    /** Saves the mode and both lists of a scope in one edit. */
+    public static void save(SharedPreferences prefs, Scope scope, boolean includeMode,
+                            Set<String> excluded, Set<String> included) {
         prefs.edit()
-                .putString(KEY_MODE, includeMode ? MODE_INCLUDE : MODE_EXCLUDE)
-                .putStringSet(KEY_EXCLUDE, new HashSet<>(excluded))
-                .putStringSet(KEY_INCLUDE, new HashSet<>(included))
+                .putString(scope.modeKey, includeMode ? MODE_INCLUDE : MODE_EXCLUDE)
+                .putStringSet(scope.excludeKey, new HashSet<>(excluded))
+                .putStringSet(scope.includeKey, new HashSet<>(included))
                 .apply();
     }
 
@@ -79,7 +122,7 @@ public final class AppRouting {
     }
 
     /**
-     * Applies the saved routing to a VPN being built. Must be called exactly once per Builder,
+     * Applies the APP_WIDE routing to a VPN being built. Must be called exactly once per Builder,
      * after the routes are set.
      *
      * @param ownPackage   this app's package name
@@ -87,9 +130,10 @@ public final class AppRouting {
      */
     public static void apply(VpnService.Builder builder, SharedPreferences prefs,
                              String ownPackage, @Nullable String proxyPackage) {
-        if (isIncludeMode(prefs)) {
+        final Scope scope = Scope.APP_WIDE;
+        if (isIncludeMode(prefs, scope)) {
             int added = 0;
-            for (String pkg : effectiveIncludeList(getIncluded(prefs), proxyPackage)) {
+            for (String pkg : effectiveIncludeList(getIncluded(prefs, scope), proxyPackage)) {
                 try {
                     builder.addAllowedApplication(pkg);
                     added++;
@@ -117,7 +161,7 @@ public final class AppRouting {
                 Log.d(TAG, "Proxy app not installed, nothing to exclude");
             }
         }
-        for (String pkg : getExcluded(prefs)) {
+        for (String pkg : getExcluded(prefs, scope)) {
             try {
                 builder.addDisallowedApplication(pkg);
             } catch (Exception e) {
@@ -127,17 +171,17 @@ public final class AppRouting {
     }
 
     /** One line for the Settings card and the proxy screen. */
-    public static String summary(Context context, SharedPreferences prefs) {
-        if (isIncludeMode(prefs)) {
-            int n = getIncluded(prefs).size();
+    public static String summary(Context context, SharedPreferences prefs, Scope scope) {
+        if (isIncludeMode(prefs, scope)) {
+            int n = getIncluded(prefs, scope).size();
             return n == 0
-                    ? context.getString(R.string.routing_summary_include_none)
-                    : context.getResources().getQuantityString(R.plurals.routing_summary_include, n, n);
+                    ? context.getString(scope.summaryIncludeNone)
+                    : context.getResources().getQuantityString(scope.summaryIncludePlural, n, n);
         }
-        int n = getExcluded(prefs).size();
+        int n = getExcluded(prefs, scope).size();
         return n == 0
-                ? context.getString(R.string.routing_summary_exclude_none)
-                : context.getResources().getQuantityString(R.plurals.routing_summary_exclude, n, n);
+                ? context.getString(scope.summaryExcludeNone)
+                : context.getResources().getQuantityString(scope.summaryExcludePlural, n, n);
     }
 
     private static Set<String> copyOf(@Nullable Set<String> stored) {

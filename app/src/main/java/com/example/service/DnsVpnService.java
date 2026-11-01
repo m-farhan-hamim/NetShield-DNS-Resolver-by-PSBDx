@@ -17,6 +17,7 @@ import com.example.dns.UpstreamNet;
 import com.example.proxy.ProxySettings;
 import com.example.proxy.ProxyStatus;
 import com.example.proxy.core.ProxyEndpoint;
+import com.example.proxy.ProxyAppRouter;
 import com.example.proxy.core.ProxyTunEngine;
 import com.example.proxy.core.RouteMath;
 import com.example.proxy.core.Socks5Exception;
@@ -206,6 +207,10 @@ public class DnsVpnService extends VpnService {
         UpstreamNet.init(this);
         UpstreamNet.setProxy(endpoint); // DNS lookups travel through the proxy too
         ProxyStatus.set(this, false);
+        // Per-app choice of proxy or direct (the proxy screen's own exclude/include setting). Apps that
+        // skip the proxy still pass through here, so NetShield's DNS filtering keeps applying to them.
+        final ProxyAppRouter appRouter = new ProxyAppRouter(this,
+                getSharedPreferences(DnsResolverEngine.PREFS_NAME, Context.MODE_PRIVATE));
         proxyEngine = new ProxyTunEngine(endpoint,
                 new ProxyTunEngine.PacketSink() {
                     @Override
@@ -236,7 +241,16 @@ public class DnsVpnService extends VpnService {
                     public void onProxyUp() {
                         postProxyStatus(false);
                     }
-                }, true);
+                }, true,
+                appRouter.isActive() ? appRouter : null,
+                new ProxyTunEngine.SocketProtector() {
+                    @Override
+                    public void protect(java.net.Socket socket) throws IOException {
+                        if (!DnsVpnService.this.protect(socket)) {
+                            throw new IOException("cannot protect socket from the VPN");
+                        }
+                    }
+                });
         showStatus(getString(R.string.status_vpn_proxy_running));
     }
 

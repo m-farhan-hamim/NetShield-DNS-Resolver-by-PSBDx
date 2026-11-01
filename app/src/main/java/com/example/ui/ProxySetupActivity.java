@@ -187,7 +187,7 @@ public class ProxySetupActivity extends AppCompatActivity {
         findViewById(R.id.btn_proxy_choose_apps).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AppRoutingDialog.show(ProxySetupActivity.this, routingPrefs, backgroundExecutor, new Runnable() {
+                AppRoutingDialog.show(ProxySetupActivity.this, routingPrefs, backgroundExecutor, AppRouting.Scope.PROXY, new Runnable() {
                     @Override
                     public void run() {
                         refreshAppsSummary();
@@ -476,7 +476,7 @@ public class ProxySetupActivity extends AppCompatActivity {
 
     private void refreshAppsSummary() {
         if (tvAppsSummary != null) {
-            tvAppsSummary.setText(AppRouting.summary(this, routingPrefs));
+            tvAppsSummary.setText(AppRouting.summary(this, routingPrefs, AppRouting.Scope.PROXY));
         }
     }
 

@@ -11,6 +11,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 
 import com.example.R;
+import com.example.util.AppRouting;
 import com.example.util.BatteryOptimizationHelper;
 import com.example.util.RemoteSyncScheduler;
 
@@ -61,7 +62,7 @@ public final class FeatureTour {
             public void onClick(View v) {
                 switch (index[0]) {
                     case 0: // app routing
-                        AppRoutingDialog.show(activity, prefs, background, null);
+                        AppRoutingDialog.show(activity, prefs, background, AppRouting.Scope.APP_WIDE, null);
                         break;
                     case 1: // remote list sync: turn it on right here
                         RemoteSyncScheduler.setEnabled(activity, true);
