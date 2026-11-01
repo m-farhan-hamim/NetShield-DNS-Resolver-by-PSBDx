@@ -55,8 +55,8 @@ public class BlocklistSourceAdapter extends RecyclerView.Adapter<BlocklistSource
         holder.tvName.setText(source.getName());
         holder.tvUrl.setText(source.getUrl());
 
-        String lastSyncStr = source.getLastUpdated() > 0 ? dateFormat.format(new Date(source.getLastUpdated())) : "Never synced";
-        holder.tvStats.setText(String.format(Locale.getDefault(), "%,d rules loaded • Last synced: %s", source.getRuleCount(), lastSyncStr));
+        String lastSyncStr = source.getLastUpdated() > 0 ? dateFormat.format(new Date(source.getLastUpdated())) : holder.itemView.getContext().getString(R.string.source_never_synced);
+        holder.tvStats.setText(holder.itemView.getContext().getString(R.string.source_stats, source.getRuleCount(), lastSyncStr));
 
         holder.switchEnabled.setOnCheckedChangeListener(null);
         holder.switchEnabled.setChecked(source.isEnabled());

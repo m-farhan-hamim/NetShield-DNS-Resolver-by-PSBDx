@@ -27,7 +27,7 @@
                 android:id="@+id/tv_benchmark_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Cloudflare"
+                android:text="@string/dns_preset_cloudflare"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -42,7 +42,7 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
-                android:text="FASTEST"
+                android:text="@string/ui_fastest"
                 android:textColor="@color/on_primary"
                 android:textSize="9sp"
                 android:textStyle="bold"
@@ -84,7 +84,7 @@
         android:minWidth="0dp"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:text="Use"
+        android:text="@string/ui_use"
         android:textColor="@color/colorPrimary"
         android:textSize="12sp"
         android:textStyle="bold" />

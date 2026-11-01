@@ -12,7 +12,7 @@
         android:id="@+id/iv_app_icon"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:contentDescription="App icon"
+        android:contentDescription="@string/ui_app_icon"
         android:src="@drawable/ic_shield" />
 
     <LinearLayout
@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Chrome"
+            android:text="@string/ui_chrome"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -40,7 +40,7 @@
             android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="com.android.chrome"
+            android:text="@string/ui_com_android_chrome"
             android:textColor="@color/text_secondary"
             android:textSize="11sp" />
     </LinearLayout>

@@ -173,13 +173,13 @@ public class ConnectionCheckActivity extends AppCompatActivity {
         ProgressBar bar = new ProgressBar(c);
         row.addView(bar, new LinearLayout.LayoutParams(dp(36), dp(36)));
         TextView tv = new TextView(c);
-        tv.setText("Checking that your DNS upstream is reachable\u2026");
+        tv.setText(R.string.txt_checking_that_your_dns_upstream);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         lp.leftMargin = dp(16);
         row.addView(tv, lp);
 
-        dialog = b.setTitle("Verifying connection")
+        dialog = b.setTitle(R.string.dlg_verifying_connection)
                 .setView(row)
                 .setOnCancelListener(new DialogInterface.OnCancelListener() {
                     @Override
@@ -202,8 +202,7 @@ public class ConnectionCheckActivity extends AppCompatActivity {
         col.setPadding(pad, dp(12), pad, 0);
 
         TextView intro = new TextView(c);
-        intro.setText("NetShield couldn't connect using " + result.method
-                + ". If this keeps happening, please report it at:");
+        intro.setText(getString(R.string.conn_failed_intro, result.method));
         intro.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         col.addView(intro);
 
@@ -219,7 +218,7 @@ public class ConnectionCheckActivity extends AppCompatActivity {
 
         // Copy block: selectable monospace error + one-tap copy.
         TextView copy = new TextView(c);
-        copy.setText("Copy error");
+        copy.setText(R.string.txt_copy_error);
         copy.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         copy.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         copy.setPadding(0, dp(12), 0, dp(4));
@@ -231,7 +230,7 @@ public class ConnectionCheckActivity extends AppCompatActivity {
                 ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                 if (cm != null) {
                     cm.setPrimaryClip(ClipData.newPlainText("NetShield error", result.error));
-                    Toast.makeText(ConnectionCheckActivity.this, "Error copied", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ConnectionCheckActivity.this, R.string.toast_error_copied, Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -254,8 +253,7 @@ public class ConnectionCheckActivity extends AppCompatActivity {
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(150)));
 
         TextView ask = new TextView(c);
-        ask.setText("Would you like to connect using Google UDP (8.8.8.8) instead? "
-                + "This switches your upstream setting to plain UDP.");
+        ask.setText(getString(R.string.conn_ask_udp));
         ask.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         ask.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         LinearLayout.LayoutParams askLp = new LinearLayout.LayoutParams(
@@ -263,10 +261,10 @@ public class ConnectionCheckActivity extends AppCompatActivity {
         askLp.topMargin = dp(14);
         col.addView(ask, askLp);
 
-        dialog = b.setTitle("Connection failed")
+        dialog = b.setTitle(R.string.dlg_connection_failed)
                 .setView(col)
                 .setCancelable(false)
-                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.btn_yes, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which) {
                         SharedPreferences prefs = getSharedPreferences(DnsResolverEngine.PREFS_NAME, MODE_PRIVATE);

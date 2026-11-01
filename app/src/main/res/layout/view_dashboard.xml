@@ -26,7 +26,7 @@
                 android:id="@+id/iv_status_icon"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
-                android:contentDescription="Status icon"
+                android:contentDescription="@string/ui_status_icon"
                 android:src="@drawable/ic_shield" />
 
             <TextView
@@ -45,7 +45,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:gravity="center"
-                android:text="Tap start below to enable local privacy protection"
+                android:text="@string/ui_tap_start_below_to_enable"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
@@ -148,7 +148,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="RESOLVER OPERATION MODE"
+                android:text="@string/ui_resolver_operation_mode"
                 android:textColor="@color/colorPrimary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -250,7 +250,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
-            android:text="REAL-TIME RESOLVER ANALYTICS"
+            android:text="@string/ui_real_time_resolver_analytics"
             android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -392,7 +392,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="LIVE QUERY INSPECTOR"
+                android:text="@string/ui_live_query_inspector"
                 android:textColor="@color/colorPrimary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -438,7 +438,7 @@
                 android:layout_marginTop="10dp"
                 android:background="@drawable/bg_badge"
                 android:padding="10dp"
-                android:text="Ready for query test. Enter domain above."
+                android:text="@string/ui_ready_for_query_test_enter"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>

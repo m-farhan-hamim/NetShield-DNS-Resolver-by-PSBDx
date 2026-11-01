@@ -52,13 +52,13 @@ public class TopDomainAdapter extends RecyclerView.Adapter<TopDomainAdapter.View
         final DomainStat stat = items.get(position);
         holder.tvRank.setText(String.valueOf(position + 1));
         holder.tvDomain.setText(stat.getDomain());
-        holder.tvCount.setText(String.format(Locale.getDefault(), "%,d hits", stat.getCount()));
+        holder.tvCount.setText(holder.itemView.getContext().getString(R.string.top_domain_hits, stat.getCount()));
 
         if (isBlockedList) {
-            holder.btnAction.setText("Whitelist");
+            holder.btnAction.setText(R.string.subtab_whitelist);
             holder.btnAction.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.colorAllowed));
         } else {
-            holder.btnAction.setText("Block");
+            holder.btnAction.setText(R.string.txt_block);
             holder.btnAction.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.colorBlocked));
         }
 

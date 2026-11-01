@@ -186,7 +186,6 @@
     <string name="trusted_apps_title">Trusted apps</string>
     <string name="trusted_apps_hint">Requires Android 10+ and VPN mode to identify which app a query came from.</string>
     <string name="trusted_apps_empty">No trusted apps added</string>
-    <string name="tagline">Local Resolver &amp; Privacy Sinkhole</string>
 
     <!-- Navigation Tabs -->
     <string name="tab_dashboard">Dashboard</string>
@@ -197,7 +196,6 @@
 
     <!-- Dashboard -->
     <string name="status_stopped">Service Inactive</string>
-    <string name="status_stopping">STOPPING…</string>
     <string name="status_server_running">Local UDP Server Active</string>
     <string name="status_vpn_running">Local VPN Sinkhole Active</string>
     <string name="btn_start">START RESOLVER</string>
@@ -208,7 +206,6 @@
     <string name="mode_server_desc">Runs UDP listener on 127.0.0.1 for custom apps/routers</string>
     <string name="server_address_label">Local Server Endpoint</string>
     <string name="copy_address">Copy</string>
-    <string name="address_copied">Listening address copied to clipboard</string>
 
     <string name="stat_total_queries">Total Queries</string>
     <string name="stat_blocked_queries">Blocked</string>
@@ -217,7 +214,6 @@
 
     <string name="test_query_hint">Enter domain to test (e.g., google.com)</string>
     <string name="btn_test_resolve">Test Resolve</string>
-    <string name="test_result_ready">Resolved: %1$s in %2$d ms (%3$s)</string>
 
     <!-- Logs -->
     <string name="logs_search_hint">Search domain or time (14:30, 10-05)…</string>
@@ -230,9 +226,7 @@
     <string name="filter_all">All</string>
     <string name="filter_blocked">Blocked</string>
     <string name="filter_allowed">Allowed</string>
-    <string name="filter_cached">Cached</string>
     <string name="btn_clear_logs">Clear Logs</string>
-    <string name="logs_cleared">Logs cleared successfully</string>
     <string name="no_logs_found">No DNS queries recorded yet</string>
 
     <!-- Rules & Sinkhole -->
@@ -253,17 +247,9 @@
     <string name="hint_source_url">Blocklist URL (raw hosts or domains)</string>
     <string name="dialog_split_tunnel_title">Bypass Apps (Split Tunneling)</string>
     <string name="btn_sync_all">Sync Blocklists</string>
-    <string name="sync_started">Downloading remote blocklists…</string>
-    <string name="sync_finished">Blocklists updated! Total %1$d rules active</string>
-    <string name="dialog_add_domain_title">Add Domain Rule</string>
-    <string name="dialog_domain_hint">e.g., ads.example.com</string>
-    <string name="dialog_ip_hint">e.g., 192.168.1.1 (for mapping)</string>
-    <string name="rule_added">Rule saved successfully</string>
-    <string name="rule_deleted">Rule removed</string>
 
     <!-- Settings -->
     <string name="pref_category_upstream">Upstream DNS Resolver</string>
-    <string name="upstream_mode_label">Security Protocol</string>
     <string name="upstream_udp">Standard UDP (Plain)</string>
     <string name="upstream_doh">DNS-over-HTTPS (DoH)</string>
     <string name="upstream_dot">DNS-over-TLS (DoT)</string>
@@ -273,7 +259,6 @@
     <string name="secondary_dns_label">Secondary DNS IP</string>
 
     <string name="pref_category_block">Sinkhole Behavior</string>
-    <string name="block_action_label">Block Response Action</string>
     <string name="block_action_zero">Return 0.0.0.0 (Recommended)</string>
     <string name="block_action_nxdomain">Return NXDOMAIN (Not Found)</string>
 
@@ -281,10 +266,8 @@
     <string name="cache_enable_label">In-Memory Smart DNS Cache (LRU + TTL)</string>
     <string name="cache_enable_desc">Responds instantaneously from memory while TTL is valid</string>
     <string name="btn_clear_cache">Clear DNS Cache</string>
-    <string name="cache_cleared">DNS cache cleared</string>
 
     <string name="pref_category_routing">Per-App Split Tunneling</string>
-    <string name="split_tunnel_title">Bypass Apps (Split Tunneling)</string>
     <string name="split_tunnel_desc">Choose which apps use NetShield: exclude a few, or include only the ones you pick</string>
     <string name="btn_select_apps">Choose apps</string>
 
@@ -296,10 +279,6 @@
     <string name="server_port_label">Local Server UDP Port</string>
 
     <string name="pref_category_backup">Backup &amp; Restore</string>
-    <string name="btn_export_json">Export Configuration (JSON)</string>
-    <string name="btn_import_json">Import Configuration (JSON)</string>
-    <string name="config_exported">Configuration copied to clipboard</string>
-    <string name="config_imported">Configuration imported successfully</string>
 
     <string name="pref_category_about">About</string>
     <string name="about_disclaimer">This app has been built by PSBDx (M. Farhan Hamim). Significant use of Google AI and Anthropic AI has been made.</string>
@@ -324,8 +303,6 @@
     <string name="notification_channel_desc">Shows active DNS status and real-time query metrics</string>
     <string name="action_stop">Stop</string>
     <string name="notification_live_status">%1$.1f q/s • %2$.0f ms avg • %3$d total, %4$d blocked</string>
-    <string name="action_pause_5m">Pause 5m</string>
-    <string name="action_resume">Resume</string>
 
     <!-- First-run setup wizard -->
     <string name="wizard_step_format">Step %1$d of %2$d</string>
@@ -361,9 +338,6 @@
 
     <!-- Traffic Dashboard & Features -->
     <string name="traffic_title">Network Traffic &amp; Diagnostics</string>
-    <string name="traffic_throughput_title">Live Query Throughput</string>
-    <string name="traffic_throughput_unit">queries / min</string>
-    <string name="traffic_avg_latency">Average Query Latency</string>
     <string name="traffic_top_blocked">Top Blocked Domains (Sinkhole)</string>
     <string name="traffic_top_allowed">Most Queried Domains</string>
     <string name="traffic_query_types">Record Type Breakdown</string>
@@ -374,7 +348,6 @@
     <string name="pause_5m">Pause 5 Min</string>
     <string name="pause_15m">Pause 15 Min</string>
     <string name="resume_protection">Resume Blocking</string>
-    <string name="protection_paused_notice">Protection paused (%1$s remaining)</string>
     <string name="dns_preset_cloudflare">Cloudflare</string>
     <string name="dns_preset_google">Google</string>
     <string name="dns_preset_adguard">AdGuard</string>
@@ -486,4 +459,135 @@
     </plurals>
 
     <string name="apps_show_system">Show system apps</string>
+
+    <!-- Text that used to be hard-coded in layouts and Java code (now translatable) -->
+    <string name="toast_copied_address">Copied address: %1$s</string>
+    <string name="toast_resume_failed">Couldn\'t resume protection: %1$s</string>
+    <string name="toast_paused_for">Sinkhole blocking paused for %1$s</string>
+    <string name="toast_pause_failed">Couldn\'t pause protection: %1$s</string>
+    <string name="pause_status_format">Protection paused (%1$02d:%2$02d remaining)</string>
+    <string name="toast_upstream_changed">Active upstream changed to %1$s</string>
+    <string name="toast_sync_complete">Sync complete! Loaded %1$d rules.</string>
+    <string name="toast_sync_error">Sync error: %1$s</string>
+    <string name="toast_rule_added">Rule added for %1$s</string>
+    <string name="toast_removed">Removed %1$s</string>
+    <string name="dialog_set_limit_for">Set limit for %1$s</string>
+    <string name="dialog_rename_device">Rename %1$s</string>
+    <string name="hotspot_global_usage">%1$d / %2$d queries today</string>
+    <string name="hotspot_global_usage_no_limit">%1$d queries today • no limit set</string>
+    <string name="header_listening">LISTENING (127.0.0.1:%1$d)</string>
+    <string name="dashboard_subtitle_server">Ready for local client sockets on port %1$d</string>
+    <string name="test_querying">Querying DNS engine for \'%1$s\'…</string>
+    <string name="test_error">Error: %1$s</string>
+    <string name="traffic_upstream_doh">DoH: %1$s</string>
+    <string name="traffic_throughput_qpm">%1$d q/m</string>
+    <string name="latency_ms">%1$d ms</string>
+    <string name="latency_ms_decimal">%1$.1f ms</string>
+    <string name="latency_under_1ms">&lt; 1 ms</string>
+    <string name="rules_sources_configured">%1$d subscription sources configured</string>
+    <string name="rules_active_blocklist">%1$d blocklist rules active</string>
+    <string name="rules_active_whitelist">%1$d whitelist rules active</string>
+    <string name="rules_active_mappings">%1$d local record rules active</string>
+    <string name="rules_none_blocklist">No blocklist rules defined</string>
+    <string name="rules_none_whitelist">No whitelist rules defined</string>
+    <string name="rules_none_mappings">No local records defined</string>
+    <string name="source_stats">%1$,d rules loaded • Last synced: %2$s</string>
+    <string name="source_never_synced">Never synced</string>
+    <string name="top_domain_hits">%1$,d hits</string>
+    <string name="hotspot_daily_limit">Daily limit: %1$d queries</string>
+    <string name="log_upstream_client">%1$s • Client: %2$s</string>
+    <string name="log_unknown">Unknown</string>
+    <string name="rule_target_ip">Target IP: %1$s</string>
+    <string name="conn_failed_intro">NetShield couldn\'t connect using %1$s. If this keeps happening, please report it at:</string>
+    <string name="conn_ask_udp">Would you like to connect using Google UDP (8.8.8.8) instead? This switches your upstream setting to plain UDP.</string>
+    <string name="widget_trend_format">%1$s %2$d%% vs yesterday at this time</string>
+    <string name="txt_timeout">Timeout</string>
+    <string name="toast_error_copied">Error copied</string>
+    <string name="dlg_verifying_connection">Verifying connection</string>
+    <string name="dlg_connection_failed">Connection failed</string>
+    <string name="btn_yes">Yes</string>
+    <string name="txt_checking_that_your_dns_upstream">Checking that your DNS upstream is reachable…</string>
+    <string name="txt_copy_error">Copy error</string>
+    <string name="toast_sinkhole_protection_resumed">Sinkhole protection resumed</string>
+    <string name="toast_please_enter_a_domain_name">Please enter a domain name</string>
+    <string name="toast_dns_memory_cache_flushed">DNS memory cache flushed</string>
+    <string name="toast_logs_csv_copied_to_clipboard">Logs CSV copied to clipboard</string>
+    <string name="toast_copied_domain_to_clipboard">Copied domain to clipboard</string>
+    <string name="toast_syncing_remote_blocklists_in_background">Syncing remote blocklists in background…</string>
+    <string name="toast_domain_cannot_be_empty">Domain cannot be empty</string>
+    <string name="toast_name_and_url_are_required">Name and URL are required</string>
+    <string name="toast_source_added">Source added</string>
+    <string name="toast_couldn_t_open_hotspot_settings">Couldn\'t open hotspot settings on this device</string>
+    <string name="toast_in_memory_dns_cache_cleared">In-memory DNS cache cleared</string>
+    <string name="toast_configuration_copied_to_clipboard">Configuration copied to clipboard!</string>
+    <string name="toast_failed_to_export_config">Failed to export config</string>
+    <string name="toast_config_imported_successfully">Config imported successfully!</string>
+    <string name="toast_invalid_json_configuration">Invalid JSON configuration</string>
+    <string name="dlg_import_configuration">Import Configuration</string>
+    <string name="dlg_are_you_sure_you_want">Are you sure you want to erase all query logs?</string>
+    <string name="dlg_once_the_total_number_of">Once the total number of DNS queries across all devices reaches this in a day, further queries are blocked until midnight. This limits query count, not data/bandwidth - the resolver doesn\'t see the actual bytes transferred afterward.</string>
+    <string name="btn_add_source_2">Add Source</string>
+    <string name="btn_import">Import</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="hint_daily_query_limit_0_no">Daily query limit (0 = no limit)</string>
+    <string name="hint_device_name_e_g_kid">Device name (e.g. \"Kid\'s tablet\")</string>
+    <string name="hint_global_daily_query_limit_0">Global daily query limit (0 = no limit)</string>
+    <string name="hint_paste_json_configuration_here">Paste JSON configuration here…</string>
+    <string name="txt_protected_vpn">PROTECTED (VPN)</string>
+    <string name="txt_filtering_all_system_dns_queries">Filtering all system DNS queries via local VPN sinkhole</string>
+    <string name="txt_no_remote_subscription_sources">No remote subscription sources</string>
+    <string name="txt_no_devices_found_or_unavailable">No devices found (or unavailable on this device)</string>
+    <string name="txt_block">Block</string>
+    <string name="toast_enter_a_domain_first">Enter a domain first</string>
+    <string name="ui_app_logo">App Logo</string>
+    <string name="ui_e_g_ads_example_com">e.g. ads.example.com</string>
+    <string name="ui_rule_action_type">RULE ACTION TYPE</string>
+    <string name="ui_e_g_stevenblack_hosts">e.g. StevenBlack Hosts</string>
+    <string name="ui_selected_apps_will_bypass_vpn">Selected apps will bypass VPN and resolve DNS via standard network.</string>
+    <string name="ui_search_installed_applications">Search installed applications…</string>
+    <string name="ui_app_icon">App icon</string>
+    <string name="ui_chrome">Chrome</string>
+    <string name="ui_com_android_chrome">com.android.chrome</string>
+    <string name="ui_fastest">FASTEST</string>
+    <string name="ui_use">Use</string>
+    <string name="ui_adaway_default_blocklist">AdAway Default Blocklist</string>
+    <string name="ui_42_150_active_rules_last">42,150 active rules • Last synced: Today</string>
+    <string name="ui_delete_source">Delete source</string>
+    <string name="ui_allowed">ALLOWED</string>
+    <string name="ui_doh_cloudflare_dns_com_client">DoH (cloudflare-dns.com) • Client: 127.0.0.1</string>
+    <string name="ui_ads_example_com">ads.example.com</string>
+    <string name="ui_target_192_168_1_1">Target: 192.168.1.1</string>
+    <string name="ui_delete_rule">Delete rule</string>
+    <string name="ui_analytics_google_com">analytics.google.com</string>
+    <string name="ui_42_hits">42 hits</string>
+    <string name="ui_remove">Remove</string>
+    <string name="ui_delete_profile">Delete profile</string>
+    <string name="ui_status_icon">Status icon</string>
+    <string name="ui_tap_start_below_to_enable">Tap start below to enable local privacy protection</string>
+    <string name="ui_resolver_operation_mode">RESOLVER OPERATION MODE</string>
+    <string name="ui_real_time_resolver_analytics">REAL-TIME RESOLVER ANALYTICS</string>
+    <string name="ui_live_query_inspector">LIVE QUERY INSPECTOR</string>
+    <string name="ui_ready_for_query_test_enter">Ready for query test. Enter domain above.</string>
+    <string name="ui_search">Search</string>
+    <string name="ui_recent_resolver_queries_last_72">RECENT RESOLVER QUERIES (LAST 72 HOURS)</string>
+    <string name="ui_no_logs">No logs</string>
+    <string name="ui_3_rules_configured">3 rules configured</string>
+    <string name="ui_no_rules">No rules</string>
+    <string name="ui_no_rules_in_this_category">No rules in this category</string>
+    <string name="ui_quick_provider_presets">QUICK PROVIDER PRESETS</string>
+    <string name="ui_dns_google">dns.google</string>
+    <string name="ui_export_json">Export JSON</string>
+    <string name="ui_import_json">Import JSON</string>
+    <string name="ui_traffic_icon">Traffic Icon</string>
+    <string name="ui_doh_cloudflare">DoH: Cloudflare</string>
+    <string name="ui_throughput">Throughput</string>
+    <string name="ui_avg_latency">Avg Latency</string>
+    <string name="ui_cache_hit">Cache Hit %</string>
+    <string name="ui_query_timeline_activity">QUERY TIMELINE ACTIVITY</string>
+    <string name="ui_no_blocked_domains_recorded_yet">No blocked domains recorded yet</string>
+    <string name="ui_no_queries_recorded_yet">No queries recorded yet</string>
+    <string name="ui_type_a">Type A</string>
+    <string name="ui_aaaa_v6">AAAA (v6)</string>
+    <string name="ui_https">HTTPS</string>
+    <string name="ui_other">Other</string>
 </resources>

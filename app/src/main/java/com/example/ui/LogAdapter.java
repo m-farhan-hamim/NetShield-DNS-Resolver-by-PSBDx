@@ -54,9 +54,10 @@ public class LogAdapter extends RecyclerView.Adapter<LogAdapter.LogViewHolder> {
         holder.tvDomain.setText(log.getDomain());
         holder.tvQueryType.setText(log.getQueryType() != null ? log.getQueryType() : "A");
         holder.tvTime.setText(timeFormat.format(new Date(log.getTimestamp())));
-        holder.tvLatency.setText(log.getResponseTimeMs() + " ms");
-        holder.tvUpstream.setText((log.getUpstream() != null ? log.getUpstream() : "Unknown")
-                + " • Client: " + (log.getClientIp() != null ? log.getClientIp() : "127.0.0.1"));
+        holder.tvLatency.setText(holder.itemView.getContext().getString(R.string.latency_ms, log.getResponseTimeMs()));
+        holder.tvUpstream.setText(holder.itemView.getContext().getString(R.string.log_upstream_client,
+                log.getUpstream() != null ? log.getUpstream() : holder.itemView.getContext().getString(R.string.log_unknown),
+                log.getClientIp() != null ? log.getClientIp() : "127.0.0.1"));
 
         Context context = holder.itemView.getContext();
         String status = log.getStatus() != null ? log.getStatus() : "ALLOWED";

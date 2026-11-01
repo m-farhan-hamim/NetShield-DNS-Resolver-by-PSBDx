@@ -19,7 +19,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:contentDescription="Search"
+            android:contentDescription="@string/ui_search"
             android:src="@drawable/ic_search" />
 
         <EditText
@@ -175,7 +175,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:layout_marginBottom="8dp"
-        android:text="RECENT RESOLVER QUERIES (LAST 72 HOURS)"
+        android:text="@string/ui_recent_resolver_queries_last_72"
         android:textColor="@color/text_muted"
         android:textSize="11sp"
         android:textStyle="bold" />
@@ -204,7 +204,7 @@
             <ImageView
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:contentDescription="No logs"
+                android:contentDescription="@string/ui_no_logs"
                 android:src="@drawable/ic_logs" />
 
             <TextView

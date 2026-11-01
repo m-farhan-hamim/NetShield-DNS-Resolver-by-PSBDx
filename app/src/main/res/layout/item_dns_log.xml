@@ -23,7 +23,7 @@
             android:paddingTop="3dp"
             android:paddingEnd="8dp"
             android:paddingBottom="3dp"
-            android:text="ALLOWED"
+            android:text="@string/ui_allowed"
             android:textColor="@color/colorAllowed"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -78,7 +78,7 @@
         android:layout_marginTop="8dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:text="example.com"
+        android:text="@string/trusted_domain_input_hint"
         android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:textStyle="bold" />
@@ -91,7 +91,7 @@
         android:layout_marginTop="4dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:text="DoH (cloudflare-dns.com) • Client: 127.0.0.1"
+        android:text="@string/ui_doh_cloudflare_dns_com_client"
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />
 

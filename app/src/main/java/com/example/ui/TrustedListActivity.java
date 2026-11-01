@@ -69,7 +69,7 @@ public class TrustedListActivity extends AppCompatActivity {
             public void onRemove(String domain) {
                 trustedListManager.removeTrustedDomain(domain);
                 refreshDomains();
-                Toast.makeText(TrustedListActivity.this, "Removed " + domain, Toast.LENGTH_SHORT).show();
+                Toast.makeText(TrustedListActivity.this, getString(R.string.toast_removed, domain), Toast.LENGTH_SHORT).show();
             }
         });
         rvDomains.setAdapter(domainAdapter);
@@ -81,7 +81,7 @@ public class TrustedListActivity extends AppCompatActivity {
             public void onClick(View v) {
                 String domain = etDomain.getText().toString().trim();
                 if (domain.isEmpty()) {
-                    Toast.makeText(TrustedListActivity.this, "Enter a domain first", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TrustedListActivity.this, R.string.toast_enter_a_domain_first, Toast.LENGTH_SHORT).show();
                     return;
                 }
                 trustedListManager.addTrustedDomain(domain);
