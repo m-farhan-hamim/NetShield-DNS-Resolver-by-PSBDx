@@ -38,11 +38,7 @@ public class PauseTileService extends TileService {
         updateTile();
         if (!receiverRegistered) {
             IntentFilter filter = new IntentFilter(BlocklistManager.ACTION_PAUSE_STATE_CHANGED);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.registerReceiver(this, pauseReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
-            } else {
-                registerReceiver(pauseReceiver, filter);
-            }
+            ContextCompat.registerReceiver(this, pauseReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
             receiverRegistered = true;
         }
     }

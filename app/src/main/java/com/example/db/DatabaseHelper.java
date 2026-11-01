@@ -536,7 +536,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public synchronized long insertRule(CustomRule rule) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase());
+        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase(java.util.Locale.ROOT));
         cv.put(COL_RULE_TARGET_IP, rule.getTargetIp() != null ? rule.getTargetIp().trim() : "");
         cv.put(COL_RULE_TYPE, rule.getRuleType());
         cv.put(COL_RULE_ENABLED, rule.isEnabled() ? 1 : 0);
@@ -558,7 +558,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public synchronized void updateRule(CustomRule rule) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase());
+        cv.put(COL_RULE_DOMAIN, rule.getDomain().trim().toLowerCase(java.util.Locale.ROOT));
         cv.put(COL_RULE_TARGET_IP, rule.getTargetIp() != null ? rule.getTargetIp().trim() : "");
         cv.put(COL_RULE_TYPE, rule.getRuleType());
         cv.put(COL_RULE_ENABLED, rule.isEnabled() ? 1 : 0);

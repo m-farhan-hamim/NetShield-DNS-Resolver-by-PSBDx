@@ -50,7 +50,7 @@ public class DnsPacketParser {
                     return null;
                 }
                 for (int i = 0; i < len; i++) {
-                    domain.append((char) data[offset++]);
+                    domain.append((char) (data[offset++] & 0xFF));
                 }
                 domain.append('.');
             }
@@ -58,7 +58,7 @@ public class DnsPacketParser {
             if (domain.length() > 0 && domain.charAt(domain.length() - 1) == '.') {
                 domain.setLength(domain.length() - 1);
             }
-            q.domain = domain.toString().toLowerCase();
+            q.domain = domain.toString().toLowerCase(java.util.Locale.ROOT);
 
             if (offset + 4 <= length) {
                 q.qType = ((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF);

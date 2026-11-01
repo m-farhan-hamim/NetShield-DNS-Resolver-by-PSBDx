@@ -164,7 +164,7 @@ public class DnsResolverEngine {
 
         if (upstreamResponse != null && upstreamResponse.length >= 12) {
             // Cache successful response
-            if (cacheEnabled) {
+            if (cacheEnabled && isCacheable(upstreamResponse)) {
                 long ttl = DnsPacketParser.extractTtl(upstreamResponse, upstreamResponse.length);
                 cache.put(domain, q.qType, upstreamResponse, ttl);
             }
@@ -184,6 +184,20 @@ public class DnsResolverEngine {
             recordLog(domain, typeName, "FAILED", latency, upstreamDesc + " [Timeout]", clientIp);
             return null;
         }
+    }
+
+    /**
+     * Only a real answer (NOERROR) or a real "no such name" (NXDOMAIN) is worth remembering. A failure such as
+     * SERVFAIL or REFUSED, or a truncated reply, is usually a passing upstream hiccup: caching it would keep
+     * the site broken for a minute after the upstream has recovered.
+     */
+    static boolean isCacheable(byte[] response) {
+        if (response == null || response.length < 12) {
+            return false;
+        }
+        boolean truncated = (response[2] & 0x02) != 0;
+        int rcode = response[3] & 0x0F;
+        return !truncated && (rcode == 0 || rcode == 3);
     }
 
     private void recordLog(final String domain, final String type, final String status, final long latency, final String upstream, final String clientIp) {
