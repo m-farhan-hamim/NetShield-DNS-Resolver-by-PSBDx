@@ -590,4 +590,12 @@
     <string name="ui_aaaa_v6">AAAA (v6)</string>
     <string name="ui_https">HTTPS</string>
     <string name="ui_other">Other</string>
+
+    <!-- Language picker (the language names are shown in their own language on purpose) -->
+    <string name="about_language">Language</string>
+    <string name="language_title">Language</string>
+    <string name="language_system">System default</string>
+    <string name="language_english" translatable="false">English</string>
+    <string name="language_bengali" translatable="false">বাংলা</string>
+    <string name="language_hindi" translatable="false">हिन्दी</string>
 </resources>

@@ -2439,6 +2439,15 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+        Button btnAboutLanguage = findViewById(R.id.btn_about_language);
+        if (btnAboutLanguage != null) {
+            btnAboutLanguage.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    LanguagePicker.show(MainActivity.this);
+                }
+            });
+        }
         Button btnAboutWhatsNew = findViewById(R.id.btn_about_whats_new);
         if (btnAboutWhatsNew != null) {
             btnAboutWhatsNew.setOnClickListener(new View.OnClickListener() {
